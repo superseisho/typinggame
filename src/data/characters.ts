@@ -1,15 +1,28 @@
-import type { CharacterDefinition } from '../types/game';
+import type { CharacterArtSet, CharacterDefinition } from '../types/game';
 import { indexById } from '../utils/indexById';
+import { TRANSIENT_ABILITY_VISUAL_MS } from './gameConfig';
+
+function createArtSet(characterFolder: string, abilityFileName: string): CharacterArtSet {
+  const path = (fileName: string) => `/images/characters/${characterFolder}/${fileName}.png`;
+  return {
+    normal: path('normal'),
+    lowHp: path('low-hp'),
+    down: path('down'),
+    abilityActive: path(`${abilityFileName}-active`),
+    lowHpAbilityActive: path(`low-hp-${abilityFileName}-active`),
+  };
+}
 
 export const CHARACTER_DEFINITIONS = [
   {
     id: 'warrior',
-    name: '戦士',
-    englishName: 'Warrior',
+    name: '騎士',
+    englishName: 'Knight',
     role: 'tank',
     roleLabel: 'DEFENDER',
     portraitGlyph: 'W',
     accentColor: '#d4a45f',
+    art: createArtSet('warrior', 'guard'),
     stats: { maxHp: 180, attack: 31, defense: 9 },
     attackThreshold: 90,
     attackElement: 'physical',
@@ -21,6 +34,7 @@ export const CHARACTER_DEFINITIONS = [
       description: '文章を3回完成すると、次の敵攻撃を防ぐ。',
       trigger: { type: 'completed-prompts', threshold: 3 },
       effects: [{ type: 'guard-next-hit' }],
+      visual: { kind: 'guard', persistence: 'persistent' },
       soundId: 'warrior_guard',
     },
   },
@@ -32,17 +46,19 @@ export const CHARACTER_DEFINITIONS = [
     roleLabel: 'ARCANE DPS',
     portraitGlyph: 'M',
     accentColor: '#a58bff',
+    art: createArtSet('mage', 'cast'),
     stats: { maxHp: 92, attack: 23, defense: 2 },
     attackThreshold: 30,
     attackElement: 'fire',
     targetRule: 'lowest-hp',
     audio: { attack: 'mage_attack', ability: 'mage_focus' },
     ability: {
-      id: 'arcane-focus',
-      name: 'ARCANE FOCUS',
-      description: '30文字ノーミスで次の魔法攻撃が2倍になる。',
+      id: 'arcane-burst',
+      name: 'ARCANE BURST',
+      description: '30文字ノーミスで敵全体へ魔法攻撃を放つ。',
       trigger: { type: 'perfect-streak', threshold: 30 },
-      effects: [{ type: 'multiply-next-attack', multiplier: 2 }],
+      effects: [{ type: 'damage-all-enemies', power: 24 }],
+      visual: { kind: 'cast', persistence: 'instant', displayMs: TRANSIENT_ABILITY_VISUAL_MS },
       soundId: 'mage_focus',
     },
   },
@@ -54,6 +70,7 @@ export const CHARACTER_DEFINITIONS = [
     roleLabel: 'HEALER',
     portraitGlyph: 'C',
     accentColor: '#79d6be',
+    art: createArtSet('cleric', 'heal'),
     stats: { maxHp: 125, attack: 16, defense: 5 },
     attackThreshold: 70,
     attackElement: 'holy',
@@ -65,6 +82,7 @@ export const CHARACTER_DEFINITIONS = [
       description: '50文字ノーミスで、最も傷ついた味方を回復する。',
       trigger: { type: 'perfect-streak', threshold: 50 },
       effects: [{ type: 'heal-lowest-ally', power: 30 }],
+      visual: { kind: 'heal', persistence: 'instant', displayMs: TRANSIENT_ABILITY_VISUAL_MS },
       soundId: 'cleric_heal',
     },
   },
@@ -76,6 +94,7 @@ export const CHARACTER_DEFINITIONS = [
     roleLabel: 'COMBO DPS',
     portraitGlyph: 'F',
     accentColor: '#e47b70',
+    art: createArtSet('martial-artist', 'combo'),
     stats: { maxHp: 142, attack: 25, defense: 4 },
     attackThreshold: 50,
     attackElement: 'physical',
@@ -87,6 +106,7 @@ export const CHARACTER_DEFINITIONS = [
       description: 'ノーミス連続入力で攻撃倍率が上昇する。',
       trigger: { type: 'combo-milestones', thresholds: [20, 40, 80] },
       effects: [{ type: 'combo-attack-scaling', multipliers: [1.1, 1.25, 1.5] }],
+      visual: { kind: 'combo', persistence: 'persistent' },
       soundId: 'martial_artist_combo',
     },
   },

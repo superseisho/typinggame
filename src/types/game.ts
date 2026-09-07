@@ -4,7 +4,29 @@ export type Element = 'physical' | 'fire' | 'ice' | 'lightning' | 'holy' | 'dark
 export type CombatStatus = 'ready' | 'active' | 'victory' | 'defeat';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 export type EnemyTargetRule = 'frontmost' | 'lowest-hp' | 'round-robin';
+export type AbilityVisualKind = 'guard' | 'cast' | 'heal' | 'combo';
+export type AbilityPersistence = 'persistent' | 'instant';
+export type CharacterVisualState =
+  | 'normal'
+  | 'low_hp'
+  | 'down'
+  | 'guard_active'
+  | 'low_hp_guard_active'
+  | 'cast_active'
+  | 'low_hp_cast_active'
+  | 'heal_active'
+  | 'low_hp_heal_active'
+  | 'combo_active'
+  | 'low_hp_combo_active';
 import type { SoundId } from './audio';
+
+export interface CharacterArtSet {
+  readonly normal: string;
+  readonly lowHp: string;
+  readonly down: string;
+  readonly abilityActive: string;
+  readonly lowHpAbilityActive: string;
+}
 
 export interface BaseStats {
   readonly maxHp: number;
@@ -20,6 +42,7 @@ export type AbilityTrigger =
 export type AbilityEffect =
   | { readonly type: 'guard-next-hit' }
   | { readonly type: 'multiply-next-attack'; readonly multiplier: number }
+  | { readonly type: 'damage-all-enemies'; readonly power: number }
   | { readonly type: 'heal-lowest-ally'; readonly power: number }
   | { readonly type: 'combo-attack-scaling'; readonly multipliers: readonly number[] };
 
@@ -29,6 +52,11 @@ export interface AbilityDefinition {
   readonly description: string;
   readonly trigger: AbilityTrigger;
   readonly effects: readonly AbilityEffect[];
+  readonly visual: {
+    readonly kind: AbilityVisualKind;
+    readonly persistence: AbilityPersistence;
+    readonly displayMs?: number;
+  };
   readonly soundId?: SoundId;
 }
 
@@ -40,6 +68,7 @@ export interface CharacterDefinition {
   readonly roleLabel: string;
   readonly portraitGlyph: string;
   readonly accentColor: string;
+  readonly art: CharacterArtSet;
   readonly stats: BaseStats;
   readonly attackThreshold: number;
   readonly attackElement: Element;
@@ -158,6 +187,10 @@ export type CombatEventKind =
   | 'ally-heal'
   | 'ally-buff'
   | 'ally-debuff'
+  | 'ally-ability-triggered'
+  | 'ally-ability-ended'
+  | 'ally-ability-damage'
+  | 'ally-guard-consumed'
   | 'enemy-special-ready'
   | 'enemy-special-used'
   | 'enemy-heal'

@@ -1,11 +1,12 @@
 import { CHARACTERS_BY_ID } from '../data/characters';
 import type { CharacterDefinition, CombatState } from '../types/game';
+import { CharacterStateArt } from './CharacterStateArt';
 import { CombatFeedback } from './CombatFeedback';
 import { ProgressBar } from './ProgressBar';
 import { StatusChips } from './StatusChips';
 
 function hpSeverity(ratio: number) {
-  if (ratio < .25) return 'danger' as const;
+  if (ratio < .3) return 'danger' as const;
   if (ratio <= .5) return 'caution' as const;
   return 'normal' as const;
 }
@@ -51,13 +52,12 @@ export function PartyPanel({ combat }: { readonly combat: CombatState }) {
               style={{ '--character-accent': character.accentColor } as React.CSSProperties}
             >
               <CombatFeedback events={combat.events} targetId={member.definitionId} />
-              {knockedOut ? <span className="down-stamp">DOWN</span> : null}
 
-              <div className="character-card__identity">
-                <div className={`portrait-action ${latestAction?.kind === 'ally-attack' ? 'is-attacking' : ''}`} key={`${member.definitionId}-${latestAction?.id ?? 0}-${latestImpact?.id ?? 0}`}>
-                  <div className={`portrait ${latestImpact?.kind === 'ally-damaged' ? 'is-hit' : ''}`}><span>{character.portraitGlyph}</span></div>
-                </div>
+              <div
+                className={`character-card__showcase ${latestAction?.kind === 'ally-attack' ? 'is-attacking' : ''} ${latestImpact?.kind === 'ally-damaged' ? 'is-hit' : ''}`}
+              >
                 <div className="character-name"><h3>{character.name}</h3><p>{character.roleLabel}</p></div>
+                <CharacterStateArt character={character} member={member} combat={combat} />
                 <strong className="threshold">{character.attackThreshold}<small>KEYS</small></strong>
               </div>
 

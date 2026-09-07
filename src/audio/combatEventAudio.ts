@@ -22,6 +22,8 @@ export function soundForCombatEvent(event: CombatEvent): SoundId | null {
   if (event.kind === 'ally-heal') return event.soundId ?? 'ally_heal';
   if (event.kind === 'ally-buff') return event.soundId ?? 'ally_buff';
   if (event.kind === 'ally-debuff') return event.soundId ?? 'ally_debuff';
+  if (event.kind === 'ally-ability-triggered') return event.soundId ?? null;
+  if (event.kind === 'ally-guard-consumed') return event.soundId ?? 'warrior_guard';
   if (event.kind === 'enemy-heal') return 'enemy_heal';
   if (event.kind === 'enemy-buff') return 'enemy_buff';
   if (event.kind === 'enemy-debuff') return 'enemy_debuff';

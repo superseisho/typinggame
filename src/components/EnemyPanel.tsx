@@ -59,7 +59,7 @@ export function EnemyPanel({ combat }: { readonly combat: CombatState }) {
               </div>
 
               <div className="enemy-unit__visual" key={`${enemyState.instanceId}-${latestImpact?.id ?? 0}-${latestAction?.id ?? 0}`}>
-                <div className={`enemy-avatar sprite--${enemy.sprite} ${latestImpact?.kind === 'ally-attack' ? 'is-hit' : ''} ${latestAction?.kind === 'ally-damaged' ? 'is-attacking' : ''}`}>
+                <div className={`enemy-avatar sprite--${enemy.sprite} ${latestImpact?.kind === 'ally-attack' || latestImpact?.kind === 'ally-ability-damage' ? 'is-hit' : ''} ${latestAction?.kind === 'ally-damaged' ? 'is-attacking' : ''}`}>
                   <div className="enemy-avatar__mist" />
                   <div className="enemy-avatar__body"><span className="enemy-avatar__eye" /><span className="enemy-avatar__eye" /></div>
                   {enemy.sprite === 'shaman' ? <span className="shaman-staff">✦</span> : null}

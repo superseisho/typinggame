@@ -9,7 +9,7 @@ interface Feedback {
 
 function toFeedback(event: CombatEvent, targetId: string): Feedback | null {
   if (event.targetId !== targetId) return null;
-  if (event.kind === 'ally-attack' || event.kind === 'ally-damaged') {
+  if (event.kind === 'ally-attack' || event.kind === 'ally-ability-damage' || event.kind === 'ally-damaged') {
     return { id: event.id, kind: 'damage', text: `-${event.amount ?? 0}` };
   }
   if (event.kind === 'ally-heal' || event.kind === 'enemy-heal') {
@@ -21,8 +21,11 @@ function toFeedback(event: CombatEvent, targetId: string): Feedback | null {
   if (event.kind === 'ally-debuff' || event.kind === 'enemy-debuff') {
     return { id: event.id, kind: 'debuff', text: 'DEBUFF' };
   }
-  if (event.kind === 'ally-defeated' || event.kind === 'enemy-defeated') {
+  if (event.kind === 'enemy-defeated') {
     return { id: event.id, kind: 'down', text: 'DOWN' };
+  }
+  if (event.kind === 'ally-guard-consumed') {
+    return { id: event.id, kind: 'buff', text: 'BLOCK' };
   }
   return null;
 }

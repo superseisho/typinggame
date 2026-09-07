@@ -393,15 +393,35 @@ button { cursor: pointer; }
 .battle-stage .character-card { min-width: 0; padding: 10px 10px 8px; overflow: hidden; background: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.008)); }
 .battle-stage .character-card.hp-caution { border-color: rgba(198,145,72,.22); }
 .battle-stage .character-card.hp-danger { border-color: rgba(214,89,81,.45); box-shadow: inset 0 0 20px rgba(193,63,58,.08); }
-.battle-stage .character-card.is-knocked-out { opacity: .42; filter: grayscale(.9); }
-.battle-stage .character-card__identity { height: 39px; margin-bottom: 6px; gap: 7px; }
-.portrait-action { flex: none; }
-.battle-stage .portrait { width: 34px; height: 38px; }
-.battle-stage .portrait span { font-size: 14px; }
-.character-name { min-width: 0; }
+.battle-stage .character-card.is-knocked-out { border-color: rgba(176,91,87,.25); background: linear-gradient(180deg, rgba(65,35,36,.08), rgba(10,10,11,.28)); }
+.battle-stage .character-card__showcase { position: relative; height: 137px; margin: -2px -2px 7px; border-bottom: 1px solid rgba(255,255,255,.045); }
+.battle-stage .character-card__showcase::after { position: absolute; right: 17%; bottom: 5px; left: 17%; height: 9px; content: ''; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,.56), transparent 68%); filter: blur(2px); }
+.character-name { position: absolute; z-index: 6; top: 5px; left: 3px; min-width: 0; }
 .battle-stage .character-card h3 { overflow: hidden; font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
 .battle-stage .character-card p { font-size: 6px; }
-.battle-stage .threshold { font-size: 13px; }
+.battle-stage .threshold { position: absolute; z-index: 6; top: 4px; right: 3px; font-size: 13px; }
+.character-state-art { position: relative; z-index: 3; width: 100%; height: 135px; color: var(--character-accent); transition: filter .18s ease, opacity .18s ease; }
+.character-state-art__portrait { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0,0,0,.68)); }
+.character-state-art__effect { position: absolute; z-index: 1; top: 14px; left: 50%; width: 98px; height: 98px; border-radius: 50%; opacity: 0; transform: translateX(-50%); transition: opacity .18s ease; }
+.character-state-art__label { position: absolute; z-index: 7; top: 18px; left: 50%; min-width: 78px; padding: 6px 11px 5px; color: currentColor; border: 1px solid color-mix(in srgb, currentColor 54%, transparent); border-bottom-width: 3px; background: linear-gradient(180deg, rgba(16,17,19,.96), rgba(10,11,12,.88)); box-shadow: 0 5px 18px rgba(0,0,0,.42), 0 0 14px color-mix(in srgb, currentColor 17%, transparent); font: 800 11px 'Roboto Mono', monospace; letter-spacing: .08em; text-align: center; white-space: nowrap; transform: translate(-50%,-50%); }
+.character-state-art--kind-guard { color: #7db7e2; }
+.character-state-art--kind-cast { color: #ad91ff; }
+.character-state-art--kind-heal { color: #77d5aa; }
+.character-state-art--kind-combo { color: #eb8272; }
+.character-state-art--low_hp { color: #dc746b; }
+.character-state-art--low_hp .character-state-art__portrait,
+.character-state-art[data-visual-state^='low_hp_'] .character-state-art__portrait { filter: grayscale(.13) saturate(.78) drop-shadow(0 6px 8px rgba(0,0,0,.72)); }
+.character-state-art--low_hp .character-state-art__effect,
+.character-state-art[data-visual-state^='low_hp_'] .character-state-art__effect { opacity: .72; background: radial-gradient(circle, rgba(183,58,54,.14), transparent 67%); box-shadow: 0 0 22px rgba(196,62,57,.13); }
+.character-state-art--low_hp .character-state-art__label { color: #e1776e; }
+.character-state-art--down { color: #b66c68; }
+.character-state-art--down .character-state-art__portrait { opacity: .38; filter: grayscale(.9) drop-shadow(0 6px 8px rgba(0,0,0,.72)); }
+.character-state-art--down .character-state-art__label { color: #d47770; }
+.character-state-art[data-visual-state$='_active'] .character-state-art__portrait { filter: brightness(1.12) drop-shadow(0 0 9px color-mix(in srgb, currentColor 42%, transparent)) drop-shadow(0 6px 8px rgba(0,0,0,.68)); }
+.character-state-art[data-visual-state$='_active'] .character-state-art__effect { opacity: .78; border: 1px solid color-mix(in srgb, currentColor 28%, transparent); background: radial-gradient(circle, color-mix(in srgb, currentColor 18%, transparent), transparent 66%); box-shadow: 0 0 20px color-mix(in srgb, currentColor 26%, transparent); }
+.character-state-art--kind-guard[data-visual-state$='_active'] .character-state-art__effect::after { position: absolute; inset: 50% auto auto 50%; color: #a8d7fb; content: '⬡'; font-size: 43px; opacity: .22; transform: translate(-50%,-50%); }
+.character-card__showcase.is-attacking .character-state-art { animation: party-lunge .22s ease-out; }
+.character-card__showcase.is-hit .character-state-art { animation: ally-hit .24s ease-out; }
 .battle-stage .character-card__stat { margin-top: 7px; }
 .ability-state { margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.045); }
 .ability-state > div { display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--character-accent); font: 7px 'Roboto Mono', monospace; letter-spacing: .08em; }
@@ -484,8 +504,10 @@ button { cursor: pointer; }
   .battle-stage .party-panel { padding: 8px 7px 10px; }
   .battle-stage .party-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .battle-stage .character-card { padding: 8px 7px 7px; }
-  .battle-stage .character-card__identity { height: 34px; }
-  .battle-stage .portrait { width: 30px; height: 34px; }
+  .battle-stage .character-card__showcase { height: 116px; }
+  .character-state-art { height: 114px; }
+  .character-state-art__effect { width: 80px; height: 80px; }
+  .character-state-art__label { top: 16px; min-width: 64px; padding: 5px 8px 4px; font-size: 9px; }
   .battle-stage .threshold { font-size: 10px; }
   .battle-zone-heading { margin-bottom: 6px; }
   .combat-log summary { grid-template-columns: 86px minmax(0, 1fr) auto; padding-inline: 10px; }

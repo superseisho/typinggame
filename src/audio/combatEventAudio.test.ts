@@ -24,6 +24,7 @@ describe('combat event audio mapping', () => {
     ['ally-heal', 'ally_heal'],
     ['ally-buff', 'ally_buff'],
     ['ally-debuff', 'ally_debuff'],
+    ['ally-guard-consumed', 'warrior_guard'],
     ['enemy-heal', 'enemy_heal'],
     ['enemy-buff', 'enemy_buff'],
     ['enemy-special-ready', 'enemy_special_warning'],

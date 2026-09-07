@@ -8,3 +8,5 @@ export const GAME_CONFIG = {
   combatEventHistoryLimit: 120,
   resurrectionHpRatio: 0.3,
 } as const;
+
+export const TRANSIENT_ABILITY_VISUAL_MS = 1_000;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CHARACTERS_BY_ID } from '../../data/characters';
 import { ENEMIES_BY_ID } from '../../data/enemies';
 import { applyCorrectTyping, applyTypingMiss, startCombat, tickCombat } from './combatEngine';
+import { getCharacterVisualState } from './characterVisualState';
 import { createCombatState } from './createCombatState';
 
 describe('combat engine', () => {
@@ -47,6 +48,68 @@ describe('combat engine', () => {
       targetId: 'warrior',
       amount: 30,
       soundId: 'cleric_heal',
+    });
+    expect(healed.events.find((event) => (
+      event.kind === 'ally-ability-triggered' && event.actorId === 'cleric'
+    ))).toMatchObject({ abilityId: 'heal' });
+  });
+
+  it('activates guard after three prompts and consumes it to block the next attack', () => {
+    const started = startCombat(createCombatState(['crypt-slime']), 1_000);
+    const typing = { ...started.typing, completedSentences: 3 };
+    const guarded = applyCorrectTyping(started, typing, 1_001);
+    expect(guarded.party[0].statuses).toContain('ability:guard');
+    expect(getCharacterVisualState(CHARACTERS_BY_ID.warrior, guarded.party[0])).toBe('guard_active');
+    expect(guarded.events.find((event) => event.kind === 'ally-ability-triggered')).toMatchObject({
+      actorId: 'warrior',
+      abilityId: 'guard',
+    });
+
+    const attacked = tickCombat(guarded, ENEMIES_BY_ID['crypt-slime'].attackCooldown, 6_000);
+    expect(attacked.party[0].currentHp).toBe(CHARACTERS_BY_ID.warrior.stats.maxHp);
+    expect(attacked.party[0].statuses).not.toContain('ability:guard');
+    expect(getCharacterVisualState(CHARACTERS_BY_ID.warrior, attacked.party[0])).toBe('normal');
+    expect(attacked.events.find((event) => event.kind === 'ally-guard-consumed')).toMatchObject({
+      actorId: 'warrior',
+      abilityId: 'guard',
+    });
+  });
+
+  it('ends the martial artist combo state immediately on a typing miss', () => {
+    const started = startCombat(createCombatState(['crypt-slime']), 1_000);
+    const comboTyping = { ...started.typing, currentCombo: 20, maxCombo: 20 };
+    const active = applyCorrectTyping(started, comboTyping, 1_001);
+    const activeFighter = active.party.find((member) => member.definitionId === 'martial-artist')!;
+    expect(activeFighter.statuses).toContain('ability:flow-combo');
+    expect(getCharacterVisualState(CHARACTERS_BY_ID['martial-artist'], activeFighter)).toBe('combo_active');
+
+    const missedTyping = { ...active.typing, currentCombo: 0, missCount: active.typing.missCount + 1 };
+    const ended = applyTypingMiss(active, missedTyping, 1_002);
+    const endedFighter = ended.party.find((member) => member.definitionId === 'martial-artist')!;
+    expect(endedFighter.statuses).not.toContain('ability:flow-combo');
+    expect(getCharacterVisualState(CHARACTERS_BY_ID['martial-artist'], endedFighter)).toBe('normal');
+    expect(ended.events.find((event) => event.kind === 'ally-ability-ended')).toMatchObject({
+      actorId: 'martial-artist',
+      abilityId: 'flow-combo',
+    });
+  });
+
+  it('uses Arcane Burst as an instant all-enemy attack', () => {
+    const started = startCombat(createCombatState(['crypt-slime', 'grave-shaman']), 1_000);
+    const primed = {
+      ...started,
+      party: started.party.map((member) => ({ ...member, attackCharge: 0 })),
+    };
+    const typing = { ...primed.typing, currentCombo: 30, maxCombo: 30 };
+    const cast = applyCorrectTyping(primed, typing, 1_001);
+    const slime = ENEMIES_BY_ID['crypt-slime'];
+    const shaman = ENEMIES_BY_ID['grave-shaman'];
+    expect(cast.enemies[0].currentHp).toBe(slime.maxHp - (24 - slime.defense));
+    expect(cast.enemies[1].currentHp).toBe(shaman.maxHp - (24 - shaman.defense));
+    expect(cast.events.filter((event) => event.kind === 'ally-ability-damage')).toHaveLength(2);
+    expect(cast.events.find((event) => event.kind === 'ally-ability-triggered')).toMatchObject({
+      actorId: 'mage',
+      abilityId: 'arcane-burst',
     });
   });
 
