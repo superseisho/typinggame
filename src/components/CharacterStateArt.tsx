@@ -1,10 +1,13 @@
 import { useCharacterVisualState } from '../hooks/useCharacterVisualState';
+import { usePortraitHealFlash } from '../hooks/usePortraitHealFlash';
+import { usePortraitMotion } from '../hooks/usePortraitMotion';
 import type {
   CharacterCombatState,
   CharacterDefinition,
   CharacterVisualState,
   CombatState,
 } from '../types/game';
+import { PortraitMotionLayer } from './PortraitMotionLayer';
 
 function stateLabel(state: CharacterVisualState): string | null {
   if (state === 'normal') return null;
@@ -35,6 +38,8 @@ export function CharacterStateArt({
   readonly combat: CombatState;
 }) {
   const state = useCharacterVisualState(character, member, combat);
+  const motion = usePortraitMotion(combat, 'ally', character.id, member.currentHp <= 0);
+  const healFlash = usePortraitHealFlash(combat, character.id, member.currentHp <= 0);
   const artSrc = artForState(character, state);
   const label = stateLabel(state);
 
@@ -46,7 +51,9 @@ export function CharacterStateArt({
       role="img"
       aria-label={`${character.name}: ${label ?? 'READY'}`}
     >
-      <img className="character-state-art__portrait" src={artSrc} alt="" draggable={false} aria-hidden="true" />
+      <PortraitMotionLayer className="character-state-art__motion" motion={motion} flash={healFlash}>
+        <img className="character-state-art__portrait" src={artSrc} alt="" draggable={false} />
+      </PortraitMotionLayer>
       <span className="character-state-art__effect" aria-hidden="true" />
       {label ? <strong className="character-state-art__label">{label}</strong> : null}
     </div>

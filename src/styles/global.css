@@ -175,8 +175,6 @@ button { cursor: pointer; }
 .enemy-avatar__body::after { position: absolute; bottom: -13px; width: 75%; height: 28px; border-radius: 50%; background: #182426; content: ''; }
 .enemy-avatar__eye { width: 14px; height: 6px; z-index: 1; border-radius: 50%; background: #b6e1d6; box-shadow: 0 0 13px #a7ddd4; }
 .enemy-avatar__rune { position: absolute; top: 25px; right: 35px; color: rgba(128, 175, 173, .24); font-size: 44px; transform: rotate(13deg); }
-.enemy-avatar.is-hit .enemy-avatar__body { animation: enemy-hit .22s ease-out, enemy-float 3.4s .22s ease-in-out infinite; }
-
 .enemy-vitals { position: relative; z-index: 1; }
 .enemy-panel--formation { min-height: 590px; }
 .enemy-formation { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 26px; }
@@ -401,6 +399,7 @@ button { cursor: pointer; }
 .battle-stage .character-card p { font-size: 6px; }
 .battle-stage .threshold { position: absolute; z-index: 6; top: 4px; right: 3px; font-size: 13px; }
 .character-state-art { position: relative; z-index: 3; width: 100%; height: 135px; color: var(--character-accent); transition: filter .18s ease, opacity .18s ease; }
+.character-state-art .character-state-art__motion { position: absolute; z-index: 2; inset: 0; }
 .character-state-art__portrait { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0,0,0,.68)); }
 .character-state-art__effect { position: absolute; z-index: 1; top: 14px; left: 50%; width: 98px; height: 98px; border-radius: 50%; opacity: 0; transform: translateX(-50%); transition: opacity .18s ease; }
 .character-state-art__label { position: absolute; z-index: 7; top: 18px; left: 50%; min-width: 78px; padding: 6px 11px 5px; color: currentColor; border: 1px solid color-mix(in srgb, currentColor 54%, transparent); border-bottom-width: 3px; background: linear-gradient(180deg, rgba(16,17,19,.96), rgba(10,11,12,.88)); box-shadow: 0 5px 18px rgba(0,0,0,.42), 0 0 14px color-mix(in srgb, currentColor 17%, transparent); font: 800 11px 'Roboto Mono', monospace; letter-spacing: .08em; text-align: center; white-space: nowrap; transform: translate(-50%,-50%); }
@@ -420,8 +419,6 @@ button { cursor: pointer; }
 .character-state-art[data-visual-state$='_active'] .character-state-art__portrait { filter: brightness(1.12) drop-shadow(0 0 9px color-mix(in srgb, currentColor 42%, transparent)) drop-shadow(0 6px 8px rgba(0,0,0,.68)); }
 .character-state-art[data-visual-state$='_active'] .character-state-art__effect { opacity: .78; border: 1px solid color-mix(in srgb, currentColor 28%, transparent); background: radial-gradient(circle, color-mix(in srgb, currentColor 18%, transparent), transparent 66%); box-shadow: 0 0 20px color-mix(in srgb, currentColor 26%, transparent); }
 .character-state-art--kind-guard[data-visual-state$='_active'] .character-state-art__effect::after { position: absolute; inset: 50% auto auto 50%; color: #a8d7fb; content: '⬡'; font-size: 43px; opacity: .22; transform: translate(-50%,-50%); }
-.character-card__showcase.is-attacking .character-state-art { animation: party-lunge .22s ease-out; }
-.character-card__showcase.is-hit .character-state-art { animation: ally-hit .24s ease-out; }
 .battle-stage .character-card__stat { margin-top: 7px; }
 .ability-state { margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.045); }
 .ability-state > div { display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--character-accent); font: 7px 'Roboto Mono', monospace; letter-spacing: .08em; }
@@ -433,9 +430,11 @@ button { cursor: pointer; }
 .combat-feedback--heal { color: #75d69f; text-shadow: 0 0 10px rgba(117,214,159,.5); }
 .combat-feedback--buff { color: #d7bb79; font-size: 10px; }
 .combat-feedback--debuff, .combat-feedback--down { color: #c67cbd; font-size: 10px; }
-.portrait-action.is-attacking { animation: party-lunge .22s ease-out; }
-.portrait.is-hit { animation: ally-hit .24s ease-out; }
-.enemy-avatar.is-attacking { animation: enemy-lunge .25s ease-out; }
+.portrait-motion-layer { transform: translate3d(0,0,0); transform-origin: 50% 78%; will-change: transform, filter; }
+.enemy-unit__motion { position: relative; }
+.portrait-heal-flash { position: absolute; z-index: 8; inset: 10% 14% 3%; pointer-events: none; border: 1px solid rgba(117,231,156,.28); border-radius: 45%; opacity: 0; background: radial-gradient(ellipse at 50% 58%, rgba(122,239,164,.36), rgba(72,184,118,.18) 42%, transparent 72%); box-shadow: 0 0 18px rgba(89,221,139,.72), inset 0 0 20px rgba(149,255,187,.22); mix-blend-mode: screen; filter: saturate(1.18); transform-origin: 50% 65%; }
+.portrait-motion-layer[data-portrait-motion='ally_persistent_ability']::after { position: absolute; z-index: 9; inset: 10%; content: ''; pointer-events: none; border-radius: 45%; background: radial-gradient(circle, rgba(255,255,255,.48), rgba(255,255,255,.08) 43%, transparent 70%); mix-blend-mode: screen; animation: portrait-white-flash 320ms ease-out; }
+.portrait-motion-layer[data-portrait-motion='enemy_special']::after { position: absolute; z-index: 9; inset: 14%; content: ''; pointer-events: none; border-radius: 50%; box-shadow: 0 0 17px rgba(190,102,208,.38); animation: portrait-special-glow 720ms ease-out; }
 
 .battle-stage > .combat-log { min-height: 0; padding: 0; border-bottom: 0; }
 .combat-log summary { display: grid; grid-template-columns: 120px 1fr auto; align-items: center; gap: 12px; min-height: 35px; padding: 0 17px; cursor: pointer; list-style: none; }
@@ -448,9 +447,8 @@ button { cursor: pointer; }
 .battle-stage .combat-log li { font-size: 9px; }
 
 @keyframes feedback-rise { 0% { opacity: 0; transform: translateY(8px) scale(.85); } 18% { opacity: 1; transform: translateY(0) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-18px) scale(.96); } }
-@keyframes party-lunge { 0%,100% { transform: translateY(0); } 45% { transform: translateY(-8px) scale(1.05); filter: brightness(1.35); } }
-@keyframes enemy-lunge { 0%,100% { transform: translateY(0); } 45% { transform: translateY(8px) scale(1.04); filter: brightness(1.25); } }
-@keyframes ally-hit { 0%,100% { transform: translateX(0); } 35% { transform: translateX(-5px); filter: brightness(1.8); } 70% { transform: translateX(3px); } }
+@keyframes portrait-white-flash { 0%,100% { opacity: 0; } 38% { opacity: .78; } }
+@keyframes portrait-special-glow { 0%,100% { opacity: 0; } 42% { opacity: 1; } }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(2, 3, 4, .78); backdrop-filter: blur(8px); }
 .battle-modal { position: relative; width: min(540px, 100%); padding: 46px 52px 42px; text-align: center; border: 1px solid rgba(201, 166, 107, .26); background: linear-gradient(145deg, rgba(27, 28, 29, .98), rgba(12, 13, 15, .98)); box-shadow: 0 35px 100px rgba(0, 0, 0, .65); }
@@ -474,7 +472,6 @@ button { cursor: pointer; }
 .result-grid strong { display: block; margin-top: 5px; font: 18px Cinzel, serif; }
 
 @keyframes enemy-float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-7px) scale(1.012); } }
-@keyframes enemy-hit { 0% { transform: translateX(0); filter: brightness(1); } 35% { transform: translateX(9px); filter: brightness(2); } 70% { transform: translateX(-5px); } 100% { transform: translateX(0); } }
 @keyframes panel-miss { 0%, 100% { box-shadow: 0 16px 55px rgba(0, 0, 0, .28); } 50% { box-shadow: inset 0 0 40px rgba(198, 93, 88, .18); } }
 @keyframes log-in { from { opacity: 0; transform: translateX(-6px); } }
 

@@ -1,7 +1,9 @@
 import { ENEMIES_BY_ID } from '../data/enemies';
-import type { CombatState } from '../types/game';
+import { usePortraitMotion } from '../hooks/usePortraitMotion';
+import type { CombatState, EnemyCombatState, EnemyDefinition } from '../types/game';
 import { CombatFeedback } from './CombatFeedback';
 import { ProgressBar } from './ProgressBar';
+import { PortraitMotionLayer } from './PortraitMotionLayer';
 import { StatusChips } from './StatusChips';
 
 function hpSeverity(ratio: number) {
@@ -15,6 +17,29 @@ function specialState(ratio: number) {
   if (ratio >= .8) return 'alert';
   if (ratio >= .5) return 'caution';
   return 'normal';
+}
+
+function EnemyMotionPortrait({
+  combat,
+  enemyState,
+  enemy,
+}: {
+  readonly combat: CombatState;
+  readonly enemyState: EnemyCombatState;
+  readonly enemy: EnemyDefinition;
+}) {
+  const motion = usePortraitMotion(combat, 'enemy', enemyState.instanceId, enemyState.currentHp <= 0);
+  return (
+    <div className="enemy-unit__visual">
+      <PortraitMotionLayer className="enemy-unit__motion" motion={motion}>
+        <div className={`enemy-avatar sprite--${enemy.sprite}`}>
+          <div className="enemy-avatar__mist" />
+          <div className="enemy-avatar__body"><span className="enemy-avatar__eye" /><span className="enemy-avatar__eye" /></div>
+          {enemy.sprite === 'shaman' ? <span className="shaman-staff">✦</span> : null}
+        </div>
+      </PortraitMotionLayer>
+    </div>
+  );
 }
 
 export function EnemyPanel({ combat }: { readonly combat: CombatState }) {
@@ -35,8 +60,6 @@ export function EnemyPanel({ combat }: { readonly combat: CombatState }) {
           const attackRatio = Math.max(0, Math.min(1, (enemy.attackCooldown - enemyState.cooldownRemainingMs) / enemy.attackCooldown));
           const knockedOut = enemyState.currentHp <= 0;
           const specialLevel = specialState(specialRatio);
-          const latestImpact = [...combat.events].reverse().find((event) => event.targetId === enemyState.instanceId);
-          const latestAction = [...combat.events].reverse().find((event) => event.actorId === enemyState.instanceId);
           const pendingAbility = enemyState.pendingSpecial
             ? enemy.specialAbilities.find((ability) => ability.id === enemyState.pendingSpecial?.abilityId)
             : null;
@@ -58,13 +81,7 @@ export function EnemyPanel({ combat }: { readonly combat: CombatState }) {
                 <em>{enemy.boss ? 'BOSS' : enemy.elite ? 'ELITE' : enemyState.formationIndex === 0 ? 'FRONT' : 'REAR'}</em>
               </div>
 
-              <div className="enemy-unit__visual" key={`${enemyState.instanceId}-${latestImpact?.id ?? 0}-${latestAction?.id ?? 0}`}>
-                <div className={`enemy-avatar sprite--${enemy.sprite} ${latestImpact?.kind === 'ally-attack' || latestImpact?.kind === 'ally-ability-damage' ? 'is-hit' : ''} ${latestAction?.kind === 'ally-damaged' ? 'is-attacking' : ''}`}>
-                  <div className="enemy-avatar__mist" />
-                  <div className="enemy-avatar__body"><span className="enemy-avatar__eye" /><span className="enemy-avatar__eye" /></div>
-                  {enemy.sprite === 'shaman' ? <span className="shaman-staff">✦</span> : null}
-                </div>
-              </div>
+              <EnemyMotionPortrait combat={combat} enemyState={enemyState} enemy={enemy} />
 
               <div className="primary-gauge">
                 <div className="gauge-label"><span>HP</span><strong>{Math.round(hpRatio * 100)}%</strong></div>

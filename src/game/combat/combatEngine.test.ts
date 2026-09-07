@@ -54,6 +54,14 @@ describe('combat engine', () => {
     ))).toMatchObject({ abilityId: 'heal' });
   });
 
+  it('does not emit an ally heal event when nobody can recover HP', () => {
+    const started = startCombat(createCombatState(['crypt-slime']), 1_000);
+    const typing = { ...started.typing, currentCombo: 50, maxCombo: 50, correctCharacterCount: 50 };
+    const healed = applyCorrectTyping(started, typing, 2_000);
+
+    expect(healed.events.some((event) => event.kind === 'ally-heal')).toBe(false);
+  });
+
   it('activates guard after three prompts and consumes it to block the next attack', () => {
     const started = startCombat(createCombatState(['crypt-slime']), 1_000);
     const typing = { ...started.typing, completedSentences: 3 };
@@ -70,7 +78,8 @@ describe('combat engine', () => {
     expect(attacked.party[0].statuses).not.toContain('ability:guard');
     expect(getCharacterVisualState(CHARACTERS_BY_ID.warrior, attacked.party[0])).toBe('normal');
     expect(attacked.events.find((event) => event.kind === 'ally-guard-consumed')).toMatchObject({
-      actorId: 'warrior',
+      actorId: 'crypt-slime-1',
+      targetId: 'warrior',
       abilityId: 'guard',
     });
   });

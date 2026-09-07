@@ -375,7 +375,7 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number)
         nextState,
         'ally-guard-consumed',
         `${targetDefinition.name}のGUARDが攻撃を防いだ。`,
-        { actorId: target.definitionId, targetId: target.definitionId, abilityId: 'guard' },
+        { actorId: actor.instanceId, targetId: target.definitionId, abilityId: 'guard' },
       )
     : appendEvent(
         nextState,

@@ -43,8 +43,6 @@ export function PartyPanel({ combat }: { readonly combat: CombatState }) {
           const hpRatio = member.currentHp / character.stats.maxHp;
           const knockedOut = member.currentHp <= 0;
           const ability = abilityView(character, combat);
-          const latestImpact = [...combat.events].reverse().find((event) => event.targetId === member.definitionId);
-          const latestAction = [...combat.events].reverse().find((event) => event.actorId === member.definitionId);
           return (
             <article
               className={`character-card hp-${hpSeverity(hpRatio)} ${knockedOut ? 'is-knocked-out' : ''}`}
@@ -53,9 +51,7 @@ export function PartyPanel({ combat }: { readonly combat: CombatState }) {
             >
               <CombatFeedback events={combat.events} targetId={member.definitionId} />
 
-              <div
-                className={`character-card__showcase ${latestAction?.kind === 'ally-attack' ? 'is-attacking' : ''} ${latestImpact?.kind === 'ally-damaged' ? 'is-hit' : ''}`}
-              >
+              <div className="character-card__showcase">
                 <div className="character-name"><h3>{character.name}</h3><p>{character.roleLabel}</p></div>
                 <CharacterStateArt character={character} member={member} combat={combat} />
                 <strong className="threshold">{character.attackThreshold}<small>KEYS</small></strong>
