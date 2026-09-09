@@ -82,4 +82,25 @@ export const ENEMY_DEFINITIONS = [
   },
 ] as const satisfies readonly EnemyDefinition[];
 
-export const ENEMIES_BY_ID: Record<string, EnemyDefinition> = indexById(ENEMY_DEFINITIONS);
+// Fixed Tier 1 variants. No floor-dependent multipliers are applied.
+export const DUNGEON_ENEMIES: readonly EnemyDefinition[] = [
+  { ...ENEMY_DEFINITIONS[0], id: 'elite-slime', name: '重装の墓所スライム', englishName: 'Armored Crypt Slime',
+    maxHp: 225, attack: 24, defense: 6, attackCooldown: 4800, elite: true,
+    description: '厚い外殻を持つエリート。通常の粘体より強力。' },
+  { ...ENEMY_DEFINITIONS[1], id: 'crypt-warden', name: '墓所の守護者', englishName: 'Warden of the Crypt',
+    maxHp: 550, attack: 28, defense: 7, attackCooldown: 5500, boss: true,
+    description: '第1区画の出口を封じる守護者。傷つくと自身を癒やす。',
+    specialAbilities: [
+      { id: 'warden-ruin', name: '滅びの波動', description: '全員に闇属性ダメージ。', gaugeCost: 100,
+        effects: [{ effectType: 'damage', targetType: 'allParty', value: 24, valueType: 'flat' }], soundId: 'enemy_special_damage' },
+      { id: 'warden-mend', name: '暗黒再生', description: '自身のHPを20%回復。', gaugeCost: 100,
+        effects: [{ effectType: 'heal', targetType: 'self', value: 20, valueType: 'max-hp-percent' }], soundId: 'enemy_special_heal' },
+    ],
+    aiRules: [
+      { abilityId: 'warden-mend', priority: 10, condition: { type: 'self-hp-below', percent: 30 } },
+      { abilityId: 'warden-ruin', priority: 1, condition: { type: 'always' } },
+    ],
+  },
+];
+
+export const ENEMIES_BY_ID: Record<string, EnemyDefinition> = indexById([...ENEMY_DEFINITIONS, ...DUNGEON_ENEMIES]);

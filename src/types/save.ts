@@ -34,7 +34,7 @@ export interface SaveData {
   readonly equippedRelicId: string | null;
   readonly highestFloor: Readonly<Record<Difficulty, number>>;
   readonly clearCounts: Readonly<Record<Difficulty, number>>;
-  readonly clearHistory: readonly { readonly difficulty: Difficulty; readonly clearedAt: string; readonly score: number }[];
+  readonly clearHistory: readonly { readonly difficulty: Difficulty; readonly clearedAt: string; readonly score: number; readonly maxFloor?: number }[];
   readonly settings: { readonly audio: AudioSettings; readonly reducedMotion: boolean };
   readonly typingRecords: readonly TypingRecord[];
 }

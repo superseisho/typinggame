@@ -1,5 +1,5 @@
-import { CombatScreen } from './screens/CombatScreen';
+import { DungeonScreen } from './screens/DungeonScreen';
 
 export function App() {
-  return <CombatScreen />;
+  return <DungeonScreen />;
 }

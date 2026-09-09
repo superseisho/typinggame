@@ -1,8 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CombatLog } from '../components/CombatLog';
-import { EnemyPanel } from '../components/EnemyPanel';
-import { PartyPanel } from '../components/PartyPanel';
-import { TypingPanel } from '../components/TypingPanel';
+import { BattleStage } from '../components/BattleStage';
 import { getAccuracy, getWpm } from '../game/combat/combatSelectors';
 import { useCombat } from '../hooks/useCombat';
 import { AudioSettingsPanel } from '../components/AudioSettingsPanel';
@@ -38,12 +35,7 @@ export function CombatScreen() {
       </button>
       <AudioSettingsPanel open={audioSettingsOpen} onClose={() => setAudioSettingsOpen(false)} />
 
-      <div className="battle-stage">
-        <EnemyPanel combat={combat} />
-        <TypingPanel combat={combat} />
-        <PartyPanel combat={combat} />
-        <CombatLog combat={combat} />
-      </div>
+      <BattleStage combat={combat} />
 
       {showOverlay ? (
         <div className="modal-backdrop">

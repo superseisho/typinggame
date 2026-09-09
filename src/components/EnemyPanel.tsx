@@ -42,14 +42,14 @@ function EnemyMotionPortrait({
   );
 }
 
-export function EnemyPanel({ combat }: { readonly combat: CombatState }) {
+export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING' }: { readonly combat: CombatState; readonly floorLabel?: string }) {
   const livingCount = combat.enemies.filter((enemy) => enemy.currentHp > 0).length;
 
   return (
     <section className="enemy-panel" aria-label="敵部隊ステータス">
       <header className="battle-zone-heading">
         <div><span className="eyebrow">ENEMY AREA</span><strong>{livingCount} HOSTILES</strong></div>
-        <span>FLOOR 01 · FORGOTTEN CRYPT</span>
+        <span>{floorLabel}</span>
       </header>
 
       <div className="enemy-formation">
