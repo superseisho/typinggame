@@ -432,6 +432,10 @@ button { cursor: pointer; }
 .combat-feedback--debuff, .combat-feedback--down { color: #c67cbd; font-size: 10px; }
 .portrait-motion-layer { transform: translate3d(0,0,0); transform-origin: 50% 78%; will-change: transform, filter; }
 .enemy-unit__motion { position: relative; }
+.portrait-hit-flash { position: absolute; z-index: 7; inset: 10% 14% 3%; pointer-events: none; border-radius: 45%; opacity: 0; background: radial-gradient(ellipse at 50% 58%, rgba(255,238,235,.72), rgba(236,129,121,.26) 42%, transparent 72%); mix-blend-mode: screen; }
+.portrait-guard-impact { position: absolute; z-index: 8; inset: 15% 0 0; text-align: center; color: #94d0ff; font-size: 76px; line-height: 1; opacity: .65; text-shadow: 0 0 10px #579bc9; pointer-events: none; }
+.character-state-art--low_hp_damaged .character-state-art__label { color: #e1776e; }
+.portrait-motion-layer[data-portrait-motion='enemy_damaged'] .enemy-avatar__body { animation-play-state: paused; }
 .portrait-heal-flash { position: absolute; z-index: 8; inset: 10% 14% 3%; pointer-events: none; border: 1px solid rgba(117,231,156,.28); border-radius: 45%; opacity: 0; background: radial-gradient(ellipse at 50% 58%, rgba(122,239,164,.36), rgba(72,184,118,.18) 42%, transparent 72%); box-shadow: 0 0 18px rgba(89,221,139,.72), inset 0 0 20px rgba(149,255,187,.22); mix-blend-mode: screen; filter: saturate(1.18); transform-origin: 50% 65%; }
 .portrait-motion-layer[data-portrait-motion='ally_persistent_ability']::after { position: absolute; z-index: 9; inset: 10%; content: ''; pointer-events: none; border-radius: 45%; background: radial-gradient(circle, rgba(255,255,255,.48), rgba(255,255,255,.08) 43%, transparent 70%); mix-blend-mode: screen; animation: portrait-white-flash 320ms ease-out; }
 .portrait-motion-layer[data-portrait-motion='enemy_special']::after { position: absolute; z-index: 9; inset: 14%; content: ''; pointer-events: none; border-radius: 50%; box-shadow: 0 0 17px rgba(190,102,208,.38); animation: portrait-special-glow 720ms ease-out; }

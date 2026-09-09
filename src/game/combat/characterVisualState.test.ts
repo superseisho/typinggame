@@ -98,8 +98,27 @@ describe('character visual state', () => {
   it('uses one independent image path for every runtime portrait state', () => {
     for (const character of Object.values(CHARACTERS_BY_ID)) {
       const paths = Object.values(character.art);
-      expect(new Set(paths).size).toBe(5);
+      expect(new Set(paths).size).toBe(7);
       expect(paths.every((path) => path.endsWith('.png') && !path.includes('states'))).toBe(true);
     }
+  });
+
+  it.each(Object.values(CHARACTERS_BY_ID))('resolves damage on $id from post-hit HP and latest recovery state', (character) => {
+    const partyMember = combat.party.find(p => p.definitionId === character.id)!;
+    const high = { ...partyMember, currentHp: character.stats.maxHp * .6 };
+    const low = { ...partyMember, currentHp: character.stats.maxHp * .15 };
+    const highHit = { sourceEventId: 20, hpAfter: high.currentHp };
+    const lowHit = { sourceEventId: 21, hpAfter: low.currentHp };
+    const ability = { sourceEventId: 19, kind: character.ability.visual.kind };
+
+    expect(getCharacterVisualState(character, high, ability, highHit)).toBe('damaged');
+    expect(getCharacterVisualState(character, low, ability, lowHit)).toBe('low_hp_damaged');
+    // Heal during the cue does not rewrite the impact snapshot; expiration
+    // reevaluates current HP and the still-active ability independently.
+    expect(getCharacterVisualState(character, high, null, lowHit)).toBe('low_hp_damaged');
+    expect(getCharacterVisualState(character, high)).toBe('normal');
+    expect(getCharacterVisualState(character, low)).toBe('low_hp');
+    expect(getCharacterVisualState(character, high, ability)).toContain('_active');
+    expect(getCharacterVisualState(character, { ...low, currentHp: 0 }, ability, lowHit)).toBe('down');
   });
 });

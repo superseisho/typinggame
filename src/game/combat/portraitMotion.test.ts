@@ -5,10 +5,10 @@ import type { CombatEvent } from '../../types/game';
 import { applyCorrectTyping, startCombat, tickCombat } from './combatEngine';
 import { createCombatState } from './createCombatState';
 import { getPortraitMotionAnimation } from './portraitMotionAnimation';
-import { collectUnconsumedPortraitMotions, getPortraitMotionCue } from './portraitMotion';
+import { collectUnconsumedPortraitMotions, getPortraitMotionCue, updatePortraitMotionQueue } from './portraitMotion';
 
 function event(details: Partial<CombatEvent> & Pick<CombatEvent, 'kind'>): CombatEvent {
-  return { id: 1, message: 'event', ...details };
+  return { id: 1, message: 'event', amount: 10, ...details };
 }
 
 describe('portrait motion mapping', () => {
@@ -85,7 +85,7 @@ describe('portrait motion mapping', () => {
 
   it('defines visible vertical and orbit paths for browser animation', () => {
     const up = getPortraitMotionAnimation('ally_attack').keyframes;
-    const down = getPortraitMotionAnimation('ally_damaged').keyframes;
+    const down = getPortraitMotionAnimation('enemy_attack').keyframes;
     const orbit = getPortraitMotionAnimation('ally_transient_ability').keyframes;
 
     expect(up.some((frame) => String(frame.transform).includes('-13px'))).toBe(true);
@@ -97,5 +97,41 @@ describe('portrait motion mapping', () => {
       expect.stringContaining('-8px, -3px'),
     ]));
     expect(orbit.at(-1)?.transform).toBe('translate3d(0, 0, 0) scale(1)');
+  });
+
+  it.each(['ally_damaged', 'enemy_damaged'] as const)('%s moves sideways, squashes, and returns to rest', (motion) => {
+    const frames = getPortraitMotionAnimation(motion).keyframes;
+    const transforms = frames.map((frame) => String(frame.transform));
+    // Unlike an attack, no frame may translate vertically, including rebounds.
+    expect(transforms.every((value) => /translate3d\([^,]+, 0, 0\)/.test(value))).toBe(true);
+    expect(transforms.some((value) => value.includes('-5px'))).toBe(true);
+    expect(transforms.some((value) => value.includes('(5px'))).toBe(true);
+    expect(transforms.some((value) => value.includes('scale(1.03, .95)'))).toBe(true);
+    expect(frames.at(-1)?.transform).toBe(frames[0].transform);
+    expect(frames.every((frame) => frame.filter === undefined)).toBe(true);
+  });
+
+  it('plays a fatal hit once, cancels pending actions, and ignores further events while Down', () => {
+    const attack = getPortraitMotionCue(event({ id: 2, kind: 'ally-attack', actorId: 'mage' }), 'ally', 'mage')!;
+    const damage = getPortraitMotionCue(event({ id: 3, kind: 'ally-damaged', targetId: 'mage' }), 'ally', 'mage')!;
+    const queue = updatePortraitMotionQueue([attack], [damage], true, false);
+    expect(queue).toEqual([damage]);
+    expect(updatePortraitMotionQueue(queue, [attack], true, true)).toBe(queue);
+    // After the timer removes the cue, history and later ticks cannot revive it.
+    expect(updatePortraitMotionQueue([], [damage, attack], true, true)).toEqual([]);
+  });
+
+  it('interrupts an ability transform so damage and its portrait start immediately', () => {
+    const ability = getPortraitMotionCue(event({ id: 4, kind: 'ally-ability-triggered', actorId: 'cleric' }), 'ally', 'cleric')!;
+    const damage = getPortraitMotionCue(event({ id: 5, kind: 'ally-damaged', targetId: 'cleric' }), 'ally', 'cleric')!;
+    const queue = updatePortraitMotionQueue([ability], [damage], false, false);
+    expect(queue).toEqual([damage]);
+    expect(queue[0]).toBe(damage);
+    expect(updatePortraitMotionQueue(queue, [], false, false)).toBe(queue);
+  });
+
+  it('uses shield feedback for full guard and skips zero-damage portraits', () => {
+    expect(getPortraitMotionCue(event({ kind: 'ally-damaged', targetId: 'warrior', amount: 0 }), 'ally', 'warrior')).toBeNull();
+    expect(getPortraitMotionCue(event({ kind: 'ally-guard-consumed', targetId: 'warrior' }), 'ally', 'warrior')?.motion).toBe('ally_guard_hit');
   });
 });

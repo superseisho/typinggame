@@ -7,6 +7,8 @@ function createArtSet(characterFolder: string, abilityFileName: string): Charact
   return {
     normal: path('normal'),
     lowHp: path('low-hp'),
+    damaged: path('damaged'),
+    lowHpDamaged: path('low-hp-damaged'),
     down: path('down'),
     abilityActive: path(`${abilityFileName}-active`),
     lowHpAbilityActive: path(`low-hp-${abilityFileName}-active`),

@@ -9,6 +9,8 @@ export type AbilityPersistence = 'persistent' | 'instant';
 export type CharacterVisualState =
   | 'normal'
   | 'low_hp'
+  | 'damaged'
+  | 'low_hp_damaged'
   | 'down'
   | 'guard_active'
   | 'low_hp_guard_active'
@@ -23,6 +25,8 @@ import type { SoundId } from './audio';
 export interface CharacterArtSet {
   readonly normal: string;
   readonly lowHp: string;
+  readonly damaged: string;
+  readonly lowHpDamaged: string;
   readonly down: string;
   readonly abilityActive: string;
   readonly lowHpAbilityActive: string;
@@ -208,6 +212,8 @@ export interface CombatEvent {
   readonly actorId?: string;
   readonly targetId?: string;
   readonly amount?: number;
+  /** HP immediately after this effect, before a subsequent heal or hit. */
+  readonly targetHpAfter?: number;
   readonly abilityId?: string;
   readonly effectType?: EnemyAbilityEffect['effectType'];
   readonly soundId?: SoundId;

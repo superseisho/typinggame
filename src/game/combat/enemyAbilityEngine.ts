@@ -15,6 +15,7 @@ export interface AbilityEvent {
   readonly actorId?: string;
   readonly targetId?: string;
   readonly amount?: number;
+  readonly targetHpAfter?: number;
   readonly abilityId?: string;
   readonly effectType?: EnemyAbilityEffect['effectType'];
   readonly soundId?: EnemySpecialAbility['soundId'];
@@ -109,7 +110,8 @@ function applyEffect(
         message: `${definition.name}は ${damage} の特殊ダメージを受けた。`,
         actorId: actor.instanceId,
         targetId: member.definitionId,
-        amount: damage,
+        amount: member.currentHp - currentHp,
+        targetHpAfter: currentHp,
         abilityId: ability.id,
         effectType: effect.effectType,
       });

@@ -11,12 +11,15 @@ export const GAME_CONFIG = {
 
 export const TRANSIENT_ABILITY_VISUAL_MS = 1_000;
 export const HEAL_FLASH_DURATION_MS = 380;
+export const DAMAGE_FLASH_DURATION_MS = 120;
+export const DAMAGE_PORTRAIT_DISPLAY_MS = 250;
 
 export const PORTRAIT_MOTION_DURATION_MS = {
   allyAttack: 260,
   enemyAttack: 280,
-  allyDamaged: 300,
-  enemyDamaged: 260,
+  allyDamaged: DAMAGE_PORTRAIT_DISPLAY_MS,
+  enemyDamaged: 200,
+  guardHit: 200,
   transientAbility: 700,
   persistentAbility: 320,
   enemySpecial: 720,

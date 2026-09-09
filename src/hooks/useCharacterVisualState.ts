@@ -4,6 +4,7 @@ import {
   findUnconsumedAbilityTrigger,
   getCharacterVisualState,
   type TransientAbilityVisual,
+  type TransientDamageVisual,
 } from '../game/combat/characterVisualState';
 import type {
   CharacterCombatState,
@@ -16,6 +17,7 @@ export function useCharacterVisualState(
   character: CharacterDefinition,
   member: CharacterCombatState,
   combat: CombatState,
+  damageVisual: TransientDamageVisual | null = null,
 ): CharacterVisualState {
   const [transientVisual, setTransientVisual] = useState<TransientAbilityVisual | null>(null);
   // Events already present at mount are history, not new visual instructions.
@@ -44,5 +46,5 @@ export function useCharacterVisualState(
     return () => window.clearTimeout(clearTimer);
   }, [character.ability.visual.displayMs, transientVisual]);
 
-  return getCharacterVisualState(character, member, transientVisual);
+  return getCharacterVisualState(character, member, transientVisual, damageVisual);
 }

@@ -1,12 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   collectUnconsumedPortraitMotions,
+  updatePortraitMotionQueue,
   type PortraitEntityType,
   type PortraitMotionCue,
 } from '../game/combat/portraitMotion';
 import type { CombatState } from '../types/game';
-
-const MAX_QUEUED_PORTRAIT_MOTIONS = 6;
 
 export function usePortraitMotion(
   combat: CombatState,
@@ -16,25 +15,26 @@ export function usePortraitMotion(
 ): PortraitMotionCue | null {
   const [queue, setQueue] = useState<readonly PortraitMotionCue[]>([]);
   const processedThroughEventId = useRef(combat.eventSequence);
+  const wasDisabled = useRef(disabled);
 
-  // Combat advances on a short interval. Consume its events before the browser
-  // paints so a following tick cannot move the cursor past a visual cue.
+  // Consume new events before paint, sharing one transform queue per portrait.
   useLayoutEffect(() => {
     const previousCursor = processedThroughEventId.current;
+    const previouslyDisabled = wasDisabled.current;
+    const restarted = combat.eventSequence < previousCursor;
     processedThroughEventId.current = combat.eventSequence;
-    if (disabled) {
-      setQueue([]);
-      return;
-    }
+    wasDisabled.current = disabled;
 
     const newCues = collectUnconsumedPortraitMotions(
       combat.events,
-      previousCursor,
+      restarted ? 0 : previousCursor,
       entityType,
       entityId,
     );
-    if (newCues.length === 0) return;
-    setQueue((current) => [...current, ...newCues].slice(0, MAX_QUEUED_PORTRAIT_MOTIONS));
+    if (newCues.length === 0 && disabled === previouslyDisabled && !restarted) return;
+    setQueue((current) => updatePortraitMotionQueue(
+      restarted ? [] : current, newCues, disabled, previouslyDisabled,
+    ));
   }, [combat.eventSequence, combat.events, disabled, entityId, entityType]);
 
   const activeCue = queue[0] ?? null;

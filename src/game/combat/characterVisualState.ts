@@ -11,11 +11,17 @@ export interface TransientAbilityVisual {
   readonly kind: AbilityVisualKind;
 }
 
+export interface TransientDamageVisual {
+  readonly sourceEventId: number;
+  readonly hpAfter: number;
+}
+
 export const LOW_HP_VISUAL_THRESHOLD = 0.3;
 export const ABILITY_STATUS_PREFIX = 'ability:';
 
 export const CHARACTER_VISUAL_STATE_PRIORITY = [
   'down',
+  'damage_transient',
   'persistent_ability_active',
   'instant_ability_active',
   'low_hp',
@@ -56,8 +62,14 @@ export function getCharacterVisualState(
   character: CharacterDefinition,
   member: CharacterCombatState,
   transientVisual: TransientAbilityVisual | null = null,
+  damageVisual: TransientDamageVisual | null = null,
 ): CharacterVisualState {
   if (member.currentHp <= 0) return 'down';
+
+  if (damageVisual) {
+    return damageVisual.hpAfter / character.stats.maxHp < LOW_HP_VISUAL_THRESHOLD
+      ? 'low_hp_damaged' : 'damaged';
+  }
 
   const lowHp = member.currentHp / character.stats.maxHp < LOW_HP_VISUAL_THRESHOLD;
   const kind = character.ability.visual.kind;

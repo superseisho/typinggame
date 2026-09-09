@@ -8,6 +8,7 @@ export type PortraitMotion =
   | 'enemy_attack'
   | 'ally_damaged'
   | 'enemy_damaged'
+  | 'ally_guard_hit'
   | 'ally_transient_ability'
   | 'ally_persistent_ability'
   | 'enemy_special';
@@ -16,6 +17,35 @@ export interface PortraitMotionCue {
   readonly eventId: number;
   readonly motion: PortraitMotion;
   readonly durationMs: number;
+  readonly damageHpAfter?: number;
+}
+
+export function isDamageMotion(motion: PortraitMotion): boolean {
+  return motion === 'ally_damaged' || motion === 'enemy_damaged';
+}
+
+const MAX_QUEUED_PORTRAIT_MOTIONS = 6;
+
+export function updatePortraitMotionQueue(
+  queue: readonly PortraitMotionCue[],
+  newCues: readonly PortraitMotionCue[],
+  defeated: boolean,
+  wasDefeated: boolean,
+): readonly PortraitMotionCue[] {
+  if (defeated) {
+    // Let the final hit play on the Down portrait. Discard pending attacks and
+    // abilities; subsequent ticks must not cancel or replay that final hit.
+    if (wasDefeated) return queue;
+    const finalHit = newCues.filter((cue) => isDamageMotion(cue.motion)).at(-1);
+    return finalHit ? [finalHit] : [];
+  }
+  if (newCues.length === 0) return queue;
+  // Damage must begin immediately with its portrait/flash, even during an
+  // ability. Cancel the old transform and merge a burst into the latest hit.
+  const newestHit = newCues.filter((cue) => isDamageMotion(cue.motion)).at(-1);
+  if (newestHit) return [newestHit, ...newCues.filter((cue) => cue.eventId > newestHit.eventId)]
+    .slice(0, MAX_QUEUED_PORTRAIT_MOTIONS);
+  return [...queue, ...newCues].slice(0, MAX_QUEUED_PORTRAIT_MOTIONS);
 }
 
 const MOTION_DURATION_BY_TYPE: Record<PortraitMotion, number> = {
@@ -23,6 +53,7 @@ const MOTION_DURATION_BY_TYPE: Record<PortraitMotion, number> = {
   enemy_attack: PORTRAIT_MOTION_DURATION_MS.enemyAttack,
   ally_damaged: PORTRAIT_MOTION_DURATION_MS.allyDamaged,
   enemy_damaged: PORTRAIT_MOTION_DURATION_MS.enemyDamaged,
+  ally_guard_hit: PORTRAIT_MOTION_DURATION_MS.guardHit,
   ally_transient_ability: PORTRAIT_MOTION_DURATION_MS.transientAbility,
   ally_persistent_ability: PORTRAIT_MOTION_DURATION_MS.persistentAbility,
   enemy_special: PORTRAIT_MOTION_DURATION_MS.enemySpecial,
@@ -30,8 +61,9 @@ const MOTION_DURATION_BY_TYPE: Record<PortraitMotion, number> = {
 
 function allyMotion(event: CombatEvent, characterId: string): PortraitMotion | null {
   if (event.kind === 'ally-attack' && event.actorId === characterId) return 'ally_attack';
-  if ((event.kind === 'ally-damaged' || event.kind === 'ally-guard-consumed')
+  if (event.kind === 'ally-damaged' && (event.amount ?? 0) > 0
     && event.targetId === characterId) return 'ally_damaged';
+  if (event.kind === 'ally-guard-consumed' && event.targetId === characterId) return 'ally_guard_hit';
   if (event.kind !== 'ally-ability-triggered' || event.actorId !== characterId) return null;
 
   const character = CHARACTERS_BY_ID[characterId as keyof typeof CHARACTERS_BY_ID];
@@ -61,7 +93,10 @@ export function getPortraitMotionCue(
   const motion = entityType === 'ally'
     ? allyMotion(event, entityId)
     : enemyMotion(event, entityId);
-  return motion ? { eventId: event.id, motion, durationMs: MOTION_DURATION_BY_TYPE[motion] } : null;
+  return motion ? {
+    eventId: event.id, motion, durationMs: MOTION_DURATION_BY_TYPE[motion],
+    ...(motion === 'ally_damaged' ? { damageHpAfter: event.targetHpAfter } : {}),
+  } : null;
 }
 
 export function collectUnconsumedPortraitMotions(

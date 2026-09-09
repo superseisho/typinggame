@@ -381,7 +381,7 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number)
         nextState,
         'ally-damaged',
         `${enemyDefinition.name}の攻撃！ ${targetDefinition.name}は ${damage} ダメージ。`,
-        { actorId: actor.instanceId, targetId: target.definitionId, amount: damage },
+        { actorId: actor.instanceId, targetId: target.definitionId, amount: target.currentHp - targetHp, targetHpAfter: targetHp },
       );
   if (targetHp === 0) {
     nextState = appendEvent(nextState, 'ally-defeated', `${targetDefinition.name}は戦闘不能になった。`, { targetId: target.definitionId });

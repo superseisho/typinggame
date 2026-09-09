@@ -66,7 +66,7 @@ function transparencyRatio(path) {
 }
 
 for (const [character, states] of Object.entries(ART_FILES)) {
-  for (const state of states) {
+  for (const state of [...states, 'damaged', 'low-hp-damaged']) {
     const path = `public/images/characters/${character}/${state}.png`;
     if (!existsSync(path)) throw new Error(`Missing portrait: ${path}`);
     const ratio = transparencyRatio(path);

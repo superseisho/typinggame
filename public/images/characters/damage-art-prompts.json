@@ -1,0 +1,62 @@
+{
+  "tool": "built-in image_gen",
+  "postprocessing": "User-approved local background removal and alpha-aware downsampling",
+  "images": [
+    {
+      "character": "warrior",
+      "state": "damaged",
+      "reference": "warrior/normal.png",
+      "output": "warrior/damaged.png",
+      "prompt": "Use case: identity-preserve. One independent transparent PNG of the same knight. Normal-HP damage: upper body recoils slightly, eyes squeezed shut and grimacing, both feet planted, sword and lion shield knocked off balance. Preserve brown spiky hair, black-gold armor, fur collar, yellow cape, weapons, two-head-tall anime character style, framing. One pose only, no text, background, panels or gore."
+    },
+    {
+      "character": "warrior",
+      "state": "low-hp-damaged",
+      "reference": "warrior/normal.png",
+      "output": "warrior/low-hp-damaged.png",
+      "prompt": "Use case: identity-preserve. Asset type: one independent transparent PNG game battle portrait. Input image 1: exact character identity/style reference. Create ONLY ONE full-body pose of this SAME two-head-tall chibi character: low-hp-damaged. Pose: kneeling on one knee, hunched and wincing as another blow lands, eyes squeezed shut, bracing with the same sword, shield slipping to the side; clearly severely weakened but alive and conscious. Preserve brown spiky hair, black-gold armor, fur collar, yellow cape, lion shield and sword; same face, proportions, weapons, palette, clothing and polished 2D anime rendering. Change pose and expression only. Character centered, complete body and all weapons visible, consistent camera angle and generous padding, similar framing to reference. Genuinely TRANSPARENT ALPHA background, no checkerboard, no backdrop, no floor, no environment, no text, no panels, no sprite sheet, no other character, no gore, not knocked out. Output ONLY this single pose."
+    },
+    {
+      "character": "mage",
+      "state": "damaged",
+      "reference": "mage/normal.png",
+      "output": "mage/damaged.png",
+      "prompt": "Use case: identity-preserve. Asset type: one independent transparent PNG game battle portrait. Input image 1: exact character identity/style reference. Create ONLY ONE full-body pose of this SAME two-head-tall chibi character: damaged. Pose: still standing firmly, upper body recoiling from an impact, eyes squeezed shut, mouth grimacing, staff jolted sideways, magic sparks interrupted; healthy but momentarily hurt, NOT kneeling. Preserve short silver hair, violet eyes, navy hood with silver trim, purple orb crescent staff, dark embroidered robe; same face, proportions, weapons, palette, clothing and polished 2D anime rendering. Change pose and expression only. Character centered, complete body and all weapons visible, consistent camera angle and generous padding, similar framing to reference. Genuinely TRANSPARENT ALPHA background, no checkerboard, no backdrop, no floor, no environment, no text, no panels, no sprite sheet, no other character, no gore, not knocked out. Output ONLY this single pose."
+    },
+    {
+      "character": "mage",
+      "state": "low-hp-damaged",
+      "reference": "mage/normal.png",
+      "output": "mage/low-hp-damaged.png",
+      "prompt": "Use case: identity-preserve. Asset type: one independent transparent PNG game battle portrait. Input image 1: exact character identity/style reference. Create ONLY ONE full-body pose of this SAME two-head-tall chibi character: low-hp-damaged. Pose: one knee buckling, hunched over the same staff for support, another hit makes them flinch, eyes shut tightly with a pained expression; clearly severely weakened but alive and conscious. Preserve short silver hair, violet eyes, navy hood with silver trim, purple orb crescent staff, dark embroidered robe; same face, proportions, weapons, palette, clothing and polished 2D anime rendering. Change pose and expression only. Character centered, complete body and all weapons visible, consistent camera angle and generous padding, similar framing to reference. Genuinely TRANSPARENT ALPHA background, no checkerboard, no backdrop, no floor, no environment, no text, no panels, no sprite sheet, no other character, no gore, not knocked out. Output ONLY this single pose."
+    },
+    {
+      "character": "cleric",
+      "state": "damaged",
+      "reference": "cleric/normal.png",
+      "output": "cleric/damaged.png",
+      "prompt": "Use case: identity-preserve. Asset type: one independent transparent PNG game battle portrait. Input image 1: exact character identity/style reference. Create ONLY ONE full-body pose of this SAME two-head-tall chibi character: damaged. Pose: standing firmly, shoulders recoil backwards, eyes squeezed shut and grimacing, book clutched close, mace-staff knocked slightly askew; healthy but momentarily hurt, NOT kneeling. Preserve white braided hair, teal eyes, white charcoal gold teal priest robes and hood, gold teal mace-staff and holy book; same face, proportions, weapons, palette, clothing and polished 2D anime rendering. Change pose and expression only. Character centered, complete body and all weapons visible, consistent camera angle and generous padding, similar framing to reference. Genuinely TRANSPARENT ALPHA background, no checkerboard, no backdrop, no floor, no environment, no text, no panels, no sprite sheet, no other character, no gore, not knocked out. Output ONLY this single pose."
+    },
+    {
+      "character": "cleric",
+      "state": "low-hp-damaged",
+      "reference": "cleric/normal.png",
+      "output": "cleric/low-hp-damaged.png",
+      "prompt": "Use case: identity-preserve. Asset type: one independent transparent PNG game battle portrait. Input image 1: exact character identity/style reference. Create ONLY ONE full-body pose of this SAME two-head-tall chibi character: low-hp-damaged. Pose: kneeling low and hunched forward while wincing from a further hit, eyes clenched, holy book pressed against chest and staff helping support weight; clearly severely weakened but alive and conscious. Preserve white braided hair, teal eyes, white charcoal gold teal priest robes and hood, gold teal mace-staff and holy book; same face, proportions, weapons, palette, clothing and polished 2D anime rendering. Change pose and expression only. Character centered, complete body and all weapons visible, consistent camera angle and generous padding, similar framing to reference. Genuinely TRANSPARENT ALPHA background, no checkerboard, no backdrop, no floor, no environment, no text, no panels, no sprite sheet, no other character, no gore, not knocked out. Output ONLY this single pose."
+    },
+    {
+      "character": "martial-artist",
+      "state": "damaged",
+      "reference": "martial-artist/normal.png",
+      "output": "martial-artist/damaged.png",
+      "prompt": "Use case: identity-preserve. Asset type: one independent transparent PNG game battle portrait. Input image 1: exact character identity/style reference. Create ONLY ONE full-body pose of this SAME two-head-tall chibi character: damaged. Pose: standing in fighting stance but recoiling from a blow, eyes squeezed shut, teeth gritted, fists jolted off guard; healthy but momentarily hurt, NOT kneeling. Preserve black spiky hair, red eyes, black sleeveless martial gi, black fingerless gauntlets, red sash with ruby clasp; same face, proportions, weapons, palette, clothing and polished 2D anime rendering. Change pose and expression only. Character centered, complete body and all weapons visible, consistent camera angle and generous padding, similar framing to reference. Genuinely TRANSPARENT ALPHA background, no checkerboard, no backdrop, no floor, no environment, no text, no panels, no sprite sheet, no other character, no gore, not knocked out. Output ONLY this single pose."
+    },
+    {
+      "character": "martial-artist",
+      "state": "low-hp-damaged",
+      "reference": "martial-artist/normal.png",
+      "output": "martial-artist/low-hp-damaged.png",
+      "prompt": "Use case: identity-preserve. Asset type: one independent transparent PNG game battle portrait. Input image 1: exact character identity/style reference. Create ONLY ONE full-body pose of this SAME two-head-tall chibi character: low-hp-damaged. Pose: one knee on ground, body hunched and recoiling from further impact, one hand clutching torso, other fist bracing, eyes closed in obvious pain; clearly severely weakened but alive and conscious. Preserve black spiky hair, red eyes, black sleeveless martial gi, black fingerless gauntlets, red sash with ruby clasp; same face, proportions, weapons, palette, clothing and polished 2D anime rendering. Change pose and expression only. Character centered, complete body and all weapons visible, consistent camera angle and generous padding, similar framing to reference. Genuinely TRANSPARENT ALPHA background, no checkerboard, no backdrop, no floor, no environment, no text, no panels, no sprite sheet, no other character, no gore, not knocked out. Output ONLY this single pose."
+    }
+  ]
+}

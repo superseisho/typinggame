@@ -25,6 +25,19 @@ const BOUNCE_DOWN: PortraitMotionAnimation = {
   easing: 'cubic-bezier(.32, .04, .28, 1)',
 };
 
+// Damage moves sideways only; attack owns the vertical bounce.
+const DAMAGE_SHAKE: PortraitMotionAnimation = {
+  keyframes: [
+    { offset: 0, transform: 'translate3d(0, 0, 0) scale(1)' },
+    { offset: 0.2, transform: 'translate3d(-5px, 0, 0) scale(1.03, .95)' },
+    { offset: 0.45, transform: 'translate3d(5px, 0, 0) scale(1.03, .95)' },
+    { offset: 0.7, transform: 'translate3d(-3px, 0, 0) scale(1.02, .97)' },
+    { offset: 0.9, transform: 'translate3d(0, 0, 0) scale(1)' },
+    { offset: 1, transform: 'translate3d(0, 0, 0) scale(1)' },
+  ],
+  easing: 'linear',
+};
+
 const ORBIT: PortraitMotionAnimation = {
   keyframes: [
     { offset: 0, transform: 'translate3d(0, 0, 0) scale(1)', filter: 'brightness(1)' },
@@ -46,9 +59,20 @@ const PERSISTENT_PULSE: PortraitMotionAnimation = {
   easing: 'ease-out',
 };
 
+const GUARD_HIT: PortraitMotionAnimation = {
+  keyframes: [
+    { transform: 'scale(1)', filter: 'brightness(1)' },
+    { transform: 'scale(1.035)', filter: 'brightness(1.2) drop-shadow(0 0 8px #7db7e2)' },
+    { transform: 'scale(1)', filter: 'brightness(1)' },
+  ],
+  easing: 'ease-out',
+};
+
 export function getPortraitMotionAnimation(motion: PortraitMotion): PortraitMotionAnimation {
-  if (motion === 'ally_attack' || motion === 'enemy_damaged') return BOUNCE_UP;
-  if (motion === 'enemy_attack' || motion === 'ally_damaged') return BOUNCE_DOWN;
+  if (motion === 'ally_attack') return BOUNCE_UP;
+  if (motion === 'enemy_attack') return BOUNCE_DOWN;
+  if (motion === 'ally_damaged' || motion === 'enemy_damaged') return DAMAGE_SHAKE;
   if (motion === 'ally_persistent_ability') return PERSISTENT_PULSE;
+  if (motion === 'ally_guard_hit') return GUARD_HIT;
   return ORBIT;
 }
