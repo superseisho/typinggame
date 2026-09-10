@@ -1,7 +1,8 @@
-import { CHARACTERS_BY_ID } from '../../data/characters';
-import type { CharacterCombatState, CharacterId } from '../../types/game';
+import { getEffectiveCharacter } from '../../game/buffs/buffModifiers';
+import type { CharacterCombatState, CharacterId, CombatState } from '../../types/game';
 
-export function RecoveryTargetPicker({ targets, onChoose, onCancel }: {
+export function RecoveryTargetPicker({ combat, targets, onChoose, onCancel }: {
+  readonly combat: CombatState;
   readonly targets: readonly CharacterCombatState[];
   readonly onChoose: (id: CharacterId) => void;
   readonly onCancel: () => void;
@@ -9,7 +10,7 @@ export function RecoveryTargetPicker({ targets, onChoose, onCancel }: {
   return <div className="target-picker" role="group" aria-label="回復対象を選択">
     <h3>対象を選択</h3>
     <div className="recovery-targets">{targets.map((member) => {
-      const character = CHARACTERS_BY_ID[member.definitionId];
+      const character = getEffectiveCharacter(combat, member.definitionId);
       return <button type="button" key={member.definitionId} onClick={() => onChoose(member.definitionId)}>
         {character.name}<small>HP {member.currentHp} / {character.stats.maxHp}</small>
       </button>;

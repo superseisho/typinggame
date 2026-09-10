@@ -8,12 +8,17 @@ import { GAME_CONFIG } from '../../data/gameConfig';
 import { ROOMS_BY_TYPE } from '../../data/rooms/roomDefinitions';
 import { generateRoomOptions, randomStep } from './roomGenerator';
 import { purchasableProduct, recoverParty, recoveryTargets, resolveRest } from './roomResolver';
+import { addBuff, applyRunBuffs } from '../buffs/runBuffManager';
+import { generateBuffRewards } from '../buffs/buffRewards';
+import { BUFF_CONFIG, emptyBuffResources } from '../buffs/buffConfig';
+import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
+import { appendEvent } from '../combat/combatEvents';
 
 type BattleRoom = keyof typeof TIER_ONE_ENCOUNTERS;
 
 function freshCombat(previous: CombatState, enemies: readonly string[] = []): CombatState {
   const fresh = createCombatState(enemies);
-  return { ...fresh, eventSequence: previous.eventSequence, party: fresh.party.map((member) => ({
+  return { ...fresh, runBuffs: previous.runBuffs, eventSequence: previous.eventSequence, party: fresh.party.map((member) => ({
     ...member, currentHp: previous.party.find((old) => old.definitionId === member.definitionId)?.currentHp ?? member.currentHp,
   })) };
 }
@@ -41,6 +46,7 @@ function enterFloor(run: DungeonRunState): DungeonRunState {
 
 export function createDungeonRun(seed: number, id: string): DungeonRunState {
   return enterFloor({
+    activeBuffs: [], buffOptions: [], acquiredBuffId: null,
     id, rngState: seed >>> 0, currentFloor: 1, maxFloor: DUNGEON_CONFIG.maxFloor, enemyTier: 1,
     selectedDifficulty: 'normal', gold: DUNGEON_CONFIG.startingGold, goldEarned: 0,
     currentRoom: null, runStatus: 'choosing', roomOptions: [], combat: createCombatState([]),
@@ -57,6 +63,16 @@ function completeRoom(run: DungeonRunState, reward: number, message: string, now
     clearedRooms: [...run.clearedRooms, { floor: run.currentFloor, roomType: run.currentRoom, result: 'cleared', goldReward: reward }] };
 }
 
+function clearRunBuffs(run: DungeonRunState): DungeonRunState {
+  return { ...run, activeBuffs: [], buffOptions: [], acquiredBuffId: null,
+    combat: { ...applyRunBuffs(run.combat, []), buffResources: emptyBuffResources() } };
+}
+
+function advanceFloor(run: DungeonRunState): DungeonRunState {
+  return enterFloor({ ...run, currentFloor: run.currentFloor + 1, currentRoom: null, roomMessage: '', purchasedProducts: [],
+    buffOptions: [], acquiredBuffId: null, combat: freshCombat(run.combat), currentCombatMs: 0 });
+}
+
 function settleCombat(run: DungeonRunState, combat: CombatState, now: number): DungeonRunState {
   if (combat.status !== 'victory' && combat.status !== 'defeat') return { ...run, combat };
   const old = run.statistics;
@@ -68,12 +84,20 @@ function settleCombat(run: DungeonRunState, combat: CombatState, now: number): D
     combatMs: old.combatMs + run.currentCombatMs,
     enemiesDefeated: old.enemiesDefeated + combat.enemies.filter((enemy) => enemy.currentHp <= 0).length,
   } };
-  if (combat.status === 'defeat') return { ...next, runStatus: 'game_over', endedAt: now,
-    clearedRooms: [...run.clearedRooms, { floor: run.currentFloor, roomType: run.currentRoom!, result: 'failed', goldReward: 0 }] };
+  if (combat.status === 'defeat') return clearRunBuffs({ ...next, runStatus: 'game_over', endedAt: now,
+    clearedRooms: [...run.clearedRooms, { floor: run.currentFloor, roomType: run.currentRoom!, result: 'failed', goldReward: 0 }] });
   const range = DUNGEON_CONFIG.rewards[run.currentRoom as BattleRoom];
   const random = randomStep(run.rngState);
   const gold = range[0] + Math.floor(random.value * (range[1] - range[0] + 1));
-  return completeRoom({ ...next, rngState: random.seed }, gold, `VICTORY · Gold +${gold}`, now);
+  const completed = completeRoom({ ...next, rngState: random.seed }, gold, `VICTORY · Gold +${gold}`, now);
+  if (completed.runStatus === 'cleared') return clearRunBuffs(completed);
+  const reward = generateBuffRewards(completed.activeBuffs, run.currentRoom!, completed.rngState);
+  if (reward.choices.length === 0) return { ...completed, rngState: reward.seed,
+    gold: completed.gold + BUFF_CONFIG.fallbackGold, goldEarned: completed.goldEarned + BUFF_CONFIG.fallbackGold,
+    clearedRooms: completed.clearedRooms.map((room, index) => index === completed.clearedRooms.length - 1
+      ? { ...room, goldReward: room.goldReward + BUFF_CONFIG.fallbackGold } : room),
+    roomMessage: `${completed.roomMessage} · 取得可能なBuffなし：追加Gold +${BUFF_CONFIG.fallbackGold}` };
+  return { ...completed, rngState: reward.seed, runStatus: 'buff_reward', buffOptions: reward.choices };
 }
 
 /** Each command is valid in exactly one phase. Callers also supply a floor/run token. */
@@ -81,6 +105,16 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
   if (run.currentFloor !== expectedFloor || run.id !== expectedRunId) return run;
   if (run.runStatus === 'cleared' || run.runStatus === 'game_over') return run;
   switch (action.type) {
+    case 'choose-buff': {
+      if (run.runStatus !== 'buff_reward' || !run.buffOptions.includes(action.buffId)) return run;
+      const activeBuffs = addBuff(run.activeBuffs, action.buffId);
+      if (activeBuffs === run.activeBuffs) return run;
+      const buff = BUFFS_BY_ID[action.buffId];
+      return { ...run, activeBuffs, runStatus: 'buff_acquired', acquiredBuffId: buff.id,
+        combat: appendEvent(applyRunBuffs(run.combat, activeBuffs), 'ally-buff', `BLESSING ACQUIRED · ${buff.name}`, { abilityId: buff.id, soundId: buff.soundId }) };
+    }
+    case 'finish-buff':
+      return run.runStatus === 'buff_acquired' ? advanceFloor(run) : run;
     case 'choose': {
       if (run.runStatus !== 'choosing') return run;
       const option = run.roomOptions.find((candidate) => candidate.id === action.optionId);
@@ -122,8 +156,7 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
       return run.runStatus === 'room' && run.currentRoom === 'shop' ? completeRoom(run, 0, 'Shop · 買い物を終えた') : run;
     case 'advance':
       if (run.runStatus !== 'reward') return run;
-      return enterFloor({ ...run, currentFloor: run.currentFloor + 1, currentRoom: null, roomMessage: '', purchasedProducts: [],
-        combat: freshCombat(run.combat), currentCombatMs: 0 });
+      return advanceFloor(run);
   }
 }
 

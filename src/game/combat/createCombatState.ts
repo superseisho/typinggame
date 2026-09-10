@@ -4,6 +4,7 @@ import { GAME_CONFIG } from '../../data/gameConfig';
 import { TYPING_SENTENCES } from '../../data/typingSentences';
 import type { CombatState } from '../../types/game';
 import { createTypingEngineState } from '../typing/typingEngine';
+import { emptyBuffResources } from '../buffs/buffConfig';
 
 export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firstEncounterEnemyIds): CombatState {
   const enemies = enemyIds.map((enemyId, index) => {
@@ -25,6 +26,8 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
   });
 
   return {
+    runBuffs: [],
+    buffResources: emptyBuffResources(),
     status: 'ready',
     party: CHARACTER_DEFINITIONS.map((character) => ({
       definitionId: character.id,

@@ -1,3 +1,5 @@
+import { getEffectiveCharacter } from '../buffs/buffModifiers';
+import { consumeDamageShield } from '../buffs/buffEffectHandlers';
 import { CHARACTERS_BY_ID } from '../../data/characters';
 import { ENEMIES_BY_ID } from '../../data/enemies';
 import type {
@@ -102,8 +104,10 @@ function applyEffect(
     const targets = partyTargets(state, effect);
     const party = state.party.map((member, index) => {
       if (!targets.includes(index)) return member;
-      const definition = CHARACTERS_BY_ID[member.definitionId];
-      const damage = numericEffectValue(effect, definition.stats.maxHp);
+      const definition = getEffectiveCharacter(state, member.definitionId);
+      const incoming = consumeDamageShield(state, member.definitionId, numericEffectValue(effect, definition.stats.maxHp));
+      state = incoming.state;
+      const damage = incoming.damage;
       const currentHp = Math.max(0, member.currentHp - damage);
       events.push({
         kind: 'ally-damaged',

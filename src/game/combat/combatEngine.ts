@@ -1,31 +1,17 @@
+import { appendEvent } from './combatEvents';
+import { getEffectiveCharacter, getBuffModifier, getComboMultiplier } from '../buffs/buffModifiers';
+import { handleBuffTrigger, getExtraHealing, consumeDamageShield } from '../buffs/buffEffectHandlers';
+import { BUFF_CONFIG } from '../buffs/buffConfig';
 import { CHARACTERS_BY_ID } from '../../data/characters';
 import { ENEMIES_BY_ID } from '../../data/enemies';
 import { GAME_CONFIG } from '../../data/gameConfig';
-import type { CombatEvent, CombatEventKind, CombatState } from '../../types/game';
+import type { CombatState } from '../../types/game';
 import type { TypingEngineState } from '../../types/typing';
 import { areEnemiesDefeated, isPartyDefeated } from './combatSelectors';
 import { chooseEnemyAbility, executeEnemyAbility } from './enemyAbilityEngine';
 import { selectEnemyTargetIndex, selectLowestPartyHpIndex } from './targeting';
 
-type CombatEventDetails = Omit<Partial<CombatEvent>, 'id' | 'kind' | 'message'>;
 const ABILITY_STATUS_PREFIX = 'ability:';
-
-function appendEvent(
-  state: CombatState,
-  kind: CombatEventKind,
-  message: string,
-  details: CombatEventDetails = {},
-  visibleInLog = true,
-): CombatState {
-  const id = state.eventSequence + 1;
-  const event: CombatEvent = { id, kind, message, ...details };
-  return {
-    ...state,
-    eventSequence: id,
-    events: [...state.events, event].slice(-GAME_CONFIG.combatEventHistoryLimit),
-    log: visibleInLog ? [...state.log, event].slice(-GAME_CONFIG.combatLogLimit) : state.log,
-  };
-}
 
 function setAbilityStatus(state: CombatState, characterId: string, abilityId: string, active: boolean): CombatState {
   const status = `${ABILITY_STATUS_PREFIX}${abilityId}`;
@@ -115,6 +101,7 @@ export function applyTypingMiss(
   _now = Date.now(),
 ): CombatState {
   if (state.status !== 'active') return state;
+  const gaugeGain = Math.max(0, GAME_CONFIG.enemySpecialGaugeOnMiss * Math.max(BUFF_CONFIG.minMissGaugeMultiplier, 1 + getBuffModifier(state.runBuffs, 'missGauge', 'warrior')) - state.buffResources.gaugeShield);
   const endedComboUsers = state.party.filter((member) => {
     const character = CHARACTERS_BY_ID[member.definitionId];
     return character.ability.visual.kind === 'combo'
@@ -124,6 +111,7 @@ export function applyTypingMiss(
     {
       ...state,
       typing,
+      buffResources: { ...state.buffResources, gaugeShield: 0 },
       party: state.party.map((member) => {
         const character = CHARACTERS_BY_ID[member.definitionId];
         return character.ability.visual.kind !== 'combo' ? member : {
@@ -137,7 +125,7 @@ export function applyTypingMiss(
         ...enemy,
         specialGauge: Math.min(
           ENEMIES_BY_ID[enemy.definitionId].specialGaugeMax,
-          enemy.specialGauge + GAME_CONFIG.enemySpecialGaugeOnMiss,
+          enemy.specialGauge + gaugeGain,
         ),
       }),
     },
@@ -194,10 +182,11 @@ export function applyCorrectTyping(
       : { ...character, attackCharge: character.attackCharge + 1 }),
   };
   nextState = appendEvent(nextState, 'typing-correct', '正解入力', {}, false);
+  nextState = handleBuffTrigger(nextState, { type: 'perfect-streak', streak: typing.currentCombo });
 
   for (const combatant of nextState.party) {
     if (combatant.currentHp <= 0) continue;
-    const character = CHARACTERS_BY_ID[combatant.definitionId];
+    const character = getEffectiveCharacter(nextState, combatant.definitionId);
     const trigger = character.ability.trigger;
     if (trigger.type === 'completed-prompts') {
       const justCompletedPrompt = typing.completedSentences > state.typing.completedSentences;
@@ -240,7 +229,7 @@ export function applyCorrectTyping(
 
   for (const combatant of nextState.party) {
     if (combatant.currentHp <= 0) continue;
-    const character = CHARACTERS_BY_ID[combatant.definitionId];
+    const character = getEffectiveCharacter(nextState, combatant.definitionId);
     const trigger = character.ability.trigger;
     if (trigger.type !== 'perfect-streak'
       || typing.currentCombo === 0
@@ -250,8 +239,8 @@ export function applyCorrectTyping(
       const targetIndex = selectLowestPartyHpIndex(nextState);
       if (targetIndex === null) continue;
       const target = nextState.party[targetIndex];
-      const targetDefinition = CHARACTERS_BY_ID[target.definitionId];
-      const amount = Math.min(effect.power, targetDefinition.stats.maxHp - target.currentHp);
+      const targetDefinition = getEffectiveCharacter(nextState, target.definitionId);
+      const amount = Math.min(effect.power + getExtraHealing(nextState, character.id, target.definitionId), targetDefinition.stats.maxHp - target.currentHp);
       if (amount <= 0) continue;
       nextState = {
         ...nextState,
@@ -271,12 +260,13 @@ export function applyCorrectTyping(
           soundId: character.ability.soundId,
         },
       );
+      nextState = handleBuffTrigger(nextState, { type: 'heal', characterId: character.id, targetId: target.definitionId });
     }
   }
 
   for (let partyIndex = 0; partyIndex < nextState.party.length; partyIndex += 1) {
     const combatant = nextState.party[partyIndex];
-    const character = CHARACTERS_BY_ID[combatant.definitionId];
+    const character = getEffectiveCharacter(nextState, combatant.definitionId);
     if (combatant.currentHp <= 0 || combatant.attackCharge < character.attackThreshold) continue;
     const targetIndex = selectEnemyTargetIndex(nextState, character.targetRule);
     if (targetIndex === null) break;
@@ -284,15 +274,9 @@ export function applyCorrectTyping(
     const target = nextState.enemies[targetIndex];
     const enemy = ENEMIES_BY_ID[target.definitionId];
     const defense = Math.round(enemy.defense * target.defenseMultiplier);
-    const comboEffect = character.ability.effects.find((effect) => effect.type === 'combo-attack-scaling');
-    const comboTrigger = character.ability.trigger.type === 'combo-milestones' ? character.ability.trigger : null;
-    const reachedComboTier = comboTrigger
-      ? comboTrigger.thresholds.filter((threshold) => typing.currentCombo >= threshold).length
-      : 0;
-    const comboMultiplier = comboEffect?.type === 'combo-attack-scaling' && reachedComboTier > 0
-      ? comboEffect.multipliers[reachedComboTier - 1]
-      : 1;
-    const damage = Math.max(1, Math.round(character.stats.attack * comboMultiplier) - defense);
+    const comboMultiplier = getComboMultiplier(nextState, character.id);
+    const counterBonus = nextState.buffResources.counters[character.id] ?? 0;
+    const damage = Math.max(1, Math.round(character.stats.attack * comboMultiplier * (1 + counterBonus)) - defense);
     const targetHp = Math.max(0, target.currentHp - damage);
     nextState = {
       ...nextState,
@@ -306,6 +290,7 @@ export function applyCorrectTyping(
         ? { ...member, currentHp: targetHp }
         : member),
       enemyTargetCursor: nextState.enemyTargetCursor + 1,
+      buffResources: { ...nextState.buffResources, counters: { ...nextState.buffResources.counters, [character.id]: 0 } },
     };
     nextState = appendEvent(
       nextState,
@@ -348,11 +333,13 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number)
     ? guardedIndex
     : livingParty[state.partyTargetCursor % livingParty.length].index;
   const target = state.party[targetIndex];
-  const targetDefinition = CHARACTERS_BY_ID[target.definitionId];
+  const targetDefinition = getEffectiveCharacter(state, target.definitionId);
   const enemyDefinition = ENEMIES_BY_ID[actor.definitionId];
   const attack = Math.round(enemyDefinition.attack * actor.attackMultiplier);
   const guarded = guardedIndex === targetIndex;
-  const damage = guarded ? 0 : Math.max(1, attack - targetDefinition.stats.defense);
+  const incoming = consumeDamageShield(state, target.definitionId, guarded ? 0 : Math.max(1, attack - targetDefinition.stats.defense));
+  state = incoming.state;
+  const damage = incoming.damage;
   const targetHp = Math.max(0, target.currentHp - damage);
   const cooldown = enemyDefinition.attackCooldown * actor.cooldownMultiplier;
 
@@ -383,6 +370,7 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number)
         `${enemyDefinition.name}の攻撃！ ${targetDefinition.name}は ${damage} ダメージ。`,
         { actorId: actor.instanceId, targetId: target.definitionId, amount: target.currentHp - targetHp, targetHpAfter: targetHp },
       );
+  if (guarded) nextState = handleBuffTrigger(nextState, { type: 'guard', characterId: target.definitionId });
   if (targetHp === 0) {
     nextState = appendEvent(nextState, 'ally-defeated', `${targetDefinition.name}は戦闘不能になった。`, { targetId: target.definitionId });
   }

@@ -1,11 +1,11 @@
-import { CHARACTERS_BY_ID } from '../../data/characters';
+import { getEffectiveCharacter } from '../buffs/buffModifiers';
 import { GAME_CONFIG } from '../../data/gameConfig';
 import type { CharacterId, CombatState } from '../../types/game';
 import type { RestAction } from '../../types/dungeon';
 import { DUNGEON_CONFIG, SHOP_PRODUCTS } from './dungeonConfig';
 
 export function recoveryTargets(combat: CombatState, revive = false) {
-  return combat.party.filter((member) => revive ? member.currentHp <= 0 : member.currentHp > 0 && member.currentHp < CHARACTERS_BY_ID[member.definitionId].stats.maxHp);
+  return combat.party.filter((member) => revive ? member.currentHp <= 0 : member.currentHp > 0 && member.currentHp < getEffectiveCharacter(combat, member.definitionId).stats.maxHp);
 }
 
 /** Actual HP changes emit existing events, so room heals reuse green flashes / SE. */
@@ -15,7 +15,7 @@ export function recoverParty(combat: CombatState, ratio: number, targetId?: Char
   const party = combat.party.map((member) => {
     if (targetId && member.definitionId !== targetId) return member;
     if (revive ? member.currentHp > 0 : member.currentHp <= 0) return member;
-    const definition = CHARACTERS_BY_ID[member.definitionId];
+    const definition = getEffectiveCharacter(combat, member.definitionId);
     const hp = Math.min(definition.stats.maxHp, member.currentHp + Math.ceil(definition.stats.maxHp * ratio));
     const amount = hp - member.currentHp;
     if (amount <= 0) return member;

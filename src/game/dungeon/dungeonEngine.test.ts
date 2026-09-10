@@ -60,15 +60,17 @@ describe('floor and combat lifecycle', () => {
     expect(reduceDungeon(initial, action, 1, 'old-run')).toBe(initial);
     expect(advance(battle)).toBe(battle);
     const won = fight(battle);
-    expect(won.runStatus).toBe('reward');
+    expect(won.runStatus).toBe('buff_reward');
     expect(won.gold).toBeGreaterThanOrEqual(DUNGEON_CONFIG.rewards.battle[0]);
     expect(won.clearedRooms).toHaveLength(1);
     expect(reduceDungeon(won, { type: 'tick', deltaMs: 50, now: 10000 })).toBe(won);
-    const next = advance(won);
+    expect(advance(won)).toBe(won);
+    const picked = reduceDungeon(won, { type: 'choose-buff', buffId: won.buffOptions[0] });
+    const next = reduceDungeon(picked, { type: 'finish-buff' });
     expect(next.currentFloor).toBe(2);
     expect(advance(next)).toBe(next);
     expect(reduceDungeon(next, { type: 'advance' }, 1)).toBe(next);
-    expect(next.combat.party.map((p) => p.currentHp)).toEqual(won.combat.party.map((p) => p.currentHp));
+    expect(next.combat.party.map((p) => p.currentHp)).toEqual(picked.combat.party.map((p) => p.currentHp));
   });
   it('keeps Down into the next combat and resets only battle-local gauges/statuses', () => {
     let run = withHp(createDungeonRun(0, 'test'), [60, 0, 75, 80]);
@@ -89,9 +91,17 @@ describe('floor and combat lifecycle', () => {
         if (run.currentRoom === 'rest') run = reduceDungeon(run, { type: 'rest', action: 'party' });
       }
       if (run.runStatus === 'battle' || run.runStatus === 'announcement') run = fight(run);
-      if (floor < 10) { expect(run.runStatus).toBe('reward'); run = advance(run); }
+      if (floor < 10) {
+        if (run.runStatus === 'buff_reward') {
+          run = reduceDungeon(run, { type: 'choose-buff', buffId: run.buffOptions[0] });
+          run = reduceDungeon(run, { type: 'finish-buff' });
+        } else { expect(run.runStatus).toBe('reward'); run = advance(run); }
+      }
     }
     expect(run.runStatus).toBe('cleared');
+    expect(run.activeBuffs).toEqual([]);
+    expect(run.combat.runBuffs).toEqual([]);
+    expect(run.buffOptions).toEqual([]);
     expect(run.currentRoom).toBe('boss');
     expect(run.clearedRooms).toHaveLength(10);
     expect(run.statistics.enemiesDefeated).toBeGreaterThan(5);

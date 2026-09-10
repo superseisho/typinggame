@@ -15,7 +15,7 @@ export function ShopRoom({ run, onPurchase, onLeave }: {
   return <section className="dungeon-room" aria-label="Shop">
     <div className="dungeon-heading"><span className="eyebrow">SPEND WISELY</span><h1>Shop</h1><p>ポーションは対象へ即時使用。各商品はこの部屋で1個まで購入できます。</p></div>
     <p className="room-message" role="status">{run.roomMessage || `所持金 ${run.gold} Gold`}</p>
-    {selected ? <RecoveryTargetPicker targets={targets} onCancel={() => setSelected(null)} onChoose={(id) => { onPurchase(selected, id); setSelected(null); }} /> :
+    {selected ? <RecoveryTargetPicker combat={run.combat} targets={targets} onCancel={() => setSelected(null)} onChoose={(id) => { onPurchase(selected, id); setSelected(null); }} /> :
       <div className="room-grid shop-grid">{SHOP_PRODUCTS.map((product) => {
         const sold = run.purchasedProducts.includes(product.id);
         return <button className="room-card" type="button" key={product.id} disabled={sold || run.gold < product.price || targets.length === 0} onClick={() => setSelected(product.id)}>

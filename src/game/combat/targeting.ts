@@ -1,5 +1,5 @@
 import { ENEMIES_BY_ID } from '../../data/enemies';
-import { CHARACTERS_BY_ID } from '../../data/characters';
+import { getEffectiveCharacter } from '../buffs/buffModifiers';
 import type { CombatState, EnemyTargetRule } from '../../types/game';
 
 export function selectEnemyTargetIndex(state: CombatState, rule: EnemyTargetRule): number | null {
@@ -31,8 +31,8 @@ export function selectLowestPartyHpIndex(state: CombatState): number | null {
     .filter(({ member }) => member.currentHp > 0);
   if (living.length === 0) return null;
   return living.reduce((lowest, candidate) => {
-    const lowestMax = CHARACTERS_BY_ID[lowest.member.definitionId].stats.maxHp;
-    const candidateMax = CHARACTERS_BY_ID[candidate.member.definitionId].stats.maxHp;
+    const lowestMax = getEffectiveCharacter(state, lowest.member.definitionId).stats.maxHp;
+    const candidateMax = getEffectiveCharacter(state, candidate.member.definitionId).stats.maxHp;
     return candidate.member.currentHp / candidateMax < lowest.member.currentHp / lowestMax ? candidate : lowest;
   }).index;
 }

@@ -1,0 +1,103 @@
+// Optional browser regression; Playwright is a separate verification dependency.
+// APP_URL=http://127.0.0.1:4173 PLAYWRIGHT_MODULE=/absolute/path/playwright/index.mjs node scripts/verify-buff-run.mjs
+import assert from 'node:assert/strict';
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
+const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+const page = await browser.newPage();
+const errors = [];
+page.on('pageerror', error => errors.push(error.message));
+page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
+await page.addInitScript(() => Math.random = () => .12345);
+const url = process.env.APP_URL ?? 'http://127.0.0.1:4173';
+const selectedBuffs = [];
+async function fit() {
+  const bounds = await page.evaluate(() => ({
+    height: innerHeight, pageHeight: document.documentElement.scrollHeight,
+    abilityBottom: Math.max(...[...document.querySelectorAll('.ability-state')].map(el => el.getBoundingClientRect().bottom)),
+    floor: !!document.querySelector('.dungeon-progress-header'), buffs: !!document.querySelector('.current-buffs'),
+  }));
+  assert(bounds.abilityBottom <= bounds.height, JSON.stringify(bounds));
+  assert(bounds.pageHeight <= bounds.height + 1, JSON.stringify(bounds));
+  assert.equal(bounds.floor, false); assert.equal(bounds.buffs, false);
+  return bounds;
+}
+async function fight() {
+  let keys = 0;
+  while (await page.locator('.dungeon-shell--combat').count()) {
+    await page.keyboard.press((await page.locator('.typing-line mark').textContent()).trim());
+    await page.waitForTimeout(18);
+    if (++keys > 1500) throw Error('Battle did not finish');
+  }
+  return keys;
+}
+async function blessing() {
+  const section = page.getByRole('region', { name: 'Buff Reward' });
+  await section.waitFor();
+  assert.equal(await page.getByRole('button', { name: /次の階へ/ }).count(), 0);
+  const cards = section.locator('.buff-card');
+  assert.equal(await cards.count(), 3);
+  const names = await cards.locator('h2').allTextContents();
+  assert.equal(new Set(names).size, 3);
+  const chosen = ['Swift Fingers', 'Power Rune', 'Vitality Rune', 'Healing Prayer'].find(name => names.includes(name)) ?? names[0];
+  selectedBuffs.push(chosen);
+  await page.getByRole('button', { name: `${chosen}を取得`, exact: true }).click();
+  await page.getByRole('heading', { name: 'BLESSING ACQUIRED', exact: true }).waitFor();
+  assert.equal(await section.locator('button:not(:disabled)').count(), 0);
+  await section.waitFor({ state: 'detached' });
+  if (await page.locator('.current-buffs').count()) {
+    await page.locator('.current-buffs summary').click();
+    assert((await page.locator('.current-buffs').textContent()).includes(chosen));
+    await page.locator('.current-buffs summary').click();
+  }
+  return { names, chosen };
+}
+try {
+  for (const [width, height] of [[1920, 1080], [1536, 864], [1366, 768]]) {
+    await page.setViewportSize({ width, height });
+    await page.goto(url);
+    await page.getByRole('button', { name: 'GAME START', exact: true }).click();
+    await page.locator('[data-room-type="battle"]').first().click();
+    console.log('fit', width, height, await fit());
+    await page.waitForTimeout(5100); // Exercise actual enemy damage and preserved HP.
+    await fight();
+    if (process.env.SCREENSHOT_DIR && width === 1366) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/buff-reward.png`, fullPage: true });
+    console.log('reward', await blessing());
+  }
+  await page.goto(url);
+  await page.getByRole('button', { name: 'GAME START', exact: true }).click();
+  let rewards = 0, eliteSeen = false, thresholdReduced = false;
+  for (let floor = 1; floor <= 10; floor++) {
+    const options = await page.locator('[data-room-type]').evaluateAll(nodes => nodes.map(n => n.dataset.roomType));
+    if (options.length) {
+      const chosen = !eliteSeen && options.includes('elite') ? 'elite' : options.includes('battle') ? 'battle' : options.includes('rest') ? 'rest' : options[0];
+      if (chosen === 'elite') eliteSeen = true;
+      await page.locator(`[data-room-type="${chosen}"]`).first().click();
+    }
+    if (await page.locator('.encounter-announcement').count()) await page.locator('.encounter-announcement').waitFor({ state: 'detached' });
+    if (await page.getByRole('heading', { name: 'Rest', exact: true }).count()) await page.getByRole('button', { name: /Party Recovery/ }).click();
+    if (await page.getByRole('heading', { name: 'Shop', exact: true }).count()) await page.getByRole('button', { name: 'Shopを出る →' }).click();
+    if (await page.locator('.dungeon-shell--combat').count()) {
+      await fit();
+      const thresholds = await page.locator('.threshold').allTextContents();
+      if (floor > 1 && thresholds[0] === '83KEYS') thresholdReduced = true;
+      console.log('floor', floor, 'thresholds', thresholds);
+      await fight();
+    }
+    if (floor < 10) {
+      if (await page.locator('.buff-reward').count()) { console.log('floor reward', floor, await blessing()); rewards++; }
+      else await page.getByRole('button', { name: /次の階へ/ }).click();
+    }
+  }
+  assert(eliteSeen); assert(rewards >= 3); assert(thresholdReduced);
+  await page.getByRole('heading', { name: 'DUNGEON CLEAR', exact: true }).waitFor();
+  assert.equal(await page.locator('.buff-reward').count(), 0);
+  const saved = await page.evaluate(() => JSON.stringify(localStorage));
+  assert(!saved.includes('activeBuffs')); assert(!saved.includes('runBuffs'));
+  if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/buff-run-clear.png`, fullPage: true });
+  await page.goto(url); await page.getByRole('button', { name: 'GAME START', exact: true }).click();
+  assert((await page.locator('.current-buffs summary').textContent()).includes('BUFFS 0'));
+  assert.deepEqual(errors, []);
+  console.log('PASS', { rewards, eliteSeen, thresholdReduced, selectedBuffs, errors });
+} finally {
+  await browser.close();
+}

@@ -1,5 +1,6 @@
 import type { CharacterId, CombatState } from './game';
 import type { Difficulty } from './save';
+import type { RunBuff } from './buffs';
 
 export type RoomType = 'battle' | 'elite' | 'rest' | 'shop' | 'treasure';
 export type DungeonRoomType = RoomType | 'boss' | 'ambush';
@@ -27,8 +28,11 @@ export interface RunStatistics {
   readonly combatMs: number;
   readonly enemiesDefeated: number;
 }
-export type RunStatus = 'choosing' | 'announcement' | 'battle' | 'room' | 'reward' | 'cleared' | 'game_over';
+export type RunStatus = 'choosing' | 'announcement' | 'battle' | 'room' | 'reward' | 'buff_reward' | 'buff_acquired' | 'cleared' | 'game_over';
 export interface DungeonRunState {
+  readonly activeBuffs: readonly RunBuff[];
+  readonly buffOptions: readonly string[];
+  readonly acquiredBuffId: string | null;
   readonly id: string;
   readonly currentFloor: number;
   readonly maxFloor: number;
@@ -51,6 +55,8 @@ export interface DungeonRunState {
 }
 export type RestAction = 'party' | 'focused' | 'revive';
 export type DungeonAction =
+  | { readonly type: 'choose-buff'; readonly buffId: string }
+  | { readonly type: 'finish-buff' }
   | { readonly type: 'choose'; readonly optionId: string; readonly now: number }
   | { readonly type: 'enter-battle'; readonly now: number }
   | { readonly type: 'key'; readonly key: string; readonly now: number }

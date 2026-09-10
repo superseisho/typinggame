@@ -1,4 +1,4 @@
-import { CHARACTERS_BY_ID } from '../data/characters';
+import { getEffectiveCharacter, getComboMultiplier } from '../game/buffs/buffModifiers';
 import type { CharacterDefinition, CombatState } from '../types/game';
 import { CharacterStateArt } from './CharacterStateArt';
 import { CombatFeedback } from './CombatFeedback';
@@ -22,9 +22,7 @@ function abilityView(character: CharacterDefinition, combat: CombatState) {
     return { value, max: trigger.threshold, text: `${value} / ${trigger.threshold}` };
   }
   const combo = combat.typing.currentCombo;
-  const reached = trigger.thresholds.filter((threshold) => combo >= threshold).length;
-  const effect = character.ability.effects.find((candidate) => candidate.type === 'combo-attack-scaling');
-  const multiplier = effect?.type === 'combo-attack-scaling' && reached > 0 ? effect.multipliers[reached - 1] : 1;
+  const multiplier = getComboMultiplier(combat, character.id);
   return { value: Math.min(combo, trigger.thresholds.at(-1) ?? 80), max: trigger.thresholds.at(-1) ?? 80, text: `×${multiplier.toFixed(multiplier === 1 ? 1 : 2)}` };
 }
 
@@ -39,7 +37,7 @@ export function PartyPanel({ combat }: { readonly combat: CombatState }) {
       </header>
       <div className="party-grid">
         {combat.party.map((member) => {
-          const character = CHARACTERS_BY_ID[member.definitionId];
+          const character = getEffectiveCharacter(combat, member.definitionId);
           const hpRatio = member.currentHp / character.stats.maxHp;
           const knockedOut = member.currentHp <= 0;
           const ability = abilityView(character, combat);

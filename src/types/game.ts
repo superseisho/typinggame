@@ -21,6 +21,7 @@ export type CharacterVisualState =
   | 'combo_active'
   | 'low_hp_combo_active';
 import type { SoundId } from './audio';
+import type { BuffCombatResources, RunBuff } from './buffs';
 
 export interface CharacterArtSet {
   readonly normal: string;
@@ -220,6 +221,8 @@ export interface CombatEvent {
 }
 
 export interface CombatState {
+  readonly runBuffs: readonly RunBuff[];
+  readonly buffResources: BuffCombatResources;
   readonly status: CombatStatus;
   readonly party: readonly CharacterCombatState[];
   readonly enemies: readonly EnemyCombatState[];

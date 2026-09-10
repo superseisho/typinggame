@@ -3,6 +3,7 @@ import { audioManager } from '../audio/AudioManager';
 import { useCombatAudio } from '../audio/useCombatAudio';
 import { GAME_CONFIG } from '../data/gameConfig';
 import { DUNGEON_CONFIG } from '../game/dungeon/dungeonConfig';
+import { BUFF_CONFIG } from '../game/buffs/buffConfig';
 import { createDungeonRun, reduceDungeon } from '../game/dungeon/dungeonEngine';
 import { LocalStorageSaveRepository } from '../game/save/LocalStorageSaveRepository';
 import { recordDungeonResult } from '../game/save/recordDungeonResult';
@@ -26,6 +27,12 @@ export function useDungeon() {
   const dispatch = useCallback((action: DungeonAction) => {
     setRun((current) => current ? reduceDungeon(current, action, floor, runId) : current);
   }, [floor, runId]);
+
+  useEffect(() => {
+    if (status !== 'buff_acquired') return;
+    const timer = window.setTimeout(() => dispatch({ type: 'finish-buff' }), BUFF_CONFIG.acquisitionMs);
+    return () => window.clearTimeout(timer);
+  }, [status, dispatch]);
 
   useEffect(() => {
     if (status !== 'announcement') return;

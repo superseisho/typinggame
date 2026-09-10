@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { AudioSettingsPanel } from '../components/AudioSettingsPanel';
 import { BattleStage } from '../components/BattleStage';
 import { PartyPanel } from '../components/PartyPanel';
@@ -6,22 +6,30 @@ import { RoomSelection } from '../components/dungeon/RoomSelection';
 import { RestRoom } from '../components/dungeon/RestRoom';
 import { ShopRoom } from '../components/dungeon/ShopRoom';
 import { DungeonResult } from '../components/dungeon/DungeonResult';
+import { DungeonProgressHeader } from '../components/dungeon/DungeonProgressHeader';
+import { BuffReward } from '../components/dungeon/BuffReward';
+import { CurrentBuffs } from '../components/dungeon/CurrentBuffs';
 import { useDungeon } from '../hooks/useDungeon';
 import { DUNGEON_CONFIG } from '../game/dungeon/dungeonConfig';
 import { roomName } from '../game/dungeon/dungeonEngine';
 import { audioManager } from '../audio/AudioManager';
 import '../styles/dungeon.css';
+import '../styles/buffs.css';
 
 export function DungeonScreen() {
   const { run, start, dispatch, saveError } = useDungeon();
   const [audioOpen, setAudioOpen] = useState(false);
-  const inCombat = run && (run.runStatus === 'battle' || run.runStatus === 'announcement' || (run.runStatus === 'reward' && run.combat.enemies.length > 0));
+  // All encounter kinds share this phase; announcement and victory are not combat.
+  const combatActive = run?.runStatus === 'battle';
+  useLayoutEffect(() => {
+    if (combatActive) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [combatActive]);
+  const showBattleStage = run && (run.runStatus === 'battle' || run.runStatus === 'announcement' || (run.runStatus === 'reward' && run.combat.enemies.length > 0));
   const ended = run?.runStatus === 'cleared' || run?.runStatus === 'game_over';
-  return <main className="game-shell dungeon-shell">
+  return <main className={`game-shell dungeon-shell${combatActive ? ' dungeon-shell--combat' : ''}`}>
     <header className="topbar">
       <div className="brand-mark"><span>ᛟ</span></div><div className="brand-copy"><strong>ECHOES OF THE DEEP</strong><small>Dungeon Expedition · Tier 1</small></div>
       <button type="button" className="dungeon-audio" onClick={() => { void audioManager.unlock(); setAudioOpen(!audioOpen); }} aria-label="オーディオ設定を開く">♪ AUDIO</button>
-      <div className="floor-meter"><span>FLOOR</span><strong>{String(run?.currentFloor ?? 1).padStart(2, '0')} <em>/ {run?.maxFloor ?? DUNGEON_CONFIG.maxFloor}</em></strong></div>
     </header>
     <AudioSettingsPanel open={audioOpen} onClose={() => setAudioOpen(false)} />
     {!run ? <section className="dungeon-room dungeon-title">
@@ -31,11 +39,11 @@ export function DungeonScreen() {
       <button type="button" className="dungeon-button" onClick={start}>GAME START</button>
       <small>探索途中のセーブはありません。リロードすると探索は終了します。成績・音量設定は保存されます。</small>
     </section> : <>
-      <div className="expedition-bar"><span>NORMAL · TIER {run.enemyTier} {run.currentRoom ? `· ${roomName(run.currentRoom)}` : ''}</span><strong>{run.gold} GOLD</strong></div>
-      <nav className="floor-progress" aria-label="探索進行">{Array.from({ length: run.maxFloor }, (_, i) => i + 1).map((floor) =>
-        <span key={floor} className={floor < run.currentFloor ? 'is-cleared' : floor === run.currentFloor ? 'is-current' : ''} aria-current={floor === run.currentFloor ? 'step' : undefined}>{DUNGEON_CONFIG.bossFloors.includes(floor) ? `${floor} BOSS` : floor}</span>)}</nav>
+      {!combatActive ? <DungeonProgressHeader run={run} /> : null}
+      {!combatActive && !ended ? <CurrentBuffs key={run.id} buffs={run.activeBuffs} /> : null}
       <div key={`${run.id}-${run.currentFloor}`}>
         {ended ? <DungeonResult run={run} onRestart={start} saveError={saveError} /> : <>
+          {run.runStatus === 'buff_reward' || run.runStatus === 'buff_acquired' ? <BuffReward run={run} onChoose={(buffId) => dispatch({ type: 'choose-buff', buffId })} /> : null}
           {run.runStatus === 'choosing' ? <RoomSelection options={run.roomOptions} onChoose={(optionId) => dispatch({ type: 'choose', optionId, now: Date.now() })} /> : null}
           {run.runStatus === 'room' && run.currentRoom === 'rest' ? <RestRoom combat={run.combat} onRest={(action, targetId) => dispatch({ type: 'rest', action, targetId })} /> : null}
           {run.runStatus === 'room' && run.currentRoom === 'shop' ? <ShopRoom run={run} onPurchase={(productId, targetId) => dispatch({ type: 'purchase', productId, targetId })} onLeave={() => dispatch({ type: 'leave-shop' })} /> : null}
@@ -44,7 +52,7 @@ export function DungeonScreen() {
             <div><span className="eyebrow">FLOOR {run.currentFloor} COMPLETE</span><h2>{run.roomMessage}</h2><p>HPと戦闘不能を維持して先へ進みます。</p></div>
             <button type="button" className="dungeon-button" onClick={() => dispatch({ type: 'advance' })}>次の階へ · FLOOR {run.currentFloor + 1} →</button>
           </section> : null}
-          {inCombat ? <BattleStage combat={run.combat} floorLabel={`FLOOR ${run.currentFloor} · ${roomName(run.currentRoom)}`} /> : <div className="dungeon-party"><PartyPanel combat={run.combat} /></div>}
+          {showBattleStage ? <BattleStage combat={run.combat} floorLabel={combatActive ? roomName(run.currentRoom) : `FLOOR ${run.currentFloor} · ${roomName(run.currentRoom)}`} /> : <div className="dungeon-party"><PartyPanel combat={run.combat} /></div>}
         </>}
       </div>
     </>}
