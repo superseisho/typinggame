@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TypingSentence } from '../../types/typing';
 import { TYPING_SENTENCES } from '../../data/typingSentences';
-import { compileRomajiSegments, createTypingEngineState, inputTypingKey } from './typingEngine';
+import { compileRomajiSegments, createTypingEngineState, getTypingDisplay, inputTypingKey } from './typingEngine';
 
 function sentence(reading: string): TypingSentence {
   return { id: 'test', text: reading, reading, difficulty: 1 };
@@ -14,6 +14,63 @@ function typeReading(reading: string, input: string) {
 }
 
 describe('Japanese romaji typing engine', () => {
+  it('requires wo for を, accepting w only as an unfinished prefix', () => {
+    const initial = createTypingEngineState(sentence('を'));
+    expect(initial.segments[0].alternatives).toEqual(['wo']);
+    const prefix = inputTypingKey(initial, 'w');
+    expect(prefix.result).toBe('correct');
+    expect(prefix.state.completed).toBe(false);
+    expect(prefix.state.segmentIndex).toBe(0);
+    expect(prefix.state.missCount).toBe(0);
+    expect(getTypingDisplay(prefix.state)).toMatchObject({ typed: 'w', current: 'o' });
+    expect(inputTypingKey(prefix.state, 'o').result).toBe('completed');
+  });
+
+  it('rejects o for を without advancing and allows recovery with wo', () => {
+    const initial = createTypingEngineState(sentence('を'));
+    const missed = inputTypingKey(initial, 'o');
+    expect(missed.result).toBe('miss');
+    expect(missed.state).toMatchObject({ completed: false, segmentIndex: 0, segmentInput: '', acceptedInput: '', correctCharacterCount: 0, missCount: 1, currentCombo: 0 });
+    expect(getTypingDisplay(missed.state).current).toBe('w');
+    const completed = inputTypingKey(inputTypingKey(missed.state, 'w').state, 'o');
+    expect(completed.result).toBe('completed');
+    expect(completed.state.acceptedInput).toBe('wo');
+  });
+
+  it('keeps お as o and does not consume it while entering をお', () => {
+    expect(typeReading('お', 'o').completed).toBe(true);
+    let state = typeReading('をお', 'wo');
+    expect(state.completed).toBe(false);
+    expect(state.segmentIndex).toBe(1);
+    expect(state.segments[state.segmentIndex].kana).toBe('お');
+    state = inputTypingKey(state, 'o').state;
+    expect(state.completed).toBe(true);
+    expect(state.acceptedInput).toBe('woo');
+    expect(state.missCount).toBe(0);
+  });
+
+  it('rejects o at を in 剣を持つ, then continues with wo without consuming も', () => {
+    let state = typeReading('けんをもつ', 'ken');
+    const index = state.segmentIndex;
+    expect(state.segments[index].kana).toBe('を');
+    const miss = inputTypingKey(state, 'o');
+    expect(miss.result).toBe('miss');
+    expect(miss.state.segmentIndex).toBe(index);
+    expect(miss.state.currentCombo).toBe(0);
+    state = inputTypingKey(inputTypingKey(miss.state, 'w').state, 'o').state;
+    expect(state.segments[state.segmentIndex].kana).toBe('も');
+    for (const key of 'motsu') state = inputTypingKey(state, key).state;
+    expect(state.completed).toBe(true);
+    expect(state.acceptedInput).toBe('kenwomotsu');
+    expect(state.missCount).toBe(1);
+  });
+
+  it('applies the same wo rule to katakana ヲ', () => {
+    expect(compileRomajiSegments('ヲ')[0].alternatives).toEqual(['wo']);
+    expect(typeReading('ヲ', 'o').completed).toBe(false);
+    expect(typeReading('ヲ', 'wo').completed).toBe(true);
+  });
+
   it.each([
     ['し', 'shi'], ['し', 'si'],
     ['ち', 'chi'], ['ち', 'ti'],

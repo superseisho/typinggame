@@ -8,7 +8,7 @@ export const ROMAJI_MAP: Readonly<Record<string, readonly string[]>> = {
   ま: ['ma'], み: ['mi'], む: ['mu'], め: ['me'], も: ['mo'],
   や: ['ya'], ゆ: ['yu'], よ: ['yo'],
   ら: ['ra'], り: ['ri'], る: ['ru'], れ: ['re'], ろ: ['ro'],
-  わ: ['wa'], を: ['wo', 'o'],
+  わ: ['wa'], を: ['wo'], // Typing spelling, not pronunciation: お alone accepts o.
   が: ['ga'], ぎ: ['gi'], ぐ: ['gu'], げ: ['ge'], ご: ['go'],
   ざ: ['za'], じ: ['ji', 'zi'], ず: ['zu'], ぜ: ['ze'], ぞ: ['zo'],
   だ: ['da'], ぢ: ['di', 'ji'], づ: ['du', 'zu'], で: ['de'], ど: ['do'],

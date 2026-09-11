@@ -4,8 +4,24 @@ import { ENEMIES_BY_ID } from '../../data/enemies';
 import { applyCorrectTyping, applyTypingMiss, startCombat, tickCombat } from './combatEngine';
 import { getCharacterVisualState } from './characterVisualState';
 import { createCombatState } from './createCombatState';
+import { handleCombatTyping } from './handleCombatTyping';
+import { createTypingEngineState } from '../typing/typingEngine';
 
 describe('combat engine', () => {
+  it('routes an o miss at を through the normal combat miss effects', () => {
+    const started = startCombat(createCombatState(['crypt-slime']), 1000);
+    const typing = { ...createTypingEngineState({ id: 'wo-test', text: 'を', reading: 'を', difficulty: 1 }), currentCombo: 20, maxCombo: 20 };
+    const active = applyCorrectTyping(started, typing, 1001);
+    expect(active.party.find(p => p.definitionId === 'martial-artist')!.statuses).toContain('ability:flow-combo');
+    const missed = handleCombatTyping(active, 'o', 1002);
+    // A different invalid key must produce exactly the same gameplay/event state.
+    expect(missed).toEqual(handleCombatTyping(active, 'x', 1002));
+    expect(missed.typing.missCount).toBe(1);
+    expect(missed.typing.segmentIndex).toBe(0);
+    expect(missed.party.find(p => p.definitionId === 'martial-artist')!.statuses).not.toContain('ability:flow-combo');
+    expect(missed.party.map(p => p.attackCharge)).toEqual(active.party.map(p => p.attackCharge));
+    expect(missed.enemies[0].specialGauge).toBeGreaterThan(active.enemies[0].specialGauge);
+  });
   it('creates one or multiple enemies with unique runtime state', () => {
     expect(createCombatState(['crypt-slime']).enemies).toHaveLength(1);
     const multiple = createCombatState(['crypt-slime', 'crypt-slime', 'grave-shaman']);
