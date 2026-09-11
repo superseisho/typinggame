@@ -4,14 +4,15 @@
 
 ## ダンジョンの遊び方
 
-GAME START → 3択の部屋選択 → 部屋攻略 → 次の階へ進み、10Fのボスを倒すとDUNGEON CLEAR。全滅するとGAME OVERです。戦闘勝利後はGoldを受け取り、Buffを1つ選ぶと500msの取得演出を経て次の階へ進みます。非戦闘の部屋では「次の階へ」を押します。今回はNormal固定・Tier 1のみ。HPとDown状態、Goldと取得Buffをラン中に保持し、戦闘用ゲージ・Ability・コンボ・条件付きの一時強化は部屋を移るとリセットします。
+GAME START → 3択の部屋選択 → 部屋攻略 → 次の階へ進み、10Fのボスを倒すとDUNGEON CLEAR。全滅するとGAME OVERです。通常戦闘勝利後はGoldを受け取り、Buffを1つ選ぶと500msの取得演出を経て次の階へ進みます。ShopはLEAVE SHOPで進行。Rest・TreasureのGold/回復・罠戦闘勝利では「次の階へ」で結果を確認して進みます。今回はNormal固定・Tier 1のみ。HPとDown状態、Goldと取得Buffをラン中に保持し、戦闘用ゲージ・Ability・コンボ・条件付きの一時強化は部屋を移るとリセットします。
 
 - Battle: 通常敵のランダム編成、45～65 Gold。
 - Elite Battle: エリート入り強編成、100～130 Gold。
 - Rest: 生存者全員30%回復 / 生存者1人60%回復 / Down1人を30%で蘇生、いずれか1回。Reviveは対象不在でもdisabled表示。
-- Shop: 50 Goldで20%、100 Goldで50%の単体回復。部屋ごとに各1個、即時使用。購入せず退出も可能。
-- Treasure: 65%で80 Gold、それ以外は生存者全員10%回復。
-- Ambush: 通常階で8%。1Fは選択を保証する安全階、ボス階でも奇襲は発生しません。
+- Shop: 入室時に回復2商品＋Buff2商品を抽選。単体30%/60%、全体20%の回復とBuff販売。Rerollは40 Gold。購入せず退出も可能。
+- Treasure: OPEN TREASUREで一度だけ開封。無料Buff30%、大量Gold25%、全体回復20%、Rare以上Buff15%、罠戦闘10%。蘇生はありません。
+- Ambush: 通常階で8%。1Fは選択を保証する安全階。ボス階とその直前階では奇襲抽選を行いません。
+- 9F: 「BOSS AHEAD / Prepare for the Boss」を表示し、Rest / Shopの固定2択。Restは行動・結果確認後、ShopはLEAVE SHOPで10Fへ進みます。`floorRules.ts`の次階Boss判定を共通利用するため、bossFloorsを拡張すれば19F / 29Fにも適用されます。
 - 10F: 900msのボス予告後に自動開戦。550HPの固定ボスを撃破すると探索完了。
 
 全快の味方やDownにポーションは使用できません。選択・購入・階層移動はエンジン側でも段階とIDを検証し、二重実行を防止します。
@@ -61,7 +62,7 @@ npm run build
 
 ## ダンジョンの拡張・調整
 
-`src/game/dungeon/dungeonConfig.ts` に階層上限・ボス階・安全階・奇襲率・回復量・Gold報酬・商品・敵編成を集約しています。部屋の出現比率は `src/data/rooms/roomDefinitions.ts`。敵の基礎数値は `src/data/enemies.ts` です。
+`src/game/dungeon/dungeonConfig.ts` に階層上限・ボス階・安全階・奇襲率・Rest回復量・戦闘Gold報酬・敵編成を集約しています。Shopは `shopConfig.ts`、Treasureは `treasureConfig.ts` に分離しています。部屋の出現比率は `src/data/rooms/roomDefinitions.ts`。敵の基礎数値は `src/data/enemies.ts` です。
 
 1～10F内の階層倍率はありません。通常・Elite・Bossの固定データだけが異なります。30F化はmaxFloorとbossFloorsを変更可能ですが、現段階では全てTier 1の編成を使います。11F・21Fの強化は今後Tier別の敵編成テーブルを追加して切り替える想定です。装備ドロップ・11F以降の専用コンテンツ・難易度選択は未実装です。
 
@@ -114,7 +115,7 @@ Guardian Oath / Fortress / Guardian Blessing / Ascendant RuneはUnique（1個）
 - `src/types/buffs.ts`: ID、表示名、説明、レアリティ、複数カテゴリ、複数Effect、Stack制約、任意Sound ID。Runには `{ buffId, stacks }` のみ保持。
 - `src/data/buffs/buffDefinitions.ts`: 効果・条件・対象・数値のデータ。既存Effect型のBuffなら定義追加のみ。
 - `src/game/buffs/buffConfig.ts`: 抽選比率、3候補、500ms演出、最低値、候補枯渇時のGold。
-- `runBuffManager.ts`: 共通の追加・削除・取得可否判定、HPを保った戦闘への適用。将来Shop / Treasureもここを利用可能。
+- `runBuffManager.ts`: 共通の追加・削除・取得可否判定、HPを保った戦闘への適用。Battle / Shop / Treasureで共用。
 - `buffModifiers.ts`: 基礎Characterを変更せず最終Attack / Max HP / Threshold / Ability / Comboを計算。戦闘、Party UI、回復対象選択、Rest、Shopで共用。
 - `buffEffectHandlers.ts`: Guard成功 / 実Heal / 正解Streakの同期ハンドラ。過去ログやReact再描画から再発動しない。新しい条件付き効果は型と専用ハンドラを追加。
 - `buffRewards.ts`, `buffDescriptions.ts`: シード付き重複なし抽選、Stack効果の表示。
@@ -125,3 +126,42 @@ Guardian Oath / Fortress / Guardian Blessing / Ascendant RuneはUnique（1個）
 `src/game/buffs/buffs.test.ts` では追加・Stack上限・Unique・抽選比率・枯渇・二重選択・最終Boss・Run終了・実ダメージ/回復/必要文字数・Guard/Combo/連続正解・SPECIAL軽減を検証します。既存の10F通しテストもBuff選択を含む経路へ更新しています。
 
 任意のPlaywright環境向けに `scripts/verify-buff-run.mjs` も用意しています。開発サーバー起動後、`APP_URL` と必要なら `PLAYWRIGHT_MODULE`（Playwrightのindex.mjsへの絶対パス）を指定して実行できます。3つのPCサイズで実キー入力→Buff選択→10Fクリア→次Runを検証します。今回のブラウザ検証では7回取得（Healing Prayer ×2を含む）、戦士の必要文字数90→83、最終BossのBuff省略、保存データにRun Buffが残らないことを確認しました。1366×768でもAbility Gauge下端は約725pxで、戦闘中の見切れはありません。バランスと難易度ごとの最適化は今後の課題です。
+
+## Shop / Treasure
+
+### Shop：Goldで必要なものを選ぶ
+
+`shopConfig.ts` の設定から入室時に4商品（回復2＋Buff2）を抽選し、`run.shop` に固定します。回復プールはSmall Potion（60 Gold / 生存者1人30%）、Large Potion（100 Gold / 生存者1人60%）、Party Potion（120 Gold / 生存者全員20%）。単体商品は購入前に対象を選択し、Down・全快を対象から除外。全体回復もDownを蘇生しません。
+
+Buff価格はCommon 100 / Uncommon 140 / Rare 200 / Epic 280 Gold。抽選比率は45 / 35 / 17 / 3。共通Buff生成器で同一商品内の重複・取得済みUnique・最大Stackを除外します。取得可能なBuffが不足したときは未陳列の回復商品で補完し、それも不足した場合は4個未満になります。
+
+購入はGoldの支払い・効果適用・SOLD OUT化を1つの純粋な状態更新で処理します。売り切れは暗転、Gold不足は赤系価格と `Not enough Gold` 表示。購入してもShopには残り、複数商品を購入できます。Rerollは固定40 Goldで売り切れも含め全商品を再抽選。新しい陳列では再度同じ商品が出る可能性があります。Reroll時は商品IDの世代を更新し、旧商品の遅延クリックを拒否。350msのUI入力抑制も加えています。`LEAVE SHOP` は購入不要で直接次Floorへ進みます。
+
+### Treasure：無料の報酬、ただし罠の危険
+
+入室時には報酬を与えず、`OPEN TREASURE` で次の結果を1回だけ抽選します。
+
+| 結果 | 確率 | 処理 |
+| --- | ---: | --- |
+| 無料Buff | 30% | 共通3択。Common / Uncommon / Rare / Epic = 45 / 35 / 17 / 3 |
+| 大量Gold | 25% | 150～250 Goldを加算し、確認後に次Floor |
+| Party Heal | 20% | 生存者の最大HP30%回復。実回復イベント・緑発光を再利用 |
+| Rare以上Buff | 15% | Rare / Epic = 85 / 15の3択。低レアは混ざらない |
+| Trap Battle | 10% | 750msのTRAP警告後、通常相当の敵と既存Combatで戦闘 |
+
+設定・結果確率・Buff比率・Gold範囲・回復量・罠編成・罠報酬は `treasureConfig.ts` に集約しています。Buff候補不足時は残りのみ表示、0候補なら60 Goldへ置換し、確認後に進みます（Rare宝箱でも低レアへは置き換えません）。
+
+罠は `currentRoom: 'treasure'` のまま `combatSource: 'treasure_trap'` として識別。HP / Down / Run Buffを引き継ぎ、勝利報酬は10～25 Goldのみ。元の宝箱報酬も戦闘後Buffも付与せず、Treasureとして履歴に1回記録します。敗北は通常と同じGame Over。戦闘中の階層ヘッダーは罠でも非表示です。
+
+### 状態と検証
+
+- `src/types/rooms.ts`: `ShopItem`（回復 / Buffの判別共用体）、`ShopState`（在庫・Reroll世代）、`TreasureState`（開封・結果・解決済み）。
+- `shopEngine.ts`: 商品生成・取得可否・購入。UI再描画では生成しません。
+- `treasureEngine.ts`: シード付き結果抽選。DungeonEngineが結果を状態に保存してから処理します。
+- `ShopRoom.tsx` / `TreasureRoom.tsx`: 商品・対象選択・宝箱表示。Buff画面は既存 `BuffReward` を再利用。
+- `shopTreasure.test.ts`: 商品生成、重複排除、価格、購入、対象、Gold不足、売り切れ、Reroll世代、宝箱確率、二重開封、Rare制約、回復、罠の勝敗と報酬抑制。
+- `scripts/verify-shop-treasure.mjs`: 決定的な開始seedで宝箱5結果、戦闘→宝箱Gold→Shopで複数購入・Reroll・退出、罠全滅を実ブラウザ検証。確率設定自体は変更しません。Playwright環境・起動方法は上のブラウザ検証と共通です。
+
+部屋状態・在庫ID・Reroll世代・開封フラグ・Run/Floorトークンを確認し、古い入力や二重操作を拒否します。階層進行はDungeonEngineの共通処理だけで行います。蘇生はRest専用のままです。今後は価格バランス、商品のロック・割引、Treasure専用の敵などを追加できます。
+
+Shop / Treasure拡張後の確認：自動テスト172件、TypeScript/Viteビルド成功。Chromiumで宝箱5結果、Buff＋Small Potionの購入、Reroll、罠勝利・全滅を確認しました。開始seedを変えた複数の探索で検証し、10Fクリアの既存回帰シナリオも成功。1920×1080 / 1536×864 / 1366×768で戦闘ゲージの見切れ、ブラウザエラー、画像読込エラーはありません。部屋の価値・価格・Trap率の体感バランスは継続調整が必要です。

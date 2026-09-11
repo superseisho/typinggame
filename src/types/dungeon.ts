@@ -1,6 +1,7 @@
 import type { CharacterId, CombatState } from './game';
 import type { Difficulty } from './save';
 import type { RunBuff } from './buffs';
+import type { ShopState, TreasureState } from './rooms';
 
 export type RoomType = 'battle' | 'elite' | 'rest' | 'shop' | 'treasure';
 export type DungeonRoomType = RoomType | 'boss' | 'ambush';
@@ -30,6 +31,9 @@ export interface RunStatistics {
 }
 export type RunStatus = 'choosing' | 'announcement' | 'battle' | 'room' | 'reward' | 'buff_reward' | 'buff_acquired' | 'cleared' | 'game_over';
 export interface DungeonRunState {
+  readonly shop: ShopState | null;
+  readonly treasure: TreasureState | null;
+  readonly combatSource: 'room' | 'treasure_trap';
   readonly activeBuffs: readonly RunBuff[];
   readonly buffOptions: readonly string[];
   readonly acquiredBuffId: string | null;
@@ -49,7 +53,6 @@ export interface DungeonRunState {
   readonly currentCombatMs: number;
   readonly statistics: RunStatistics;
   readonly clearedRooms: readonly RoomHistory[];
-  readonly purchasedProducts: readonly string[];
   readonly roomMessage: string;
   readonly endedAt: number | null;
 }
@@ -62,6 +65,8 @@ export type DungeonAction =
   | { readonly type: 'key'; readonly key: string; readonly now: number }
   | { readonly type: 'tick'; readonly deltaMs: number; readonly now: number }
   | { readonly type: 'rest'; readonly action: RestAction; readonly targetId?: CharacterId }
-  | { readonly type: 'purchase'; readonly productId: string; readonly targetId: CharacterId }
+  | { readonly type: 'purchase'; readonly productId: string; readonly targetId?: CharacterId }
+  | { readonly type: 'reroll-shop'; readonly revision: number }
+  | { readonly type: 'open-treasure' }
   | { readonly type: 'leave-shop' }
   | { readonly type: 'advance' };

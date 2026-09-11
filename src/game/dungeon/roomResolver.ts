@@ -2,7 +2,7 @@ import { getEffectiveCharacter } from '../buffs/buffModifiers';
 import { GAME_CONFIG } from '../../data/gameConfig';
 import type { CharacterId, CombatState } from '../../types/game';
 import type { RestAction } from '../../types/dungeon';
-import { DUNGEON_CONFIG, SHOP_PRODUCTS } from './dungeonConfig';
+import { DUNGEON_CONFIG } from './dungeonConfig';
 
 export function recoveryTargets(combat: CombatState, revive = false) {
   return combat.party.filter((member) => revive ? member.currentHp <= 0 : member.currentHp > 0 && member.currentHp < getEffectiveCharacter(combat, member.definitionId).stats.maxHp);
@@ -30,8 +30,4 @@ export function resolveRest(combat: CombatState, action: RestAction, targetId?: 
   if (action === 'party') return recoverParty(combat, DUNGEON_CONFIG.rest.partyRatio);
   if (!targetId || !recoveryTargets(combat, action === 'revive').some((member) => member.definitionId === targetId)) return null;
   return recoverParty(combat, action === 'revive' ? DUNGEON_CONFIG.rest.reviveRatio : DUNGEON_CONFIG.rest.focusedRatio, targetId, action === 'revive');
-}
-
-export function purchasableProduct(productId: string, gold: number, purchased: readonly string[]) {
-  return SHOP_PRODUCTS.find((item) => item.id === productId && item.price <= gold && !purchased.includes(item.id));
 }

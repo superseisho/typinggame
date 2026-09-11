@@ -4,6 +4,7 @@ import { useCombatAudio } from '../audio/useCombatAudio';
 import { GAME_CONFIG } from '../data/gameConfig';
 import { DUNGEON_CONFIG } from '../game/dungeon/dungeonConfig';
 import { BUFF_CONFIG } from '../game/buffs/buffConfig';
+import { TREASURE_CONFIG } from '../game/dungeon/treasureConfig';
 import { createDungeonRun, reduceDungeon } from '../game/dungeon/dungeonEngine';
 import { LocalStorageSaveRepository } from '../game/save/LocalStorageSaveRepository';
 import { recordDungeonResult } from '../game/save/recordDungeonResult';
@@ -36,9 +37,9 @@ export function useDungeon() {
 
   useEffect(() => {
     if (status !== 'announcement') return;
-    const timer = window.setTimeout(() => dispatch({ type: 'enter-battle', now: Date.now() }), DUNGEON_CONFIG.announcementMs);
+    const timer = window.setTimeout(() => dispatch({ type: 'enter-battle', now: Date.now() }), run?.combatSource === 'treasure_trap' ? TREASURE_CONFIG.trapAnnouncementMs : DUNGEON_CONFIG.announcementMs);
     return () => window.clearTimeout(timer);
-  }, [status, dispatch]);
+  }, [status, dispatch, run?.combatSource]);
 
   useEffect(() => {
     if (status !== 'battle') return;

@@ -68,14 +68,30 @@ try {
   let rewards = 0, eliteSeen = false, thresholdReduced = false;
   for (let floor = 1; floor <= 10; floor++) {
     const options = await page.locator('[data-room-type]').evaluateAll(nodes => nodes.map(n => n.dataset.roomType));
+    if (floor === 9) {
+      assert.deepEqual(options, ['rest', 'shop']);
+      await page.getByRole('heading', { name: 'Prepare for the Boss', exact: true }).waitFor();
+      const bounds = await page.locator('.room-grid--pre-boss').evaluate(el => {
+        const rect = el.getBoundingClientRect();
+        return { center: rect.x + rect.width / 2, viewport: innerWidth / 2, columns: getComputedStyle(el).gridTemplateColumns.split(' ').length };
+      });
+      assert(Math.abs(bounds.center - bounds.viewport) < 2);
+      assert.equal(bounds.columns, 2);
+      console.log('pre-boss', options, bounds);
+      if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/pre-boss.png`, fullPage: true });
+    }
     if (options.length) {
-      const chosen = !eliteSeen && options.includes('elite') ? 'elite' : options.includes('battle') ? 'battle' : options.includes('rest') ? 'rest' : options[0];
+      const chosen = floor === 9 ? (process.env.PRE_BOSS_CHOICE ?? 'rest') : !eliteSeen && options.includes('elite') ? 'elite' : options.includes('battle') ? 'battle' : options.includes('rest') ? 'rest' : options[0];
       if (chosen === 'elite') eliteSeen = true;
       await page.locator(`[data-room-type="${chosen}"]`).first().click();
     }
+    if (await page.getByRole('button', { name: 'OPEN TREASURE', exact: true }).count()) await page.getByRole('button', { name: 'OPEN TREASURE', exact: true }).click();
     if (await page.locator('.encounter-announcement').count()) await page.locator('.encounter-announcement').waitFor({ state: 'detached' });
     if (await page.getByRole('heading', { name: 'Rest', exact: true }).count()) await page.getByRole('button', { name: /Party Recovery/ }).click();
-    if (await page.getByRole('heading', { name: 'Shop', exact: true }).count()) await page.getByRole('button', { name: 'Shopを出る →' }).click();
+    if (await page.getByRole('heading', { name: 'Shop', exact: true }).count()) {
+      await page.getByRole('button', { name: 'LEAVE SHOP →' }).click();
+      continue;
+    }
     if (await page.locator('.dungeon-shell--combat').count()) {
       await fit();
       const thresholds = await page.locator('.threshold').allTextContents();

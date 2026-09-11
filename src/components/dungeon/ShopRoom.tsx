@@ -1,28 +1,53 @@
-import { useState } from 'react';
-import { SHOP_PRODUCTS } from '../../game/dungeon/dungeonConfig';
+import { useEffect, useState } from 'react';
+import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
+import { RECOVERY_PRODUCTS, SHOP_CONFIG } from '../../game/dungeon/shopConfig';
+import { shopItemUnavailable } from '../../game/dungeon/shopEngine';
 import { recoveryTargets } from '../../game/dungeon/roomResolver';
 import type { CharacterId } from '../../types/game';
 import type { DungeonRunState } from '../../types/dungeon';
 import { RecoveryTargetPicker } from './RecoveryTargetPicker';
 
-export function ShopRoom({ run, onPurchase, onLeave }: {
+export function ShopRoom({ run, onPurchase, onLeave, onReroll }: {
   readonly run: DungeonRunState;
-  readonly onPurchase: (productId: string, targetId: CharacterId) => void;
+  readonly onPurchase: (productId: string, targetId?: CharacterId) => void;
   readonly onLeave: () => void;
+  readonly onReroll: (revision: number) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
-  const targets = recoveryTargets(run.combat);
+  const [rerollPending, setRerollPending] = useState(false);
+  useEffect(() => {
+    if (!rerollPending) return;
+    const timer = window.setTimeout(() => setRerollPending(false), SHOP_CONFIG.rerollUiCooldownMs);
+    return () => window.clearTimeout(timer);
+  }, [rerollPending]);
+  const shop = run.shop;
+  if (!shop) return null;
   return <section className="dungeon-room" aria-label="Shop">
-    <div className="dungeon-heading"><span className="eyebrow">SPEND WISELY</span><h1>Shop</h1><p>ポーションは対象へ即時使用。各商品はこの部屋で1個まで購入できます。</p></div>
-    <p className="room-message" role="status">{run.roomMessage || `所持金 ${run.gold} Gold`}</p>
-    {selected ? <RecoveryTargetPicker combat={run.combat} targets={targets} onCancel={() => setSelected(null)} onChoose={(id) => { onPurchase(selected, id); setSelected(null); }} /> :
-      <div className="room-grid shop-grid">{SHOP_PRODUCTS.map((product) => {
-        const sold = run.purchasedProducts.includes(product.id);
-        return <button className="room-card" type="button" key={product.id} disabled={sold || run.gold < product.price || targets.length === 0} onClick={() => setSelected(product.id)}>
-          <span className="room-card__icon">⚗</span><h2>{product.name}</h2><p>生存者1人 · HP +{product.recoveryRatio * 100}%</p><strong>{sold ? 'SOLD OUT' : `${product.price} Gold`}</strong>
-          <small>{!sold && run.gold < product.price ? 'Gold不足' : targets.length === 0 ? '回復対象なし' : '対象を選んで購入'}</small>
-        </button>;
-      })}</div>}
-    <button className="dungeon-button secondary" type="button" onClick={onLeave}>Shopを出る →</button>
+    <div className="dungeon-heading"><span className="eyebrow">CHOOSE WHAT YOU NEED</span><h1>Shop</h1>
+      <p>回復と祝福をGoldで購入。購入後も店に残れます。蘇生はRestで。</p><strong>{run.gold} GOLD</strong></div>
+    <p className="room-message" role="status">{run.roomMessage}</p>
+    {selected ? <RecoveryTargetPicker key={selected} combat={run.combat} targets={recoveryTargets(run.combat)}
+      onCancel={() => setSelected(null)} onChoose={id => { onPurchase(selected, id); setSelected(null); }} /> : null}
+    <div className="room-grid shop-stock">{shop.items.map(item => {
+      const buff = item.type === 'buff' ? BUFFS_BY_ID[item.buffId] : null;
+      const product = item.type === 'recovery' ? RECOVERY_PRODUCTS.find(product => product.id === item.recoveryId)! : null;
+      const reason = shopItemUnavailable(run, item);
+      const owned = buff ? run.activeBuffs.find(owned => owned.buffId === buff.id)?.stacks ?? 0 : 0;
+      return <button type="button" key={item.id} data-shop-item={item.id}
+        className={`room-card shop-product ${buff ? 'rarity-' + buff.rarity : ''} ${item.purchased ? 'is-sold' : run.gold < item.price ? 'is-unaffordable' : ''}`}
+        disabled={!!reason || !!selected} onClick={() => product?.target === 'single' ? setSelected(item.id) : onPurchase(item.id)}>
+        <span className="buff-rarity">{buff ? 'Buff · ' + buff.rarity : 'Recovery Item'}</span>
+        <h2>{buff?.name ?? product?.name}</h2><span className="buff-categories">{buff?.categories.join(' · ') ?? (product?.target === 'party' ? 'PARTY · 生存者全員' : 'SINGLE · 生存者1人')}</span>
+        <p>{buff?.description ?? `最大HPの${product!.ratio * 100}%回復。Downは回復しません。`}</p>
+        {buff ? <small>Owned: {owned} / {buff.maxStacks}</small> : null}
+        <strong className="shop-price">{item.price} Gold</strong><small>{reason ?? (product?.target === 'single' ? '対象を選んで購入' : '購入する')}</small>
+      </button>;
+    })}</div>
+    <div className="shop-actions">
+      <button type="button" className="dungeon-button secondary" disabled={rerollPending || run.gold < SHOP_CONFIG.rerollCost}
+        onClick={() => { setSelected(null); setRerollPending(true); onReroll(shop.rerollCount); }}>REROLL · {SHOP_CONFIG.rerollCost} Gold</button>
+      <button className="dungeon-button secondary" type="button" onClick={onLeave}>LEAVE SHOP →</button>
+      <small>{run.gold < SHOP_CONFIG.rerollCost ? 'Reroll: Not enough Gold' : '売り切れを含む全商品を再抽選します'} · Rerolls {shop.rerollCount}</small>
+    </div>
   </section>;
 }

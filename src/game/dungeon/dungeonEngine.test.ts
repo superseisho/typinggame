@@ -74,7 +74,7 @@ describe('floor and combat lifecycle', () => {
   });
   it('keeps Down into the next combat and resets only battle-local gauges/statuses', () => {
     let run = withHp(createDungeonRun(0, 'test'), [60, 0, 75, 80]);
-    run = choose('treasure', run);
+    run = reduceDungeon(choose('rest', run), { type: 'rest', action: 'party' });
     run = advance(run);
     const hp = run.combat.party.map((p) => p.currentHp);
     run = choose('battle', run);
@@ -130,7 +130,7 @@ describe('floor and combat lifecycle', () => {
     expect(ENEMIES_BY_ID['crypt-warden'].maxHp).toBeGreaterThan(ENEMIES_BY_ID['elite-slime'].maxHp);
   });
   it('can ambush on normal floors but never draws ambush before a boss', () => {
-    const reward = choose('treasure');
+    const reward = reduceDungeon(choose('rest'), { type: 'rest', action: 'party' });
     const outcomes = new Set<string | null>();
     for (let seed = 0; seed < 1000; seed++) {
       const rngState = Math.imul(seed, 214013) >>> 0;
@@ -174,36 +174,7 @@ describe('rest, shop and treasure', () => {
     expect(next.combat.party[1].currentHp).toBe(28);
     expect(next.combat.party[3].currentHp).toBe(0);
   });
-  it('shop deducts gold only for valid purchases, handles stock and does not advance until leaving', () => {
-    const room = { ...withHp(choose('shop'), [60, 0, 40, 130]), gold: 150, goldEarned: 200 };
-    const action = { type: 'purchase', productId: 'small-potion', targetId: 'warrior' } as const;
-    const bought = reduceDungeon(room, action);
-    expect(bought.gold).toBe(100);
-    expect(bought.goldEarned).toBe(200);
-    expect(bought.combat.party[0].currentHp).toBe(96);
-    expect(bought.runStatus).toBe('room');
-    expect(reduceDungeon(bought, action)).toBe(bought);
-    expect(reduceDungeon({ ...room, gold: 0 }, action).gold).toBe(0);
-    expect(reduceDungeon(room, { ...action, targetId: 'mage' })).toBe(room);
-    const full = { ...room, combat: createDungeonRun(1, 'full').combat };
-    expect(reduceDungeon(full, action)).toBe(full);
-    expect(advance(bought)).toBe(bought);
-    const left = reduceDungeon(bought, { type: 'leave-shop' });
-    expect(left.runStatus).toBe('reward');
-    expect(advance(left).currentFloor).toBe(2);
-  });
-  it('treasure awards gold or living-party healing exactly once', () => {
-    const outcomes = new Set<string>();
-    for (let i = 0; i < 100; i++) {
-      const run = withHp({ ...createDungeonRun(0, 'test'), rngState: (i * 214013) >>> 0 }, [60, 0, 40, 50]);
-      const reward = choose('treasure', run);
-      outcomes.add(reward.gold > 0 ? 'gold' : 'heal');
-      expect(reward.runStatus).toBe('reward');
-      expect(reward.combat.party[1].currentHp).toBe(0);
-      expect(reduceDungeon(reward, { type: 'choose', optionId: 'option', now: 1000 })).toBe(reward);
-    }
-    expect(outcomes).toEqual(new Set(['gold', 'heal']));
-  });
+  // Shop stock and the five Treasure outcomes are covered in shopTreasure.test.ts.
   it('calculates aggregate accuracy and WPM weighted by combat time, not room time', () => {
     const run = createDungeonRun(0, 'test');
     const results = getRunResults({ ...run, statistics: { ...run.statistics, correctCharacters: 200, misses: 50, combatMs: 60000 } });

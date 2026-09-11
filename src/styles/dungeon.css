@@ -22,6 +22,7 @@
 .floor-progress .is-current { color: #e8ce93; border-color: #e8ce93; background: #c9a66b12; }
 .floor-progress .is-cleared { color: #87ac97; border-color: #527364; }
 .room-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
+.room-grid--pre-boss { grid-template-columns: repeat(2,minmax(0,1fr)); width: min(780px,100%); margin-inline: auto; }
 .room-card { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; padding: 25px 18px; color: #e5d9c7; background: #121518; border: 1px solid #a58a5547; transition: border-color 140ms, background 140ms; }
 .room-card:hover:not(:disabled) { border-color: var(--gold); background: #23221d; }
 .room-card__icon { color: var(--gold); font-size: 36px; height: 52px; }

@@ -6,8 +6,13 @@ import type { DungeonAction, DungeonRoomType, DungeonRunState } from '../../type
 import { DUNGEON_CONFIG, TIER_ONE_ENCOUNTERS } from './dungeonConfig';
 import { GAME_CONFIG } from '../../data/gameConfig';
 import { ROOMS_BY_TYPE } from '../../data/rooms/roomDefinitions';
-import { generateRoomOptions, randomStep } from './roomGenerator';
-import { purchasableProduct, recoverParty, recoveryTargets, resolveRest } from './roomResolver';
+import { generatePreBossRooms, generateRoomOptions, randomStep } from './roomGenerator';
+import { isPreBossFloor } from './floorRules';
+import { recoverParty, resolveRest } from './roomResolver';
+import { generateShop, purchaseShopItem } from './shopEngine';
+import { SHOP_CONFIG } from './shopConfig';
+import { TREASURE_CONFIG } from './treasureConfig';
+import { drawTreasure } from './treasureEngine';
 import { addBuff, applyRunBuffs } from '../buffs/runBuffManager';
 import { generateBuffRewards } from '../buffs/buffRewards';
 import { BUFF_CONFIG, emptyBuffResources } from '../buffs/buffConfig';
@@ -23,18 +28,20 @@ function freshCombat(previous: CombatState, enemies: readonly string[] = []): Co
   })) };
 }
 
-function prepareBattle(run: DungeonRunState, room: BattleRoom, announce: boolean, now: number): DungeonRunState {
+function prepareBattle(run: DungeonRunState, room: BattleRoom, announce: boolean, now: number, trap = false): DungeonRunState {
   const random = randomStep(run.rngState);
-  const formations = TIER_ONE_ENCOUNTERS[room];
+  const formations = trap ? TREASURE_CONFIG.trapEncounters : TIER_ONE_ENCOUNTERS[room];
   const enemies = formations[Math.floor(random.value * formations.length)];
   const combat = freshCombat(run.combat, enemies);
-  return { ...run, rngState: random.seed, currentRoom: room, roomOptions: [], currentCombatMs: 0,
+  return { ...run, rngState: random.seed, currentRoom: trap ? 'treasure' : room, combatSource: trap ? 'treasure_trap' : 'room', roomOptions: [], currentCombatMs: 0,
     runStatus: announce ? 'announcement' : 'battle', combat: announce ? combat : startCombat(combat, now) };
 }
 
 function enterFloor(run: DungeonRunState): DungeonRunState {
   // Boss / safe exclusions are checked before drawing the ambush roll.
   if (DUNGEON_CONFIG.bossFloors.includes(run.currentFloor)) return prepareBattle(run, 'boss', true, 0);
+  // Safe preparation: neither the ambush roll nor normal room generation runs here.
+  if (isPreBossFloor(run.currentFloor)) return { ...run, runStatus: 'choosing', roomOptions: generatePreBossRooms(run.currentFloor) };
   if (!DUNGEON_CONFIG.safeFloors.includes(run.currentFloor)) {
     const random = randomStep(run.rngState);
     run = { ...run, rngState: random.seed };
@@ -46,12 +53,13 @@ function enterFloor(run: DungeonRunState): DungeonRunState {
 
 export function createDungeonRun(seed: number, id: string): DungeonRunState {
   return enterFloor({
+    shop: null, treasure: null, combatSource: 'room',
     activeBuffs: [], buffOptions: [], acquiredBuffId: null,
     id, rngState: seed >>> 0, currentFloor: 1, maxFloor: DUNGEON_CONFIG.maxFloor, enemyTier: 1,
     selectedDifficulty: 'normal', gold: DUNGEON_CONFIG.startingGold, goldEarned: 0,
     currentRoom: null, runStatus: 'choosing', roomOptions: [], combat: createCombatState([]),
     currentCombatMs: 0, statistics: { correctCharacters: 0, misses: 0, maxCombo: 0, timeoutCount: 0, combatMs: 0, enemiesDefeated: 0 },
-    clearedRooms: [], purchasedProducts: [], roomMessage: '', endedAt: null,
+    clearedRooms: [], roomMessage: '', endedAt: null,
   });
 }
 
@@ -69,7 +77,7 @@ function clearRunBuffs(run: DungeonRunState): DungeonRunState {
 }
 
 function advanceFloor(run: DungeonRunState): DungeonRunState {
-  return enterFloor({ ...run, currentFloor: run.currentFloor + 1, currentRoom: null, roomMessage: '', purchasedProducts: [],
+  return enterFloor({ ...run, currentFloor: run.currentFloor + 1, currentRoom: null, roomMessage: '', shop: null, treasure: null, combatSource: 'room',
     buffOptions: [], acquiredBuffId: null, combat: freshCombat(run.combat), currentCombatMs: 0 });
 }
 
@@ -86,11 +94,13 @@ function settleCombat(run: DungeonRunState, combat: CombatState, now: number): D
   } };
   if (combat.status === 'defeat') return clearRunBuffs({ ...next, runStatus: 'game_over', endedAt: now,
     clearedRooms: [...run.clearedRooms, { floor: run.currentFloor, roomType: run.currentRoom!, result: 'failed', goldReward: 0 }] });
-  const range = DUNGEON_CONFIG.rewards[run.currentRoom as BattleRoom];
+  const trap = run.combatSource === 'treasure_trap';
+  const range = trap ? TREASURE_CONFIG.trapGold : DUNGEON_CONFIG.rewards[run.currentRoom as BattleRoom];
   const random = randomStep(run.rngState);
   const gold = range[0] + Math.floor(random.value * (range[1] - range[0] + 1));
   const completed = completeRoom({ ...next, rngState: random.seed }, gold, `VICTORY · Gold +${gold}`, now);
   if (completed.runStatus === 'cleared') return clearRunBuffs(completed);
+  if (trap) return { ...completed, treasure: { opened: true, outcome: 'trap_battle', resolved: true }, roomMessage: `TRAP DEFEATED · Gold +${gold} · 宝箱の報酬はありません` };
   const reward = generateBuffRewards(completed.activeBuffs, run.currentRoom!, completed.rngState);
   if (reward.choices.length === 0) return { ...completed, rngState: reward.seed,
     gold: completed.gold + BUFF_CONFIG.fallbackGold, goldEarned: completed.goldEarned + BUFF_CONFIG.fallbackGold,
@@ -110,7 +120,9 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
       const activeBuffs = addBuff(run.activeBuffs, action.buffId);
       if (activeBuffs === run.activeBuffs) return run;
       const buff = BUFFS_BY_ID[action.buffId];
-      return { ...run, activeBuffs, runStatus: 'buff_acquired', acquiredBuffId: buff.id,
+      const claimed = run.currentRoom === 'treasure' && run.treasure && !run.treasure.resolved
+        ? completeRoom({ ...run, treasure: { ...run.treasure, resolved: true } }, 0, `TREASURE FOUND · ${buff.name}`) : run;
+      return { ...claimed, activeBuffs, runStatus: 'buff_acquired', acquiredBuffId: buff.id,
         combat: appendEvent(applyRunBuffs(run.combat, activeBuffs), 'ally-buff', `BLESSING ACQUIRED · ${buff.name}`, { abilityId: buff.id, soundId: buff.soundId }) };
     }
     case 'finish-buff':
@@ -123,12 +135,29 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
         return prepareBattle(run, option.type, false, action.now);
       }
       const next: DungeonRunState = { ...run, currentRoom: option.type, runStatus: 'room', roomOptions: [] };
-      if (option.type !== 'treasure') return next;
-      const random = randomStep(run.rngState);
-      const treasure = DUNGEON_CONFIG.treasure;
-      return random.value < treasure.goldChance
-        ? completeRoom({ ...next, rngState: random.seed }, treasure.gold, `Treasure · Gold +${treasure.gold}`)
-        : completeRoom({ ...next, rngState: random.seed, combat: recoverParty(next.combat, treasure.recoveryRatio) }, 0, `Treasure · 生存者のHP +${treasure.recoveryRatio * 100}%`);
+      if (option.type === 'shop') {
+        const generated = generateShop(next);
+        return { ...next, shop: generated.shop, rngState: generated.seed };
+      }
+      return option.type === 'treasure' ? { ...next, treasure: { opened: false, outcome: null, resolved: false } } : next;
+    }
+    case 'open-treasure': {
+      if (run.runStatus !== 'room' || run.currentRoom !== 'treasure' || !run.treasure || run.treasure.opened) return run;
+      const result = drawTreasure(run.rngState);
+      const next: DungeonRunState = { ...run, rngState: result.seed, treasure: { opened: true, outcome: result.outcome, resolved: false } };
+      if (result.outcome === 'trap_battle') return prepareBattle(next, 'battle', true, 0, true);
+      if (result.outcome === 'buff' || result.outcome === 'rare_buff') {
+        const reward = generateBuffRewards(run.activeBuffs, 'treasure', next.rngState,
+          { weights: result.outcome === 'rare_buff' ? TREASURE_CONFIG.rareBuffWeights : TREASURE_CONFIG.buffWeights });
+        const message = result.outcome === 'rare_buff' ? 'RARE TREASURE! · Rare / Epic確定' : 'TREASURE FOUND! · 無料の祝福';
+        if (reward.choices.length) return { ...next, rngState: reward.seed, runStatus: 'buff_reward', buffOptions: reward.choices, roomMessage: message };
+        return completeRoom({ ...next, rngState: reward.seed, treasure: { ...next.treasure!, resolved: true } }, BUFF_CONFIG.fallbackGold, `${message} · 取得可能なBuffなし · Gold +${BUFF_CONFIG.fallbackGold}`);
+      }
+      const resolved = { ...next, treasure: { ...next.treasure!, resolved: true } };
+      if (result.outcome === 'party_heal') return completeRoom({ ...resolved, combat: recoverParty(run.combat, TREASURE_CONFIG.healRatio) }, 0, `PARTY RECOVERED · 生存者HP +${TREASURE_CONFIG.healRatio * 100}%（Downは回復しません）`);
+      const random = randomStep(next.rngState);
+      const gold = TREASURE_CONFIG.gold.min + Math.floor(random.value * (TREASURE_CONFIG.gold.max - TREASURE_CONFIG.gold.min + 1));
+      return completeRoom({ ...resolved, rngState: random.seed }, gold, `TREASURE FOUND! · +${gold} GOLD`);
     }
     case 'enter-battle':
       if (run.runStatus !== 'announcement') return run;
@@ -147,13 +176,15 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
     }
     case 'purchase': {
       if (run.runStatus !== 'room' || run.currentRoom !== 'shop') return run;
-      const product = purchasableProduct(action.productId, run.gold, run.purchasedProducts);
-      if (!product || !recoveryTargets(run.combat).some((member) => member.definitionId === action.targetId)) return run;
-      return { ...run, gold: run.gold - product.price, purchasedProducts: [...run.purchasedProducts, product.id],
-        combat: recoverParty(run.combat, product.recoveryRatio, action.targetId), roomMessage: `${product.name} を使用した · −${product.price} Gold` };
+      return purchaseShopItem(run, action.productId, action.targetId);
+    }
+    case 'reroll-shop': {
+      if (run.runStatus !== 'room' || run.currentRoom !== 'shop' || !run.shop || action.revision !== run.shop.rerollCount || run.gold < SHOP_CONFIG.rerollCost) return run;
+      const generated = generateShop(run, run.shop.rerollCount + 1);
+      return { ...run, gold: run.gold - SHOP_CONFIG.rerollCost, rngState: generated.seed, shop: generated.shop, roomMessage: '商品を入れ替えました' };
     }
     case 'leave-shop':
-      return run.runStatus === 'room' && run.currentRoom === 'shop' ? completeRoom(run, 0, 'Shop · 買い物を終えた') : run;
+      return run.runStatus === 'room' && run.currentRoom === 'shop' ? advanceFloor(completeRoom(run, 0, 'Shop · 買い物を終えた')) : run;
     case 'advance':
       if (run.runStatus !== 'reward') return run;
       return advanceFloor(run);

@@ -1,3 +1,4 @@
+import { TreasureRoom } from '../components/dungeon/TreasureRoom';
 import { useLayoutEffect, useState } from 'react';
 import { AudioSettingsPanel } from '../components/AudioSettingsPanel';
 import { BattleStage } from '../components/BattleStage';
@@ -12,6 +13,7 @@ import { CurrentBuffs } from '../components/dungeon/CurrentBuffs';
 import { useDungeon } from '../hooks/useDungeon';
 import { DUNGEON_CONFIG } from '../game/dungeon/dungeonConfig';
 import { roomName } from '../game/dungeon/dungeonEngine';
+import { isPreBossFloor } from '../game/dungeon/floorRules';
 import { audioManager } from '../audio/AudioManager';
 import '../styles/dungeon.css';
 import '../styles/buffs.css';
@@ -44,15 +46,16 @@ export function DungeonScreen() {
       <div key={`${run.id}-${run.currentFloor}`}>
         {ended ? <DungeonResult run={run} onRestart={start} saveError={saveError} /> : <>
           {run.runStatus === 'buff_reward' || run.runStatus === 'buff_acquired' ? <BuffReward run={run} onChoose={(buffId) => dispatch({ type: 'choose-buff', buffId })} /> : null}
-          {run.runStatus === 'choosing' ? <RoomSelection options={run.roomOptions} onChoose={(optionId) => dispatch({ type: 'choose', optionId, now: Date.now() })} /> : null}
+          {run.runStatus === 'choosing' ? <RoomSelection preBoss={isPreBossFloor(run.currentFloor)} options={run.roomOptions} onChoose={(optionId) => dispatch({ type: 'choose', optionId, now: Date.now() })} /> : null}
           {run.runStatus === 'room' && run.currentRoom === 'rest' ? <RestRoom combat={run.combat} onRest={(action, targetId) => dispatch({ type: 'rest', action, targetId })} /> : null}
-          {run.runStatus === 'room' && run.currentRoom === 'shop' ? <ShopRoom run={run} onPurchase={(productId, targetId) => dispatch({ type: 'purchase', productId, targetId })} onLeave={() => dispatch({ type: 'leave-shop' })} /> : null}
-          {run.runStatus === 'announcement' ? <div className="encounter-announcement" role="status"><span>FLOOR {run.currentFloor}</span><h1>{run.currentRoom === 'boss' ? 'BOSS APPROACHING' : 'AMBUSH!'}</h1><p>{run.currentRoom === 'boss' ? '墓所の守護者が現れた。' : '敵の奇襲を受けた！'}</p></div> : null}
+          {run.runStatus === 'room' && run.currentRoom === 'shop' ? <ShopRoom run={run} onReroll={(revision) => dispatch({ type: 'reroll-shop', revision })} onPurchase={(productId, targetId) => dispatch({ type: 'purchase', productId, targetId })} onLeave={() => dispatch({ type: 'leave-shop' })} /> : null}
+          {run.runStatus === 'room' && run.currentRoom === 'treasure' ? <TreasureRoom onOpen={() => dispatch({ type: 'open-treasure' })} /> : null}
+          {run.runStatus === 'announcement' ? <div className={`encounter-announcement${run.combatSource === 'treasure_trap' ? ' is-trap' : ''}`} role="status"><span>FLOOR {run.currentFloor}</span><h1>{run.combatSource === 'treasure_trap' ? 'TRAP!' : run.currentRoom === 'boss' ? 'BOSS APPROACHING' : 'AMBUSH!'}</h1><p>{run.combatSource === 'treasure_trap' ? 'The treasure was a trap! 宝箱の報酬は失われた。' : run.currentRoom === 'boss' ? '墓所の守護者が現れた。' : '敵の奇襲を受けた！'}</p></div> : null}
           {run.runStatus === 'reward' ? <section className="room-reward" aria-label="部屋クリア" aria-live="polite">
             <div><span className="eyebrow">FLOOR {run.currentFloor} COMPLETE</span><h2>{run.roomMessage}</h2><p>HPと戦闘不能を維持して先へ進みます。</p></div>
             <button type="button" className="dungeon-button" onClick={() => dispatch({ type: 'advance' })}>次の階へ · FLOOR {run.currentFloor + 1} →</button>
           </section> : null}
-          {showBattleStage ? <BattleStage combat={run.combat} floorLabel={combatActive ? roomName(run.currentRoom) : `FLOOR ${run.currentFloor} · ${roomName(run.currentRoom)}`} /> : <div className="dungeon-party"><PartyPanel combat={run.combat} /></div>}
+          {showBattleStage ? <BattleStage combat={run.combat} floorLabel={combatActive ? (run.combatSource === 'treasure_trap' ? 'Treasure Trap' : roomName(run.currentRoom)) : `FLOOR ${run.currentFloor} · ${roomName(run.currentRoom)}`} /> : <div className="dungeon-party"><PartyPanel combat={run.combat} /></div>}
         </>}
       </div>
     </>}

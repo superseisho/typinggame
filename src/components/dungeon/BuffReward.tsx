@@ -3,9 +3,10 @@ import type { DungeonRunState } from '../../types/dungeon';
 
 export function BuffReward({ run, onChoose }: { readonly run: DungeonRunState; readonly onChoose: (id: string) => void }) {
   const acquired = run.runStatus === 'buff_acquired';
-  return <section className="dungeon-room buff-reward" aria-label="Buff Reward">
+  const rareTreasure = run.treasure?.outcome === 'rare_buff';
+  return <section className={`dungeon-room buff-reward${rareTreasure ? ' rare-treasure' : ''}`} aria-label="Buff Reward">
     <div className="dungeon-heading" aria-live="polite"><span className="eyebrow">{run.roomMessage}</span>
-      <h1>{acquired ? 'BLESSING ACQUIRED' : 'CHOOSE A BLESSING'}</h1>
+      <h1>{acquired ? 'BLESSING ACQUIRED' : rareTreasure ? 'RARE TREASURE!' : 'CHOOSE A BLESSING'}</h1>
       <p>{acquired ? BUFFS_BY_ID[run.acquiredBuffId!].name : '1つ選んで次の階へ。この探索中だけ効果が続きます。'}</p></div>
     <div className="room-grid">{run.buffOptions.map(id => {
       const buff = BUFFS_BY_ID[id];

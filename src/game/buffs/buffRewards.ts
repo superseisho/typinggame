@@ -5,12 +5,14 @@ import { BUFF_CONFIG } from './buffConfig';
 import { canAddBuff } from './runBuffManager';
 
 /** Rarity is drawn from non-empty pools, then a uniform definition from that pool. */
-export function generateBuffRewards(buffs: readonly RunBuff[], room: string, seed: number) {
+export function generateBuffRewards(buffs: readonly RunBuff[], room: string, seed: number,
+  options: { readonly weights?: Readonly<Record<BuffRarity, number>>; readonly count?: number } = {}) {
   let eligible = BUFF_DEFINITIONS.filter(buff => canAddBuff(buffs, buff.id));
   const choices: string[] = [];
-  const weights = BUFF_CONFIG.rarityWeights[room === 'elite' || room === 'boss' ? 'elite' : 'battle'];
-  while (choices.length < BUFF_CONFIG.choices && eligible.length) {
-    const rarities = (Object.keys(weights) as BuffRarity[]).filter(rarity => eligible.some(buff => buff.rarity === rarity));
+  const weights = options.weights ?? BUFF_CONFIG.rarityWeights[room === 'elite' || room === 'boss' ? 'elite' : 'battle'];
+  while (choices.length < (options.count ?? BUFF_CONFIG.choices) && eligible.length) {
+    const rarities = (Object.keys(weights) as BuffRarity[]).filter(rarity => weights[rarity] > 0 && eligible.some(buff => buff.rarity === rarity));
+    if (!rarities.length) break;
     let random = randomStep(seed); seed = random.seed;
     let roll = random.value * rarities.reduce((sum, rarity) => sum + weights[rarity], 0);
     const rarity = rarities.find(rarity => (roll -= weights[rarity]) < 0) ?? rarities[rarities.length - 1];

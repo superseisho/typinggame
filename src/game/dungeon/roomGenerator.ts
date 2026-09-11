@@ -8,6 +8,10 @@ export function randomStep(seed: number): { seed: number; value: number } {
   return { seed: next, value: next / 4294967296 };
 }
 
+export function generatePreBossRooms(floor: number): RoomOption[] {
+  return [{ id: `${floor}-rest`, type: 'rest' }, { id: `${floor}-shop`, type: 'shop' }];
+}
+
 export function generateRoomOptions(seed: number, floor: number, definitions = ROOM_DEFINITIONS) {
   const options: RoomOption[] = [];
   for (let i = 0; i < DUNGEON_CONFIG.roomChoices; i += 1) {
