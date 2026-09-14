@@ -26,6 +26,7 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
   });
 
   return {
+    targetEnemyId: enemies[0]?.instanceId ?? null,
     runBuffs: [],
     buffResources: emptyBuffResources(),
     status: 'ready',
@@ -44,7 +45,6 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
       timeoutCount: 0,
     },
     partyTargetCursor: 0,
-    enemyTargetCursor: 0,
     eventSequence: 0,
     events: [],
     log: [],

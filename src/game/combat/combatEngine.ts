@@ -9,7 +9,8 @@ import type { CombatState } from '../../types/game';
 import type { TypingEngineState } from '../../types/typing';
 import { areEnemiesDefeated, isPartyDefeated } from './combatSelectors';
 import { chooseEnemyAbility, executeEnemyAbility } from './enemyAbilityEngine';
-import { selectEnemyTargetIndex, selectLowestPartyHpIndex } from './targeting';
+import { selectLowestPartyHpIndex } from './targeting';
+import { ensureValidEnemyTarget, resolveCurrentEnemyTarget } from './enemyTarget';
 
 const ABILITY_STATUS_PREFIX = 'ability:';
 
@@ -80,7 +81,7 @@ function applyAreaAbilityDamage(state: CombatState, characterId: string, power: 
 function finishIfDefeated(state: CombatState, now: number): CombatState {
   if (!isPartyDefeated(state.party)) return state;
   return appendEvent(
-    { ...state, status: 'defeat', stats: { ...state.stats, endedAt: now } },
+    { ...state, targetEnemyId: null, status: 'defeat', stats: { ...state.stats, endedAt: now } },
     'defeat',
     'パーティーは闇に呑まれた。',
   );
@@ -89,7 +90,7 @@ function finishIfDefeated(state: CombatState, now: number): CombatState {
 export function startCombat(state: CombatState, now = Date.now()): CombatState {
   if (state.status !== 'ready') return state;
   return appendEvent(
-    { ...state, status: 'active', stats: { ...state.stats, startedAt: now } },
+    { ...state, targetEnemyId: state.enemies.find(enemy => enemy.currentHp > 0)?.instanceId ?? null, status: 'active', stats: { ...state.stats, startedAt: now } },
     'system',
     '戦闘開始 — ローマ字を打ち、仲間の攻撃を導け。',
   );
@@ -221,7 +222,7 @@ export function applyCorrectTyping(
 
   if (areEnemiesDefeated(nextState.enemies)) {
     return appendEvent(
-      { ...nextState, status: 'victory', stats: { ...nextState.stats, endedAt: now } },
+      { ...nextState, targetEnemyId: null, status: 'victory', stats: { ...nextState.stats, endedAt: now } },
       'victory',
       '敵部隊を殲滅した。',
     );
@@ -268,10 +269,9 @@ export function applyCorrectTyping(
     const combatant = nextState.party[partyIndex];
     const character = getEffectiveCharacter(nextState, combatant.definitionId);
     if (combatant.currentHp <= 0 || combatant.attackCharge < character.attackThreshold) continue;
-    const targetIndex = selectEnemyTargetIndex(nextState, character.targetRule);
-    if (targetIndex === null) break;
-
-    const target = nextState.enemies[targetIndex];
+    nextState = ensureValidEnemyTarget(nextState);
+    const target = resolveCurrentEnemyTarget(nextState);
+    if (!target) break;
     const enemy = ENEMIES_BY_ID[target.definitionId];
     const defense = Math.round(enemy.defense * target.defenseMultiplier);
     const comboMultiplier = getComboMultiplier(nextState, character.id);
@@ -286,10 +286,9 @@ export function applyCorrectTyping(
             attackCharge: member.attackCharge - character.attackThreshold,
           }
         : member),
-      enemies: nextState.enemies.map((member, index) => index === targetIndex
+      enemies: nextState.enemies.map((member) => member.instanceId === target.instanceId
         ? { ...member, currentHp: targetHp }
         : member),
-      enemyTargetCursor: nextState.enemyTargetCursor + 1,
       buffResources: { ...nextState.buffResources, counters: { ...nextState.buffResources.counters, [character.id]: 0 } },
     };
     nextState = appendEvent(
@@ -309,13 +308,13 @@ export function applyCorrectTyping(
     }
     if (areEnemiesDefeated(nextState.enemies)) {
       return appendEvent(
-        { ...nextState, status: 'victory', stats: { ...nextState.stats, endedAt: now } },
+        { ...nextState, targetEnemyId: null, status: 'victory', stats: { ...nextState.stats, endedAt: now } },
         'victory',
         '敵部隊を殲滅した。',
       );
     }
   }
-  return nextState;
+  return ensureValidEnemyTarget(nextState);
 }
 
 function performEnemyAttack(state: CombatState, enemyIndex: number, now: number): CombatState {
@@ -414,5 +413,5 @@ export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()
       if (nextState.status === 'defeat') break;
     }
   }
-  return nextState;
+  return ensureValidEnemyTarget(nextState);
 }

@@ -221,6 +221,7 @@ export interface CombatEvent {
 }
 
 export interface CombatState {
+  readonly targetEnemyId: string | null;
   readonly runBuffs: readonly RunBuff[];
   readonly buffResources: BuffCombatResources;
   readonly status: CombatStatus;
@@ -229,7 +230,6 @@ export interface CombatState {
   readonly typing: import('./typing').TypingEngineState;
   readonly stats: CombatStats;
   readonly partyTargetCursor: number;
-  readonly enemyTargetCursor: number;
   readonly eventSequence: number;
   readonly events: readonly CombatEvent[];
   readonly log: readonly CombatEvent[];

@@ -6,7 +6,7 @@ import { AudioSettingsPanel } from '../components/AudioSettingsPanel';
 import { audioManager } from '../audio/AudioManager';
 
 export function CombatScreen() {
-  const { combat, start, restart } = useCombat();
+  const { combat, start, restart, selectTarget } = useCombat();
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
   const results = useMemo(
     () => ({ accuracy: getAccuracy(combat), wpm: getWpm(combat) }),
@@ -35,7 +35,7 @@ export function CombatScreen() {
       </button>
       <AudioSettingsPanel open={audioSettingsOpen} onClose={() => setAudioSettingsOpen(false)} />
 
-      <BattleStage combat={combat} />
+      <BattleStage combat={combat} onSelectEnemyTarget={selectTarget} />
 
       {showOverlay ? (
         <div className="modal-backdrop">

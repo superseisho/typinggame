@@ -23,14 +23,17 @@ function EnemyMotionPortrait({
   combat,
   enemyState,
   enemy,
+  targeted,
 }: {
   readonly combat: CombatState;
   readonly enemyState: EnemyCombatState;
   readonly enemy: EnemyDefinition;
+  readonly targeted: boolean;
 }) {
   const motion = usePortraitMotion(combat, 'enemy', enemyState.instanceId, enemyState.currentHp <= 0);
   return (
     <div className="enemy-unit__visual">
+      {targeted ? <span className="enemy-target-marker">▼ TARGET</span> : null}
       <PortraitMotionLayer className="enemy-unit__motion" motion={motion}>
         <div className={`enemy-avatar sprite--${enemy.sprite}`}>
           <div className="enemy-avatar__mist" />
@@ -42,7 +45,7 @@ function EnemyMotionPortrait({
   );
 }
 
-export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING' }: { readonly combat: CombatState; readonly floorLabel?: string }) {
+export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING', onSelectEnemyTarget }: { readonly combat: CombatState; readonly floorLabel?: string; readonly onSelectEnemyTarget?: (enemyId: string) => void }) {
   const livingCount = combat.enemies.filter((enemy) => enemy.currentHp > 0).length;
 
   return (
@@ -59,6 +62,8 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING' }: { readonl
           const specialRatio = enemyState.specialGauge / enemy.specialGaugeMax;
           const attackRatio = Math.max(0, Math.min(1, (enemy.attackCooldown - enemyState.cooldownRemainingMs) / enemy.attackCooldown));
           const knockedOut = enemyState.currentHp <= 0;
+          const targeted = combat.status === 'active' && !knockedOut && combat.targetEnemyId === enemyState.instanceId;
+          const selectable = combat.status === 'active' && !knockedOut && !!onSelectEnemyTarget;
           const specialLevel = specialState(specialRatio);
           const pendingAbility = enemyState.pendingSpecial
             ? enemy.specialAbilities.find((ability) => ability.id === enemyState.pendingSpecial?.abilityId)
@@ -66,9 +71,21 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING' }: { readonl
 
           return (
             <article
-              className={`enemy-unit hp-${hpSeverity(hpRatio)} special-${specialLevel} ${attackRatio >= .8 ? 'attack-imminent' : ''} ${knockedOut ? 'is-defeated' : ''}`}
+              className={`enemy-unit hp-${hpSeverity(hpRatio)} special-${specialLevel} ${attackRatio >= .8 ? 'attack-imminent' : ''} ${knockedOut ? 'is-defeated' : ''} ${targeted ? 'is-targeted' : ''} ${selectable ? 'is-selectable' : ''}`}
               key={enemyState.instanceId}
+              data-enemy-id={enemyState.instanceId}
             >
+              {selectable ? <button type="button" className="enemy-target-hitarea" tabIndex={-1}
+                aria-label={`${enemy.name}: Click to target`} aria-pressed={targeted} title="Click to target"
+                onPointerDown={event => event.preventDefault()}
+                onClick={event => {
+                  // No keyboard activation or focus capture: typing uses window keydown.
+                  if (event.detail === 0) return;
+                  onSelectEnemyTarget?.(enemyState.instanceId);
+                  // Also release a previously focused toolbar button, while
+                  // preserving any future dedicated typing input's focus.
+                  if (document.activeElement instanceof HTMLButtonElement) document.activeElement.blur();
+                }} /> : null}
               <CombatFeedback events={combat.events} targetId={enemyState.instanceId} />
               {knockedOut ? <span className="down-stamp">DEFEATED</span> : null}
               {specialLevel === 'max' ? <span className="special-warning">WARNING</span> : null}
@@ -81,7 +98,7 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING' }: { readonl
                 <em>{enemy.boss ? 'BOSS' : enemy.elite ? 'ELITE' : enemyState.formationIndex === 0 ? 'FRONT' : 'REAR'}</em>
               </div>
 
-              <EnemyMotionPortrait combat={combat} enemyState={enemyState} enemy={enemy} />
+              <EnemyMotionPortrait combat={combat} enemyState={enemyState} enemy={enemy} targeted={targeted} />
 
               <div className="primary-gauge">
                 <div className="gauge-label"><span>HP</span><strong>{Math.round(hpRatio * 100)}%</strong></div>

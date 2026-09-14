@@ -5,9 +5,9 @@ import { PartyPanel } from './PartyPanel';
 import { CombatLog } from './CombatLog';
 
 /** Shared by standalone combat and dungeon encounters. Rules remain outside UI. */
-export function BattleStage({ combat, floorLabel }: { readonly combat: CombatState; readonly floorLabel?: string }) {
+export function BattleStage({ combat, floorLabel, onSelectEnemyTarget }: { readonly combat: CombatState; readonly floorLabel?: string; readonly onSelectEnemyTarget?: (enemyId: string) => void }) {
   return <div className="battle-stage">
-    <EnemyPanel combat={combat} floorLabel={floorLabel} />
+    <EnemyPanel combat={combat} floorLabel={floorLabel} onSelectEnemyTarget={onSelectEnemyTarget} />
     <TypingPanel combat={combat} />
     <PartyPanel combat={combat} />
     <CombatLog combat={combat} />

@@ -35,7 +35,7 @@ describe('combat engine', () => {
     expect(next.party.map((member) => member.attackCharge)).toEqual([0, 1, 1, 1]);
   });
 
-  it('uses character target rules when a threshold is reached', () => {
+  it('uses the automatic initial target when a threshold is reached', () => {
     let state = startCombat(createCombatState(['crypt-slime', 'grave-shaman']), 1_000);
     const mageThreshold = CHARACTERS_BY_ID.mage.attackThreshold;
     for (let index = 0; index < mageThreshold; index += 1) {

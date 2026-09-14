@@ -96,6 +96,8 @@ npm run build
 
 `src/screens/CombatScreen.tsx` と `useCombat` は単体戦闘用として残し、共通の `BattleStage` を利用しています。現在のアプリの入口は `DungeonScreen` です。戦闘ルール・TypingEngineを探索UIへ移植していません。
 
+敵カード全体をクリックすると共有TARGETを切り替えられます（キーボード割り当てなし）。`CombatState.targetEnemyId` は敵のinstanceIdを保持し、`combat/enemyTarget.ts` が選択・生存確認・先頭の生存敵へのフォールバックを担当します。全員の通常Attackはこの対象へ、Mage全体Abilityは全生存敵へ作用します。対象撃破時は同じ入力処理内で再選択し、戦闘終了時はnull、新戦闘開始時は先頭の生存敵になります。クリックはフォーカスを奪わず、TARGET枠・マーカーは立ち絵モーションから分離しています。`scripts/verify-enemy-target.mjs` で実UIのクリック→タイピング→ダメージ→自動再選択を3サイズで検証できます。
+
 ## Run限定Buffと戦闘後の3択
 
 Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階層を進めません。1つ取得すると `buff_acquired` を500ms表示し、自動で次の階へ進みます。二重クリック・古い階層のイベント・無効なBuff IDをエンジンで拒否します。最終Bossは直接Clearとなります。将来の途中BossにはElite抽選を利用します。

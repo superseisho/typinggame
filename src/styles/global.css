@@ -339,6 +339,13 @@ button { cursor: pointer; }
 .enemy-unit__topline small { display: block; margin-top: 1px; color: #6e726e; font: 6px Cinzel, serif; letter-spacing: .1em; }
 .enemy-unit__topline em { margin-left: auto; padding: 3px 5px; color: #76736d; border: 1px solid rgba(255,255,255,.06); font: 6px 'Roboto Mono', monospace; font-style: normal; }
 .enemy-unit__visual { grid-area: visual; position: relative; min-width: 0; }
+.enemy-target-hitarea { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: pointer; }
+.enemy-target-hitarea:hover { background: transparent; }
+.battle-stage .enemy-unit.is-selectable:hover:not(.is-targeted) { border-color: #9a927366; }
+.battle-stage .enemy-unit.is-targeted { border-color: #d4b574; box-shadow: inset 0 0 18px #d4b57412, 0 0 8px #d4b57420; }
+.enemy-unit.is-defeated { cursor: default; }
+/* Inside the existing portrait band: no extra row, no motion-layer transform. */
+.enemy-target-marker { position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 3; pointer-events: none; white-space: nowrap; color: #f0ce87; font: 700 9px/12px 'Roboto Mono', monospace; letter-spacing: .05em; text-shadow: 0 0 7px #d4b57444; }
 .battle-stage .enemy-unit .enemy-avatar { height: 112px; }
 .battle-stage .enemy-unit .enemy-avatar__body { width: 72px; height: 62px; margin-top: 17px; gap: 14px; }
 .battle-stage .enemy-unit .enemy-avatar__eye { width: 7px; height: 3px; }

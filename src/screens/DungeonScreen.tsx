@@ -64,7 +64,7 @@ export function DungeonScreen() {
             <div><span className="eyebrow">FLOOR {run.currentFloor} COMPLETE</span><h2>{run.roomMessage}</h2><p>HPと戦闘不能を維持して先へ進みます。</p></div>
             <button type="button" className="dungeon-button" onClick={() => dispatch({ type: 'advance' })}>{narrativeRoom ? 'CONTINUE' : '次の階へ'} · FLOOR {run.currentFloor + 1} →</button>
           </section> : null}
-          {showBattleStage ? <BattleStage combat={run.combat} floorLabel={combatActive ? (run.combatSource === 'treasure_trap' ? 'Treasure Trap' : roomName(run.currentRoom)) : `FLOOR ${run.currentFloor} · ${roomName(run.currentRoom)}`} /> : null}
+          {showBattleStage ? <BattleStage combat={run.combat} onSelectEnemyTarget={enemyId => dispatch({ type: 'select-enemy-target', enemyId })} floorLabel={combatActive ? (run.combatSource === 'treasure_trap' ? 'Treasure Trap' : roomName(run.currentRoom)) : `FLOOR ${run.currentFloor} · ${roomName(run.currentRoom)}`} /> : null}
         </>}
       </div>
       {showExplorationParty ? <ExplorationPartyPanel combat={run.combat} /> : null}

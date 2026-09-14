@@ -1,5 +1,6 @@
 import { createCombatState } from '../combat/createCombatState';
 import { startCombat, tickCombat } from '../combat/combatEngine';
+import { selectEnemyTarget } from '../combat/enemyTarget';
 import { handleCombatTyping } from '../combat/handleCombatTyping';
 import type { CombatState } from '../../types/game';
 import type { DungeonAction, DungeonRoomType, DungeonRunState } from '../../types/dungeon';
@@ -189,6 +190,11 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
       if (run.runStatus !== 'battle' || !Number.isFinite(action.deltaMs) || action.deltaMs <= 0) return run;
       const elapsed = Math.min(action.deltaMs, GAME_CONFIG.maxFrameDeltaMs);
       return settleCombat({ ...run, currentCombatMs: run.currentCombatMs + elapsed }, tickCombat(run.combat, elapsed, action.now), action.now);
+    }
+    case 'select-enemy-target': {
+      if (run.runStatus !== 'battle') return run;
+      const combat = selectEnemyTarget(run.combat, action.enemyId);
+      return combat === run.combat ? run : { ...run, combat };
     }
     case 'key':
       return run.runStatus !== 'battle' ? run : settleCombat(run, handleCombatTyping(run.combat, action.key, action.now), action.now);

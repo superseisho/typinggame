@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GAME_CONFIG } from '../data/gameConfig';
 import { startCombat, tickCombat } from '../game/combat/combatEngine';
+import { selectEnemyTarget } from '../game/combat/enemyTarget';
 import { createCombatState } from '../game/combat/createCombatState';
 import { handleCombatTyping } from '../game/combat/handleCombatTyping';
 import { LocalStorageSaveRepository } from '../game/save/LocalStorageSaveRepository';
@@ -71,5 +72,9 @@ export function useCombat() {
     setCombat(startCombat(createCombatState()));
   }, []);
 
-  return { combat, start, restart };
+  const selectTarget = useCallback((enemyId: string) => {
+    setCombat(current => selectEnemyTarget(current, enemyId));
+  }, []);
+
+  return { combat, start, restart, selectTarget };
 }

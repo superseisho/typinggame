@@ -62,6 +62,7 @@ export interface DungeonRunState {
 }
 export type RestAction = 'party' | 'focused' | 'revive';
 export type DungeonAction =
+  | { readonly type: 'select-enemy-target'; readonly enemyId: string }
   | { readonly type: 'encounter-choice'; readonly choiceId: string; readonly now: number }
   | { readonly type: 'choose-buff'; readonly buffId: string }
   | { readonly type: 'finish-buff' }
