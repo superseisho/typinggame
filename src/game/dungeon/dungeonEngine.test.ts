@@ -41,8 +41,8 @@ describe('room generation', () => {
       expect(new Set(generated.options.map((o) => o.id)).size).toBe(3);
       for (const room of generated.options) { counts.add(room.type); expect(generated.options.filter((o) => o.type === room.type).length).toBeLessThanOrEqual(2); }
     }
-    expect(counts.size).toBe(5);
-    expect(ROOM_DEFINITIONS.map((r) => r.name)).toEqual(['Battle', 'Elite Battle', 'Rest', 'Shop', 'Treasure']);
+    expect(counts.size).toBe(7);
+    expect(ROOM_DEFINITIONS.map((r) => r.name)).toEqual(['Battle', 'Elite Battle', 'Rest', 'Shop', 'Treasure', 'Event', 'Altar']);
   });
   it('always offers a choice on the first safe floor', () => {
     for (let seed = 0; seed < 50; seed++) expect(createDungeonRun(seed, 'test').runStatus).toBe('choosing');

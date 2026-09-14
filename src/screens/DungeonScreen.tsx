@@ -1,8 +1,10 @@
 import { TreasureRoom } from '../components/dungeon/TreasureRoom';
-import { useLayoutEffect, useState } from 'react';
+import { EncounterRoom } from '../components/dungeon/EncounterRoom';
+import { ExplorationPartyPanel } from '../components/dungeon/ExplorationPartyPanel';
+import { shouldShowBattleStage, shouldShowExplorationParty } from '../game/dungeon/explorationDisplay';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { AudioSettingsPanel } from '../components/AudioSettingsPanel';
 import { BattleStage } from '../components/BattleStage';
-import { PartyPanel } from '../components/PartyPanel';
 import { RoomSelection } from '../components/dungeon/RoomSelection';
 import { RestRoom } from '../components/dungeon/RestRoom';
 import { ShopRoom } from '../components/dungeon/ShopRoom';
@@ -21,14 +23,20 @@ import '../styles/buffs.css';
 export function DungeonScreen() {
   const { run, start, dispatch, saveError } = useDungeon();
   const [audioOpen, setAudioOpen] = useState(false);
+  const roomContentRef = useRef<HTMLDivElement>(null);
   // All encounter kinds share this phase; announcement and victory are not combat.
   const combatActive = run?.runStatus === 'battle';
   useLayoutEffect(() => {
     if (combatActive) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [combatActive]);
-  const showBattleStage = run && (run.runStatus === 'battle' || run.runStatus === 'announcement' || (run.runStatus === 'reward' && run.combat.enemies.length > 0));
+  const showBattleStage = shouldShowBattleStage(run);
+  const showExplorationParty = shouldShowExplorationParty(run);
+  useLayoutEffect(() => {
+    roomContentRef.current?.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [run?.currentFloor, run?.currentRoom, run?.runStatus]);
   const ended = run?.runStatus === 'cleared' || run?.runStatus === 'game_over';
-  return <main className={`game-shell dungeon-shell${combatActive ? ' dungeon-shell--combat' : ''}`}>
+  const narrativeRoom = run?.currentRoom === 'event' || run?.currentRoom === 'altar';
+  return <main className={`game-shell dungeon-shell${combatActive ? ' dungeon-shell--combat' : ''}${showExplorationParty ? ' dungeon-shell--exploration' : ''}`}>
     <header className="topbar">
       <div className="brand-mark"><span>ᛟ</span></div><div className="brand-copy"><strong>ECHOES OF THE DEEP</strong><small>Dungeon Expedition · Tier 1</small></div>
       <button type="button" className="dungeon-audio" onClick={() => { void audioManager.unlock(); setAudioOpen(!audioOpen); }} aria-label="オーディオ設定を開く">♪ AUDIO</button>
@@ -43,21 +51,23 @@ export function DungeonScreen() {
     </section> : <>
       {!combatActive ? <DungeonProgressHeader run={run} /> : null}
       {!combatActive && !ended ? <CurrentBuffs key={run.id} buffs={run.activeBuffs} /> : null}
-      <div key={`${run.id}-${run.currentFloor}`}>
+      <div ref={roomContentRef} className={showExplorationParty ? 'dungeon-room-content' : undefined} key={`${run.id}-${run.currentFloor}`}>
         {ended ? <DungeonResult run={run} onRestart={start} saveError={saveError} /> : <>
           {run.runStatus === 'buff_reward' || run.runStatus === 'buff_acquired' ? <BuffReward run={run} onChoose={(buffId) => dispatch({ type: 'choose-buff', buffId })} /> : null}
           {run.runStatus === 'choosing' ? <RoomSelection preBoss={isPreBossFloor(run.currentFloor)} options={run.roomOptions} onChoose={(optionId) => dispatch({ type: 'choose', optionId, now: Date.now() })} /> : null}
+          {run.runStatus === 'room' && narrativeRoom ? <EncounterRoom run={run} onChoose={choiceId => dispatch({ type: 'encounter-choice', choiceId, now: Date.now() })} /> : null}
           {run.runStatus === 'room' && run.currentRoom === 'rest' ? <RestRoom combat={run.combat} onRest={(action, targetId) => dispatch({ type: 'rest', action, targetId })} /> : null}
           {run.runStatus === 'room' && run.currentRoom === 'shop' ? <ShopRoom run={run} onReroll={(revision) => dispatch({ type: 'reroll-shop', revision })} onPurchase={(productId, targetId) => dispatch({ type: 'purchase', productId, targetId })} onLeave={() => dispatch({ type: 'leave-shop' })} /> : null}
           {run.runStatus === 'room' && run.currentRoom === 'treasure' ? <TreasureRoom onOpen={() => dispatch({ type: 'open-treasure' })} /> : null}
           {run.runStatus === 'announcement' ? <div className={`encounter-announcement${run.combatSource === 'treasure_trap' ? ' is-trap' : ''}`} role="status"><span>FLOOR {run.currentFloor}</span><h1>{run.combatSource === 'treasure_trap' ? 'TRAP!' : run.currentRoom === 'boss' ? 'BOSS APPROACHING' : 'AMBUSH!'}</h1><p>{run.combatSource === 'treasure_trap' ? 'The treasure was a trap! 宝箱の報酬は失われた。' : run.currentRoom === 'boss' ? '墓所の守護者が現れた。' : '敵の奇襲を受けた！'}</p></div> : null}
           {run.runStatus === 'reward' ? <section className="room-reward" aria-label="部屋クリア" aria-live="polite">
             <div><span className="eyebrow">FLOOR {run.currentFloor} COMPLETE</span><h2>{run.roomMessage}</h2><p>HPと戦闘不能を維持して先へ進みます。</p></div>
-            <button type="button" className="dungeon-button" onClick={() => dispatch({ type: 'advance' })}>次の階へ · FLOOR {run.currentFloor + 1} →</button>
+            <button type="button" className="dungeon-button" onClick={() => dispatch({ type: 'advance' })}>{narrativeRoom ? 'CONTINUE' : '次の階へ'} · FLOOR {run.currentFloor + 1} →</button>
           </section> : null}
-          {showBattleStage ? <BattleStage combat={run.combat} floorLabel={combatActive ? (run.combatSource === 'treasure_trap' ? 'Treasure Trap' : roomName(run.currentRoom)) : `FLOOR ${run.currentFloor} · ${roomName(run.currentRoom)}`} /> : <div className="dungeon-party"><PartyPanel combat={run.combat} /></div>}
+          {showBattleStage ? <BattleStage combat={run.combat} floorLabel={combatActive ? (run.combatSource === 'treasure_trap' ? 'Treasure Trap' : roomName(run.currentRoom)) : `FLOOR ${run.currentFloor} · ${roomName(run.currentRoom)}`} /> : null}
         </>}
       </div>
+      {showExplorationParty ? <ExplorationPartyPanel combat={run.combat} /> : null}
     </>}
   </main>;
 }

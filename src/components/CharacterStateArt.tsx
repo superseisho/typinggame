@@ -21,7 +21,7 @@ function stateLabel(state: CharacterVisualState): string | null {
   return 'ABILITY!';
 }
 
-function artForState(character: CharacterDefinition, state: CharacterVisualState): string {
+export function artForState(character: CharacterDefinition, state: CharacterVisualState): string {
   if (state === 'damaged') return character.art.damaged;
   if (state === 'low_hp_damaged') return character.art.lowHpDamaged;
   if (state === 'low_hp') return character.art.lowHp;

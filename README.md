@@ -11,15 +11,43 @@ GAME START → 3択の部屋選択 → 部屋攻略 → 次の階へ進み、10F
 - Rest: 生存者全員30%回復 / 生存者1人60%回復 / Down1人を30%で蘇生、いずれか1回。Reviveは対象不在でもdisabled表示。
 - Shop: 入室時に回復2商品＋Buff2商品を抽選。単体30%/60%、全体20%の回復とBuff販売。Rerollは40 Gold。購入せず退出も可能。
 - Treasure: OPEN TREASUREで一度だけ開封。無料Buff30%、大量Gold25%、全体回復20%、Rare以上Buff15%、罠戦闘10%。蘇生はありません。
+- Event: 5種類の出来事から抽選。直前と同じEventは除外。Gold・HP・Buff・何もせず退出から行動を選び、結果画面のCONTINUEで進行します。
+- Altar: 生存者の最大HP20%を犠牲（最低HP1）にするか、150 Goldを支払い、Rare / EpicのBuffを1つ選択。無料でLeaveも可能。取得後はCONTINUEまで階層を維持します。
 - Ambush: 通常階で8%。1Fは選択を保証する安全階。ボス階とその直前階では奇襲抽選を行いません。
 - 9F: 「BOSS AHEAD / Prepare for the Boss」を表示し、Rest / Shopの固定2択。Restは行動・結果確認後、ShopはLEAVE SHOPで10Fへ進みます。`floorRules.ts`の次階Boss判定を共通利用するため、bossFloorsを拡張すれば19F / 29Fにも適用されます。
 - 10F: 900msのボス予告後に自動開戦。550HPの固定ボスを撃破すると探索完了。
 
 全快の味方やDownにポーションは使用できません。選択・購入・階層移動はエンジン側でも段階とIDを検証し、二重実行を防止します。
 
+### Event / Altarの設定と拡張
+
+`src/game/dungeon/encounterConfig.ts` に通常Roomの重み（Battle 35 / Elite 12 / Rest 12 / Shop 10 / Treasure 10 / Event 15 / Altar 6、合計100）と代償・回復量・報酬確率を集約しています。通常3択の重複上限・Ambush・9F固定2択・10F Bossは維持します。
+
+`src/data/rooms/encounterDefinitions.ts` の5 Event:
+
+- Mysterious Traveler: 100 GoldでBuff選択、またはRefuse。
+- Abandoned Camp: 生存者20%回復、60～120 Gold、またはLeave。
+- Bloodstained Chest: Openで70%は100～180 Gold、30%は生存者に最大HP10%ダメージ。Leaveも可能。ダメージは戦闘不能・全滅の可能性あり。
+- Healing Fountain: 生存者25%回復、50～100 Gold、またはLeave。
+- Ancient Inscription: 無料Buff選択、またはIgnore It。
+
+通常Event BuffはCommon / Uncommon / Rare / Epicが50 / 32 / 15 / 3。AltarはBlood OfferingでRare / Epicが80 / 20、Gold Offeringで90 / 10。取得可能なレアリティの中で再配分し、既存Buff候補生成・Stack上限・Unique除外を共用します。候補不足は少数候補、0個は既存の60 Gold代替報酬です。犠牲確定後は選び直せません。
+
+`types/encounters.ts` のRequirementとEffectでGold、HP条件、単体/全体回復・ダメージ、重み付き結果、Buff、無効果を表現し、`encounterEngine.ts` が処理します。Reactは条件と結果を表示するだけです。入室時のIDと選択済みID・costPaid・resolvedをRunへ保存し、Buff取得後も共通の部屋完了・CONTINUEを経て1階だけ進みます。蘇生や恒久デメリットは追加していません。
+
+回帰テストは `src/game/dungeon/encounters.test.ts`。任意のPlaywright環境で `scripts/verify-event-altar.mjs` を実行すると、開始seedを変えた実UI操作で全Event、両Offering、支払い、Blood後のCamp回復、3つのPC画面サイズを検証できます（`APP_URL` / `PLAYWRIGHT_MODULE` は既存ブラウザ検証と同様）。
+
 成績は全戦闘の合計（WPMは戦闘時間のみ）です。終了時に既存SaveRepositoryからlocalStorageへ最高到達階・クリア回数・履歴・タイピング成績を保存します。10F版の履歴にはmaxFloorを併記します。探索途中のセーブはありません。音量設定や既存装備データは保持します。
 
 ### 戦闘画面の高さ
+
+探索画面は親の `DungeonScreen` が共通の `ExplorationPartyPanel` を管理します。Room Selection / Rest / Shop / Treasure / Event / Altarと探索報酬画面に同じ4人・128px高の立ち絵・現在HPを下部表示し、Room内容だけを切り替えます。通常PC（幅1100px以上・高さ720px以上）では100dvh内でHeader・Room Content・Partyの高さを配分し、Room Contentのoverflowはclip（スクロールコンテナにしない）とします。カード・Headerの余白を詰め、操作が見切れないことを計測して検証します。Shopの回復対象選択は商品一覧の領域を置き換え、購入通知は操作欄へ表示します。
+
+中央の部屋パネルも残り高さへ伸ばし、タイトルと操作を縦方向中央にまとめます。Room Selectionは通常3択・Boss前2択とも共通のRoomCardを使い、内容量に応じた高さ・機能タグ・ENTER CTAで情報をまとめます。カードや説明文は余剰高さへ引き伸ばしません。Partyの位置・立ち絵サイズは維持し、部屋パネルとの間隔を一定にします。
+
+小さなウィンドウ・拡大表示では操作を失わないため内容領域のスクロールを残します。BUFFS一覧は明示的に開いたオーバーレイ内だけスクロール可能です。通常探索画面のホイール移動・見切れ・Party位置・部屋パネルとの間隔の回帰確認は `scripts/verify-exploration-layout.mjs`（Playwright）で実行できます。
+
+画像は既存Resolverのexplorationモードと共通画像マッピングで決定します。Buff込み最大HPに対する最新HPからnormal / low_hp / downを即時反映し、戦闘用の被弾・Ability transientや残存Guard/Combo状態は表示しません。戦闘中・戦闘予告中は探索Panelを出さず、既存BattleStageのPartyのみを使用します。探索用の表示条件は `game/dungeon/explorationDisplay.ts` に集約しています。
 
 `DungeonProgressHeader` は探索・休憩・買い物・報酬・戦闘予告・リザルトで表示し、`runStatus === 'battle'` では描画しません。通常・Elite・奇襲・Bossに共通です。敵欄の階層補助テキストも戦闘中は部屋名だけになります。戦闘開始時には先頭へスクロール位置を戻します。
 

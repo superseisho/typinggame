@@ -11,6 +11,7 @@ await page.addInitScript(() => Math.random = () => .12345);
 const url = process.env.APP_URL ?? 'http://127.0.0.1:4173';
 const selectedBuffs = [];
 async function fit() {
+  assert.equal(await page.locator('.exploration-party').count(), 0);
   const bounds = await page.evaluate(() => ({
     height: innerHeight, pageHeight: document.documentElement.scrollHeight,
     abilityBottom: Math.max(...[...document.querySelectorAll('.ability-state')].map(el => el.getBoundingClientRect().bottom)),
@@ -78,6 +79,27 @@ try {
       assert(Math.abs(bounds.center - bounds.viewport) < 2);
       assert.equal(bounds.columns, 2);
       console.log('pre-boss', options, bounds);
+      for (const [width, height] of [[1920,1080], [1536,864], [1366,768]]) {
+        await page.setViewportSize({ width, height });
+        const layout = await page.evaluate(() => {
+          const party = document.querySelector('.exploration-party').getBoundingClientRect();
+          const content = document.querySelector('.dungeon-room-content');
+          const cards = [...document.querySelectorAll('.path-card')].map(el => {
+            const r = el.getBoundingClientRect();
+            const p = el.querySelector('p').getBoundingClientRect();
+            const tags = el.querySelector('.path-card__features').getBoundingClientRect();
+            return { width: r.width, height: r.height, gap: tags.top - p.bottom, overflow: el.scrollWidth > el.clientWidth };
+          });
+          return { cards, bottom: party.bottom, partyHeight: party.height,
+            pageHeight: document.documentElement.scrollHeight, contentOverflow: content.scrollHeight - content.clientHeight };
+        });
+        assert.equal(layout.bottom, height - 10);
+        assert.equal(layout.partyHeight, 202);
+        assert(layout.pageHeight <= height && layout.contentOverflow <= 1, JSON.stringify(layout));
+        for (const card of layout.cards) assert(card.width >= 320 && card.width <= 380 && card.height <= 260 && card.gap <= 12 && !card.overflow, JSON.stringify(card));
+        console.log('pre-boss layout', width, height, layout);
+        if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/pre-boss-${height}.png` });
+      }
       if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/pre-boss.png`, fullPage: true });
     }
     if (options.length) {
@@ -92,6 +114,14 @@ try {
       await page.getByRole('button', { name: 'LEAVE SHOP →' }).click();
       continue;
     }
+    if (await page.locator('.encounter-room').count()) {
+      const freeBuff = page.getByRole('button', { name: /Study the Inscription/ });
+      if (await freeBuff.count()) await freeBuff.click();
+      else {
+        const safeChoice = page.getByRole('button', { name: /LEAVE ALTAR|Refuse|Leave|Ignore It/ });
+        await safeChoice.first().click();
+      }
+    }
     if (await page.locator('.dungeon-shell--combat').count()) {
       await fit();
       const thresholds = await page.locator('.threshold').allTextContents();
@@ -100,8 +130,10 @@ try {
       await fight();
     }
     if (floor < 10) {
-      if (await page.locator('.buff-reward').count()) { console.log('floor reward', floor, await blessing()); rewards++; }
-      else await page.getByRole('button', { name: /次の階へ/ }).click();
+      if (await page.locator('.buff-reward').count()) {
+        console.log('floor reward', floor, await blessing()); rewards++;
+        if (await page.getByRole('button', { name: /CONTINUE/ }).count()) await page.getByRole('button', { name: /CONTINUE/ }).click();
+      } else await page.getByRole('button', { name: /次の階へ|CONTINUE/ }).click();
     }
   }
   assert(eliteSeen); assert(rewards >= 3); assert(thresholdReduced);

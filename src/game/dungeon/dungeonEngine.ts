@@ -8,6 +8,7 @@ import { GAME_CONFIG } from '../../data/gameConfig';
 import { ROOMS_BY_TYPE } from '../../data/rooms/roomDefinitions';
 import { generatePreBossRooms, generateRoomOptions, randomStep } from './roomGenerator';
 import { isPreBossFloor } from './floorRules';
+import { applyEncounterEffects, choiceDisabledReason, enterEncounter, getEncounter } from './encounterEngine';
 import { recoverParty, resolveRest } from './roomResolver';
 import { generateShop, purchaseShopItem } from './shopEngine';
 import { SHOP_CONFIG } from './shopConfig';
@@ -53,6 +54,7 @@ function enterFloor(run: DungeonRunState): DungeonRunState {
 
 export function createDungeonRun(seed: number, id: string): DungeonRunState {
   return enterFloor({
+    encounter: null, lastEventId: null,
     shop: null, treasure: null, combatSource: 'room',
     activeBuffs: [], buffOptions: [], acquiredBuffId: null,
     id, rngState: seed >>> 0, currentFloor: 1, maxFloor: DUNGEON_CONFIG.maxFloor, enemyTier: 1,
@@ -77,7 +79,7 @@ function clearRunBuffs(run: DungeonRunState): DungeonRunState {
 }
 
 function advanceFloor(run: DungeonRunState): DungeonRunState {
-  return enterFloor({ ...run, currentFloor: run.currentFloor + 1, currentRoom: null, roomMessage: '', shop: null, treasure: null, combatSource: 'room',
+  return enterFloor({ ...run, currentFloor: run.currentFloor + 1, currentRoom: null, roomMessage: '', shop: null, treasure: null, encounter: null, combatSource: 'room',
     buffOptions: [], acquiredBuffId: null, combat: freshCombat(run.combat), currentCombatMs: 0 });
 }
 
@@ -120,13 +122,15 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
       const activeBuffs = addBuff(run.activeBuffs, action.buffId);
       if (activeBuffs === run.activeBuffs) return run;
       const buff = BUFFS_BY_ID[action.buffId];
-      const claimed = run.currentRoom === 'treasure' && run.treasure && !run.treasure.resolved
+      const claimed = run.encounter && !run.encounter.resolved
+        ? completeRoom({ ...run, encounter: { ...run.encounter, resolved: true, pendingGold: 0 } }, run.encounter.pendingGold, `${run.roomMessage} · BLESSING ACQUIRED: ${buff.name}`)
+        : run.currentRoom === 'treasure' && run.treasure && !run.treasure.resolved
         ? completeRoom({ ...run, treasure: { ...run.treasure, resolved: true } }, 0, `TREASURE FOUND · ${buff.name}`) : run;
       return { ...claimed, activeBuffs, runStatus: 'buff_acquired', acquiredBuffId: buff.id,
         combat: appendEvent(applyRunBuffs(run.combat, activeBuffs), 'ally-buff', `BLESSING ACQUIRED · ${buff.name}`, { abilityId: buff.id, soundId: buff.soundId }) };
     }
     case 'finish-buff':
-      return run.runStatus === 'buff_acquired' ? advanceFloor(run) : run;
+      return run.runStatus === 'buff_acquired' ? run.encounter ? { ...run, runStatus: 'reward' } : advanceFloor(run) : run;
     case 'choose': {
       if (run.runStatus !== 'choosing') return run;
       const option = run.roomOptions.find((candidate) => candidate.id === action.optionId);
@@ -135,11 +139,30 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
         return prepareBattle(run, option.type, false, action.now);
       }
       const next: DungeonRunState = { ...run, currentRoom: option.type, runStatus: 'room', roomOptions: [] };
+      if (option.type === 'event' || option.type === 'altar') return enterEncounter(next);
       if (option.type === 'shop') {
         const generated = generateShop(next);
         return { ...next, shop: generated.shop, rngState: generated.seed };
       }
       return option.type === 'treasure' ? { ...next, treasure: { opened: false, outcome: null, resolved: false } } : next;
+    }
+    case 'encounter-choice': {
+      if (run.runStatus !== 'room' || !run.encounter || run.encounter.selectedChoiceId || (run.currentRoom !== 'event' && run.currentRoom !== 'altar')) return run;
+      const choice = getEncounter(run)?.choices.find(choice => choice.id === action.choiceId);
+      if (!choice || choiceDisabledReason(run, choice)) return run;
+      const result = applyEncounterEffects(run, choice.effects);
+      const next: DungeonRunState = { ...result.run, roomMessage: result.message,
+        encounter: { ...run.encounter, selectedChoiceId: choice.id, costPaid: true, pendingGold: result.goldReward } };
+      if (next.combat.party.every(member => member.currentHp <= 0)) return clearRunBuffs({ ...next, runStatus: 'game_over', endedAt: action.now,
+        encounter: { ...next.encounter!, resolved: true },
+        clearedRooms: [...next.clearedRooms, { floor: next.currentFloor, roomType: next.currentRoom!, result: 'failed', goldReward: 0 }] });
+      if (result.buffWeights) {
+        const reward = generateBuffRewards(next.activeBuffs, next.currentRoom!, next.rngState, { weights: result.buffWeights });
+        if (reward.choices.length) return { ...next, rngState: reward.seed, runStatus: 'buff_reward', buffOptions: reward.choices };
+        return completeRoom({ ...next, rngState: reward.seed, encounter: { ...next.encounter!, resolved: true, pendingGold: 0 } }, result.goldReward + BUFF_CONFIG.fallbackGold,
+          `${result.message} · 取得可能なBuffなし · Gold +${BUFF_CONFIG.fallbackGold}`);
+      }
+      return completeRoom({ ...next, encounter: { ...next.encounter!, resolved: true, pendingGold: 0 } }, result.goldReward, result.message);
     }
     case 'open-treasure': {
       if (run.runStatus !== 'room' || run.currentRoom !== 'treasure' || !run.treasure || run.treasure.opened) return run;

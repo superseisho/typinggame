@@ -23,6 +23,99 @@
 .floor-progress .is-cleared { color: #87ac97; border-color: #527364; }
 .room-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
 .room-grid--pre-boss { grid-template-columns: repeat(2,minmax(0,1fr)); width: min(780px,100%); margin-inline: auto; }
+.encounter-choices { display: flex; justify-content: center; gap: 18px; }
+.encounter-room { padding: 22px; }
+.encounter-room .dungeon-heading { margin-bottom: 18px; }
+.encounter-choices .room-card { flex: 1; max-width: 390px; padding: 20px 16px; }
+.encounter-room--altar { border-color: #96514b; background: linear-gradient(135deg,#211315,#101214); }
+.encounter-room--altar .eyebrow, .encounter-room--altar .room-card strong { color: #eaa59b; }
+.encounter-note { display: block; margin-top: 18px; color: #ada393; text-align: center; }
+.dungeon-shell.dungeon-shell--exploration { height: 100vh; height: 100dvh; padding-bottom: 0; display: flex; flex-direction: column; }
+.dungeon-shell--exploration > .current-buffs { position: relative; }
+.dungeon-shell--exploration > .current-buffs > div { position: absolute; top: 100%; left: 0; right: 0; max-height: min(400px,50dvh); overflow: auto; z-index: 20; }
+.dungeon-shell--exploration > .topbar, .dungeon-shell--exploration > .dungeon-progress-header, .dungeon-shell--exploration > .current-buffs { flex-shrink: 0; }
+.dungeon-room-content { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable both-edges; }
+/* Desktop is a viewport-sized game screen, not a scrolling page. Small windows
+   retain an explicit accessible scroll fallback instead of losing controls. */
+@media (min-width: 1100px) and (min-height: 720px) {
+  .dungeon-shell.dungeon-shell--exploration { min-height: 0; overflow: clip; }
+  .dungeon-shell--exploration .dungeon-room-content {
+    overflow: clip; scrollbar-gutter: auto;
+    display: flex; flex-direction: column; justify-content: safe center;
+  }
+  /* Let the room surface use the available middle band. Its actual controls
+     stay grouped around the centre rather than leaving all spare space below. */
+  .dungeon-shell--exploration .dungeon-room-content > .dungeon-room {
+    flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center;
+  }
+  .dungeon-shell--exploration .dungeon-room-content > .dungeon-room > * { flex-shrink: 0; }
+  .dungeon-shell--exploration .room-selection > .room-grid {
+    flex: 0 0 auto;
+  }
+  .dungeon-shell--exploration .topbar { height: 52px; padding-block: 0; }
+  .dungeon-shell--exploration .brand-mark { width: 30px; height: 30px; }
+  .dungeon-shell--exploration .expedition-bar { margin-block: 8px 4px; }
+  .dungeon-shell--exploration .floor-progress { margin-block: 0 4px; }
+  .dungeon-shell--exploration .floor-progress span { padding-block: 4px; }
+  .dungeon-shell--exploration > .current-buffs { margin-block: 4px; }
+  .dungeon-shell--exploration > .current-buffs summary { padding-block: 6px; }
+  .dungeon-shell--exploration .dungeon-room-content .dungeon-room { margin-block: 6px; padding: 12px 18px; }
+  /* Stock and actions need slightly more room now that flex margins do not collapse. */
+  .dungeon-shell--exploration .dungeon-room-content > .shop-room { padding-block: 8px; }
+  .dungeon-shell--exploration .dungeon-heading { margin-bottom: 8px; }
+  .dungeon-shell--exploration .dungeon-heading h1 { font-size: 28px; line-height: 1.2; margin-block: 4px 6px; }
+  .dungeon-shell--exploration .dungeon-heading p { margin-block: 4px; line-height: 1.5; }
+  .dungeon-shell--exploration .room-grid, .dungeon-shell--exploration .encounter-choices { gap: 12px; }
+  .dungeon-shell--exploration .dungeon-room-content .room-card { padding: 12px; }
+  .dungeon-shell--exploration .room-card__icon { height: 30px; font-size: 26px; }
+  .dungeon-shell--exploration .room-card__enter { margin-top: 8px; }
+  .dungeon-shell--exploration .room-card h2 { font-size: 18px; line-height: 1.3; margin-block: 6px; }
+  .dungeon-shell--exploration .room-card p { margin-block: 6px; line-height: 1.5; }
+  .dungeon-shell--exploration .room-card small { margin-top: 4px; }
+  .dungeon-shell--exploration .buff-card { min-height: 0; }
+  .dungeon-shell--exploration .room-message { min-height: 0; margin-block: 4px; line-height: 1.5; }
+  .dungeon-shell--exploration .room-message:empty { display: none; }
+  .dungeon-shell--exploration .shop-actions { gap: 12px; margin-top: 10px; }
+  .dungeon-shell--exploration .shop-product { line-height: 1.35; }
+  .dungeon-shell--exploration .shop-product__purchase { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 10px; }
+  .dungeon-shell--exploration .shop-product small { font-size: 11px; line-height: 1.35; }
+  .dungeon-shell--exploration .shop-actions small { font-size: 11px; line-height: 1.35; }
+  .dungeon-shell--exploration .shop-actions .dungeon-button { margin-top: 0; padding-block: 10px; }
+  .dungeon-shell--exploration .treasure-chest { margin-block: 12px; height: 80px; }
+  .dungeon-shell--exploration .treasure-room h1 { margin-block: 4px 6px; }
+  .dungeon-shell--exploration .treasure-room p { margin-block: 6px; line-height: 1.5; }
+  .dungeon-shell--exploration .treasure-room > button { align-self: center; }
+  .dungeon-shell--exploration .exploration-party { margin-block: 6px 10px; overflow: visible; }
+}
+.exploration-party { flex-shrink: 0; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; width: min(1180px,calc(100% - 40px)); margin: 10px auto 14px; }
+.exploration-party__member { padding: 8px 12px; background: #121518; border: 1px solid #a58a5547; min-width: 0; }
+.exploration-party__member header { display: flex; justify-content: space-between; gap: 4px; font-size: 13px; min-height: 20px; }
+.exploration-party__member header span { color: #ee8a80; font: 700 12px 'Roboto Mono',monospace; }
+.exploration-party__member img { display: block; width: 100%; height: 128px; object-fit: contain; object-position: center bottom; }
+.exploration-party__hp { display: block; text-align: center; margin: 4px 0; font-size: 12px; color: #d7c8ad; }
+.exploration-party__member--low_hp { border-color: #bb665b; }
+.exploration-party__member--down { background: #101113; border-color: #5a4845; }
+.exploration-party__member--down img { filter: grayscale(1); opacity: .5; }
+@media (min-width: 701px) and (max-height: 900px) {
+  .dungeon-shell--exploration .expedition-bar { margin-block: 10px 6px; }
+  .dungeon-shell--exploration .floor-progress { margin-bottom: 6px; }
+  .dungeon-shell--exploration > .current-buffs { margin-block: 4px; }
+  .dungeon-room-content .dungeon-room, .dungeon-room-content .room-reward { margin-block: 8px; padding: 16px 20px; }
+  .dungeon-room-content .dungeon-heading { margin-bottom: 10px; }
+  .dungeon-room-content .dungeon-heading h1 { margin-block: 4px 8px; }
+  .dungeon-room-content .dungeon-heading h1 { font-size: 30px; line-height: 1.2; }
+  .dungeon-room-content .dungeon-heading p { margin-block: 6px; }
+  .dungeon-room-content .room-card { padding: 14px 12px; }
+  .dungeon-room-content .room-card h2 { margin-block: 8px; }
+  .dungeon-room-content .room-card h2 { font-size: 18px; line-height: 1.3; }
+  .dungeon-room-content .room-card p { line-height: 1.5; margin-block: 8px; }
+  .dungeon-room-content .encounter-note { margin-top: 10px; }
+}
+@media (min-width: 701px) and (max-height: 800px) {
+  .buff-reward--encounter { padding: 20px; margin-block: 12px; }
+  .buff-reward--encounter .dungeon-heading { margin-bottom: 16px; }
+  .buff-reward--encounter .room-card { padding: 20px 16px; }
+}
 .room-card { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; padding: 25px 18px; color: #e5d9c7; background: #121518; border: 1px solid #a58a5547; transition: border-color 140ms, background 140ms; }
 .room-card:hover:not(:disabled) { border-color: var(--gold); background: #23221d; }
 .room-card__icon { color: var(--gold); font-size: 36px; height: 52px; }
@@ -34,6 +127,38 @@
 .room-card__enter { font: 10px 'Roboto Mono', monospace; letter-spacing: .2em; margin-top: 22px; color: var(--gold); }
 .room-card--elite { border-top: 2px solid #ac6555; }
 .room-card--rest { border-top: 2px solid #588d77; }
+/* Path cards are content-sized, not spacers for the exploration viewport.
+   Scope these rules away from shop products, offerings and combat rewards. */
+.dungeon-shell .room-selection .dungeon-heading { margin-bottom: 14px; }
+.dungeon-shell .room-selection .room-grid { width: min(1100px,100%); margin-inline: auto; align-items: stretch; gap: 16px; }
+.dungeon-shell .room-selection .room-grid--pre-boss { width: min(752px,100%); }
+.dungeon-shell .room-selection .path-card {
+  --path-accent: #c9a66b;
+  justify-content: flex-start; gap: 6px; padding: 14px 16px;
+  border-top: 2px solid var(--path-accent);
+}
+.dungeon-shell .room-selection .path-card--rest { --path-accent: #8ab59a; }
+.dungeon-shell .room-selection .path-card--battle { --path-accent: #c19579; }
+.dungeon-shell .room-selection .path-card--elite { --path-accent: #be817a; }
+.dungeon-shell .room-selection .path-card--altar { --path-accent: #af8da9; }
+.dungeon-shell .room-selection .path-card .room-card__icon { height: 24px; line-height: 24px; font-size: 24px; color: var(--path-accent); }
+.dungeon-shell .room-selection .path-card h2 { margin: 0; font-size: 19px; line-height: 24px; }
+.dungeon-shell .room-selection .path-card .room-card__danger { color: var(--path-accent); line-height: 14px; }
+.dungeon-shell .room-selection .path-card p { flex: none; margin: 2px 0; min-height: 36px; line-height: 18px; font-size: 12px; }
+.path-card__features { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; }
+.path-card__features > span { padding: 3px 5px; border: 1px solid #a58a5540; color: var(--path-accent); font: 9px/12px 'Roboto Mono', monospace; }
+.dungeon-shell .room-selection .path-card .room-card__enter {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 4px;
+  padding: 5px 12px; border-bottom: 1px solid #a58a5566; line-height: 14px;
+}
+.path-card .room-card__enter > span { transition: transform 140ms; }
+.dungeon-shell .room-selection .path-card:is(:hover,:focus-visible) { border-color: var(--path-accent); background: #1b1c1b; }
+.path-card:is(:hover,:focus-visible) .room-card__icon { text-shadow: 0 0 10px #c9a66b55; }
+.path-card:is(:hover,:focus-visible) .room-card__enter { color: #f2d6a1; background: #c9a66b0c; }
+.path-card:is(:hover,:focus-visible) .room-card__enter > span { transform: translateX(3px); }
+@media (prefers-reduced-motion: reduce) {
+  .path-card .room-card__enter > span { transition: none; transform: none !important; }
+}
 .dungeon-shell button:disabled { opacity: .42; filter: grayscale(.65); cursor: not-allowed; border-color: #505052; background: #111214; }
 .shop-grid { max-width: 760px; margin: auto; grid-template-columns: repeat(2,minmax(0,1fr)); }
 .room-message { text-align: center; min-height: 25px; color: var(--gold) !important; }
@@ -62,6 +187,13 @@
   .dungeon-shell .floor-meter strong { font-size: 18px; }
   .dungeon-room { padding: 20px 12px; }
   .room-grid { grid-template-columns: 1fr; }
+  .encounter-choices { flex-direction: column; }
+  .encounter-choices .room-card { max-width: none; }
+  .exploration-party { gap: 6px; width: calc(100% - 16px); }
+  .exploration-party__member { padding: 6px; }
+  .exploration-party__member header { flex-direction: column; min-height: 36px; font-size: 11px; }
+  .exploration-party__member header span { font-size: 10px; }
+  .exploration-party__hp { font-size: 10px; }
   .room-card { padding: 18px; }
   .room-card__icon { font-size: 26px; height: 32px; }
   .room-reward { flex-direction: column; text-align: center; }

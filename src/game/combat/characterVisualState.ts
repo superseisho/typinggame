@@ -63,15 +63,18 @@ export function getCharacterVisualState(
   member: CharacterCombatState,
   transientVisual: TransientAbilityVisual | null = null,
   damageVisual: TransientDamageVisual | null = null,
+  mode: 'combat' | 'exploration' = 'combat',
 ): CharacterVisualState {
   if (member.currentHp <= 0) return 'down';
+  const lowHp = member.currentHp / character.stats.maxHp < LOW_HP_VISUAL_THRESHOLD;
+  // Exploration reflects current health, never old battle cues or ability statuses.
+  if (mode === 'exploration') return lowHp ? 'low_hp' : 'normal';
 
   if (damageVisual) {
     return damageVisual.hpAfter / character.stats.maxHp < LOW_HP_VISUAL_THRESHOLD
       ? 'low_hp_damaged' : 'damaged';
   }
 
-  const lowHp = member.currentHp / character.stats.maxHp < LOW_HP_VISUAL_THRESHOLD;
   const kind = character.ability.visual.kind;
 
   const persistentActive = character.ability.visual.persistence === 'persistent'
