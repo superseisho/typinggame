@@ -201,13 +201,13 @@ Shop / Treasure拡張後の確認：自動テスト172件、TypeScript/Viteビ�
 ## Enemy Skill / Guardian / Shaman
 
 - `src/data/enemySkills.ts`: Skill ID・効果・使用条件・対象・Cooldownと調整値。`EnemyDefinition.skills` はSkill IDと抽選weightを参照。Roleは追加せず、既存敵はAttackのみ。既存SPECIALゲージは別経路で維持。
-- `enemySkillEngine.ts`: 通常行動タイマー満了時、使用条件と個体別Cooldownを満たすSkillだけをシード付き加重抽選。戦闘内RNG・CooldownはCombat Stateに保持し、描画では抽選しない。
+- `enemySkillEngine.ts`: 戦闘開始時と各通常行動の解決後、使用条件と個体別Cooldownを満たすSkillだけをシード付き加重抽選。各Enemy Instanceの `nextActionSkillId` に保存し、タイマー満了時は保存済みSkillを実行する。実行時に使用不能ならAttack優先の決定的Fallbackを使用。描画・Typing・Target変更では再抽選しない。
 - Guardian（`enemy_guardian`）: Attack70 / Cover30、Cover再使用10秒、生存仲間が必要。`cover.remainingHits` は3へrefreshし、加算しない。
 - Shaman（`enemy_shaman`）: Attack65 / Heal35、Heal再使用8秒。生存・負傷Enemyの最低HP割合へ最大HP25%回復（自身可、同率は表示順）。全快時は使わず、蘇生しない。
 - `enemyDamage.ts`: 味方通常Attack・Mage AoE・Streak追加Damageの共通経路。攻撃開始時に全HitのoriginalTarget→receiverをsnapshot。最初の生存Cover中Guardianが肩代わりし、他Guardianへの連鎖はしない。直接Guardianを殴るHitはCoverを消費しない。
 - AoEはCover残り1でも全Hitを固定したGuardianへ送る。途中でHP0になっても残りHitを元の敵へ戻さず、0実ダメージとして記録。各Hit後ではなく攻撃全体の終了後に回数をclampし、死亡通知・Cover/Cooldown/状態cleanup・Auto Retargetを実行。選択中の生存Enemy IDは維持。
 - Enemy個体IDは定義ID＋編成slotの一意ID。複数同種でもHP、Skill Cooldown、Coverを別管理し、次戦闘へ持ち越さない。
-- `EnemySkillFeedback.tsx`: 実行時のみ短いSkill名。Heal実対象には緑発光と回復数値、Cover中はShield ×N。AoE数値はHit別に表示。TargetマーカーとPortraitのtransformから分離し、敵3体はPCで横一列。
+- `EnemyPanel.tsx` のNEXTは、予定IDからSkillDefinitionのnameを表示（Attack / Cover / Heal）。全Skill一覧は表示せず、死亡時は「—」。SPECIALは独立系統のまま、NEXTを上書きしない。`EnemySkillFeedback.tsx` は実行時に短いSkill名を表示。Heal実対象には緑発光と回復数値、Cover中はShield ×N。AoE数値はHit別に表示。TargetマーカーとPortraitのtransformから分離し、敵3体はPCで横一列。
 
 ### Random Encounter
 
@@ -216,3 +216,5 @@ Shop / Treasure拡張後の確認：自動テスト172件、TypeScript/Viteビ�
 追加テストは `enemySkills.test.ts`、`enemyEncounterGenerator.test.ts`。Cover3/2/1/0、途中死亡、個別Hit、4キャラ通常Attack、Mage AoE、回復条件・対象・上限、Cooldown、加重抽選、重複編成、再入室拒否を検証。`scripts/verify-enemy-skills.mjs` は実Dungeonを固定seedで開始し、クリック＋左右キー、Cover、Heal、文字入力からVictoryまでを3解像度で検証する。Playwright環境と `APP_URL` は既存スクリプトと同じ形式。
 
 今回の確認結果: 269テスト成功（26件追加）、TypeScript/Viteビルド成功。Chromiumの1920×1080 / 1536×864 / 1366×768で3体戦のCover・Heal・Victory、クリック/左右キー・入力継続・Auto Retarget、スクロール/ゲージ見切れなしを確認。既存通しプレイスクリプトも1F→Buff取得→Elite→9F Rest/Shop→10F Boss→Dungeon Clear→新RunのBuff0まで成功。重複Guardian/ShamanやElite3体の難易度バランスは今後の調整対象。
+
+NEXT予告対応: `plannedEnemyAction.test.ts` に初期計画、予定4パターンの実行、個体独立性、Fallback、SPECIAL/Typing/Targetからの独立性、死亡時消去の10テストを追加（全279件成功）。Chromiumの上記3解像度でNEXT Cover→Cover、NEXT Heal→Heal→NEXT Attack、Victoryと既存ターゲット操作の回帰検証に成功。TypeScript/Viteビルド成功。

@@ -19,7 +19,6 @@ try {
   const seed = await page.evaluate(async () => {
     const { createDungeonRun, reduceDungeon } = await import('/src/game/dungeon/dungeonEngine.ts');
     const { tickCombat } = await import('/src/game/combat/combatEngine.ts');
-    const { chooseEnemySkill } = await import('/src/game/combat/enemySkillEngine.ts');
     for (let n = 0; n < 100000; n++) {
       const seed = Math.imul(n, 2654435761) >>> 0;
       const run = createDungeonRun(seed, 'skills');
@@ -32,7 +31,8 @@ try {
       if (!combat.enemies[0].cover) continue;
       // Ensure this reproducible encounter will demonstrate healing after our hit.
       combat = { ...combat, enemies: combat.enemies.map((e,i) => i ? e : { ...e, currentHp: e.currentHp - 20 }) };
-      if (chooseEnemySkill(combat, combat.enemies[1]).skill?.id === 'skill_heal') return seed;
+      for (let t = 5000; t < 6500; t += 50) combat = tickCombat(combat, 50, t);
+      if (combat.enemies[1].nextActionSkillId === 'skill_heal') return seed;
     }
     throw Error('No demonstration seed found');
   });
@@ -44,6 +44,7 @@ try {
     await page.locator('[data-room-type="battle"]').first().click();
     const cards = page.locator('.enemy-unit');
     assert.equal(await cards.count(), 3);
+    assert.deepEqual(await cards.locator('.next-action strong').allTextContents(), ['Cover', 'Attack', 'Attack']);
     assert.equal(await page.locator('.enemy-skill-feedback').count(), 0, 'Skills shown before execution');
     const bounds = await cards.evaluateAll(nodes => nodes.map(n => { const r = n.getBoundingClientRect(); return { x:r.x,y:r.y,right:r.right,bottom:r.bottom }; }));
     assert(bounds.every(r => r.y === bounds[0].y), 'Three enemies must share a row');
@@ -57,6 +58,7 @@ try {
     await page.keyboard.press('ArrowLeft');
     assert((await page.locator('.is-targeted').getAttribute('data-enemy-id')).startsWith('enemy_shaman'));
     assert.equal(await page.locator('.miss-value').textContent(), misses);
+    assert.deepEqual(await cards.locator('.next-action strong').allTextContents(), ['Cover', 'Attack', 'Attack']);
     for (let i = 0; i < 29; i++) await key();
     const expected = (await page.locator('.typing-line mark').textContent()).trim();
     await page.keyboard.press(expected === 'z' ? 'q' : 'z'); // separate normal attack from Mage AoE
@@ -68,11 +70,14 @@ try {
     assert.deepEqual(after.slice(1), before.slice(1));
     assert.equal(await page.locator('.enemy-cover-counter').textContent(), 'Shield ×2');
     assert.equal(await cards.first().locator('.enemy-skill-feedback').textContent(), 'COVER');
+    assert.equal(await cards.first().locator('.next-action strong').textContent(), 'Attack');
     assert((await page.locator('.is-targeted').getAttribute('data-enemy-id')).startsWith('enemy_shaman'));
-    await page.waitForFunction(() => [...document.querySelectorAll('.enemy-skill-feedback')].some(e => e.textContent === 'HEAL'), undefined, { timeout: 5000 });
+    await page.waitForFunction(() => document.querySelectorAll('.next-action strong')[1]?.textContent === 'Heal');
+    await page.waitForFunction(() => [...document.querySelectorAll('.enemy-skill-feedback')].some(e => e.textContent === 'HEAL'), undefined, { timeout: 10000 });
     assert((await hp())[0] > after[0]);
     assert.equal(await cards.first().locator('.enemy-heal-flash').count(), 1);
     assert.equal(await cards.nth(1).locator('.enemy-skill-feedback').textContent(), 'HEAL');
+    assert.equal(await cards.nth(1).locator('.next-action strong').textContent(), 'Attack');
     await page.screenshot({ path: `/tmp/enemy-skills-${width}.png` });
     // Continue actual typing through AoE / auto-retarget and into the victory reward.
     for (let i = 0; i < 800 && await page.locator('.dungeon-shell--combat').count(); i++) await key();

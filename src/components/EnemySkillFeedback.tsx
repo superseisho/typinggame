@@ -20,7 +20,7 @@ export function EnemySkillFeedback({ events, enemyId }: { readonly events: reado
   const showSkill = useRecentEventId(skill?.id);
   const showHeal = useRecentEventId(heal?.id);
   return <>
-    {showSkill && skill ? <span key={skill.id} className="enemy-skill-feedback">{ENEMY_SKILLS[skill.skillId ?? '']?.name}</span> : null}
+    {showSkill && skill ? <span key={skill.id} className="enemy-skill-feedback">{ENEMY_SKILLS[skill.skillId ?? '']?.name.toUpperCase()}</span> : null}
     {showHeal ? <span key={heal?.id} className="enemy-heal-flash" aria-hidden="true" /> : null}
   </>;
 }

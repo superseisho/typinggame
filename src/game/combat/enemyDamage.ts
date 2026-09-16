@@ -18,7 +18,7 @@ export function snapshotEnemyDamageRoutes(state: CombatState, targetIds: readonl
 export function cleanupEnemyState(state: CombatState): CombatState {
   const ended = state.status === 'victory' || state.status === 'defeat';
   return { ...state, enemies: state.enemies.map(e => ended || e.currentHp <= 0
-    ? { ...e, cover: null, skillCooldowns: {}, pendingSpecial: null, statuses: [], specialGauge: 0, cooldownRemainingMs: 0,
+    ? { ...e, nextActionSkillId: null, cover: null, skillCooldowns: {}, pendingSpecial: null, statuses: [], specialGauge: 0, cooldownRemainingMs: 0,
         attackMultiplier: 1, defenseMultiplier: 1, cooldownMultiplier: 1 }
     : e.cover && e.cover.remainingHits <= 0 ? { ...e, cover: null } : e) };
 }

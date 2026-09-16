@@ -14,7 +14,7 @@ export interface EnemySkillDefinition {
   readonly cooldownMs: number;
 }
 export const ENEMY_SKILLS: Readonly<Record<string, EnemySkillDefinition>> = {
-  skill_attack: { id: 'skill_attack', name: 'ATTACK', effect: 'attack', requirement: 'always', targetType: 'party', cooldownMs: 0 },
-  skill_cover: { id: 'skill_cover', name: 'COVER', effect: 'cover', requirement: 'other-alive', targetType: 'other-enemies', cooldownMs: ENEMY_SKILL_CONFIG.guardian.cooldownMs },
-  skill_heal: { id: 'skill_heal', name: 'HEAL', effect: 'heal', requirement: 'injured-alive', targetType: 'lowest-enemy-hp', cooldownMs: ENEMY_SKILL_CONFIG.shaman.cooldownMs },
+  skill_attack: { id: 'skill_attack', name: 'Attack', effect: 'attack', requirement: 'always', targetType: 'party', cooldownMs: 0 },
+  skill_cover: { id: 'skill_cover', name: 'Cover', effect: 'cover', requirement: 'other-alive', targetType: 'other-enemies', cooldownMs: ENEMY_SKILL_CONFIG.guardian.cooldownMs },
+  skill_heal: { id: 'skill_heal', name: 'Heal', effect: 'heal', requirement: 'injured-alive', targetType: 'lowest-enemy-hp', cooldownMs: ENEMY_SKILL_CONFIG.shaman.cooldownMs },
 };

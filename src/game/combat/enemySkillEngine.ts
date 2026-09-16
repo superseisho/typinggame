@@ -30,16 +30,34 @@ export function chooseEnemySkill(state: CombatState, actor: EnemyCombatState) {
 }
 
 type NormalAttack = (state: CombatState, actorIndex: number, now: number) => CombatState;
+/** Only called at battle/cycle boundaries, never from rendering or typing. */
+export function planEnemyAction(state: CombatState, actorIndex: number): CombatState {
+  const actor = state.enemies[actorIndex];
+  if (!actor || actor.currentHp <= 0 || state.status !== 'active') return state;
+  const selection = chooseEnemySkill(state, actor);
+  return { ...selection.state, enemies: selection.state.enemies.map((e, index) => index === actorIndex
+    ? { ...e, nextActionSkillId: selection.skill?.id ?? null } : e) };
+}
+
+/** A stale plan falls back deterministically; execution never draws a new skill. */
+export function resolvePlannedEnemySkill(state: CombatState, actor: EnemyCombatState) {
+  const usable = usableEnemySkills(state, actor);
+  const binding = usable.find(s => s.skillId === actor.nextActionSkillId)
+    ?? usable.find(s => ENEMY_SKILLS[s.skillId].effect === 'attack')
+    ?? usable[0];
+  return binding ? ENEMY_SKILLS[binding.skillId] : null;
+}
+
 export function performEnemySkill(state: CombatState, actorIndex: number, now: number, attack: NormalAttack): CombatState {
   const actor = state.enemies[actorIndex];
-  const selection = chooseEnemySkill(state, actor);
-  const skill = selection.skill;
+  if (!actor || state.status !== 'active' || actor.currentHp <= 0) return state;
+  const skill = resolvePlannedEnemySkill(state, actor);
   if (!skill) return state;
   const definition = ENEMIES_BY_ID[actor.definitionId];
-  let next = appendEvent(selection.state, 'enemy-skill-used', `${definition.name} · ${skill.name}`, {
+  let next = appendEvent(state, 'enemy-skill-used', `${definition.name} · ${skill.name}`, {
     actorId: actor.instanceId, skillId: skill.id, abilityId: skill.id,
   }, false);
-  if (skill.effect === 'attack') return attack(next, actorIndex, now);
+  if (skill.effect === 'attack') return planEnemyAction(attack(next, actorIndex, now), actorIndex);
   next = { ...next, enemies: next.enemies.map(e => e.instanceId === actor.instanceId ? { ...e,
     cooldownRemainingMs: Math.max(0, e.cooldownRemainingMs + definition.attackCooldown * e.cooldownMultiplier),
     skillCooldowns: { ...e.skillCooldowns, [skill.id]: skill.cooldownMs },
@@ -52,5 +70,5 @@ export function performEnemySkill(state: CombatState, actorIndex: number, now: n
     next = appendEvent({ ...next, enemies: next.enemies.map(e => e.instanceId === target.instanceId ? { ...e, currentHp: e.currentHp + amount } : e) },
       'enemy-heal', `${definition.name}のHEAL · +${amount}`, { actorId: actor.instanceId, targetId: target.instanceId, amount, skillId: skill.id, soundId: 'enemy_heal' });
   }
-  return next;
+  return planEnemyAction(next, actorIndex);
 }

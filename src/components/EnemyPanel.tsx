@@ -1,4 +1,5 @@
 import { ENEMIES_BY_ID } from '../data/enemies';
+import { ENEMY_SKILLS } from '../data/enemySkills';
 import { usePortraitMotion } from '../hooks/usePortraitMotion';
 import type { CombatState, EnemyCombatState, EnemyDefinition } from '../types/game';
 import { CombatFeedback } from './CombatFeedback';
@@ -67,9 +68,6 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING', onSelectEne
           const targeted = combat.status === 'active' && !knockedOut && combat.targetEnemyId === enemyState.instanceId;
           const selectable = combat.status === 'active' && !knockedOut && !!onSelectEnemyTarget;
           const specialLevel = specialState(specialRatio);
-          const pendingAbility = enemyState.pendingSpecial
-            ? enemy.specialAbilities.find((ability) => ability.id === enemyState.pendingSpecial?.abilityId)
-            : null;
 
           return (
             <article
@@ -117,9 +115,9 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING', onSelectEne
                   <ProgressBar value={specialRatio} max={1} tone="special" severity={specialLevel === 'max' || specialLevel === 'alert' ? 'warning' : specialLevel === 'caution' ? 'caution' : 'normal'} compact label={`${enemy.name}の特殊ゲージ`} />
                 </div>
               </div>
-              <div className={`next-action ${pendingAbility ? 'is-special' : ''}`}>
-                <small>{pendingAbility ? 'SPECIAL' : 'NEXT'}</small>
-                <strong>{pendingAbility?.name ?? 'Action'}</strong>
+              <div className="next-action">
+                <small>NEXT</small>
+                <strong>{knockedOut ? '—' : ENEMY_SKILLS[enemyState.nextActionSkillId ?? '']?.name ?? '—'}</strong>
                 {enemyState.cover && enemyState.cover.remainingHits > 0 ? <span className="enemy-cover-counter">Shield ×{enemyState.cover.remainingHits}</span> : null}
               </div>
               <StatusChips statuses={enemyState.statuses} />

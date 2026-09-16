@@ -162,6 +162,7 @@ export interface CharacterCombatState {
 }
 
 export interface EnemyCombatState {
+  readonly nextActionSkillId: string | null;
   readonly skillCooldowns: Readonly<Record<string, number>>;
   readonly cover: { readonly remainingHits: number } | null;
   readonly instanceId: string;

@@ -5,7 +5,7 @@ import type { CombatState } from '../../types/game';
 import { createCombatState } from './createCombatState';
 import { applyCorrectTyping, startCombat, tickCombat } from './combatEngine';
 import { resolveEnemyDamage } from './enemyDamage';
-import { chooseEnemySkill, performEnemySkill, usableEnemySkills } from './enemySkillEngine';
+import { chooseEnemySkill, performEnemySkill, planEnemyAction, usableEnemySkills } from './enemySkillEngine';
 import { selectEnemyTarget } from './enemyTarget';
 
 const battle = () => startCombat(createCombatState(['enemy_guardian', 'enemy_shaman', 'crypt-slime']), 1);
@@ -19,7 +19,7 @@ const hit = (state: CombatState, indices: number[], power = 24) => resolveEnemyD
 function forceSkill(state: CombatState, index: number, id: string) {
   for (let seed = 0; seed < 10000; seed++) {
     const candidate = { ...state, skillRngState: seed };
-    if (chooseEnemySkill(candidate, candidate.enemies[index]).skill?.id === id) return candidate;
+    if (chooseEnemySkill(candidate, candidate.enemies[index]).skill?.id === id) return planEnemyAction(candidate, index);
   }
   throw new Error('Skill unavailable');
 }

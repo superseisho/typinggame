@@ -12,6 +12,7 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
     if (!enemy) throw new Error(`Unknown enemy: ${enemyId}`);
     return {
       skillCooldowns: {},
+      nextActionSkillId: null,
       cover: null,
       instanceId: `${enemyId}-${index + 1}`,
       definitionId: enemy.id,
