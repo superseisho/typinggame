@@ -1,10 +1,12 @@
 import { createCombatState } from '../combat/createCombatState';
 import { startCombat, tickCombat } from '../combat/combatEngine';
-import { selectEnemyTarget } from '../combat/enemyTarget';
+import { moveEnemyTarget, selectEnemyTarget } from '../combat/enemyTarget';
 import { handleCombatTyping } from '../combat/handleCombatTyping';
 import type { CombatState } from '../../types/game';
 import type { DungeonAction, DungeonRoomType, DungeonRunState } from '../../types/dungeon';
-import { DUNGEON_CONFIG, TIER_ONE_ENCOUNTERS } from './dungeonConfig';
+import { DUNGEON_CONFIG } from './dungeonConfig';
+import { BOSS_ENCOUNTERS } from './enemyEncounterConfig';
+import { generateEnemyEncounter } from './enemyEncounterGenerator';
 import { GAME_CONFIG } from '../../data/gameConfig';
 import { ROOMS_BY_TYPE } from '../../data/rooms/roomDefinitions';
 import { generatePreBossRooms, generateRoomOptions, randomStep } from './roomGenerator';
@@ -21,7 +23,7 @@ import { BUFF_CONFIG, emptyBuffResources } from '../buffs/buffConfig';
 import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
 import { appendEvent } from '../combat/combatEvents';
 
-type BattleRoom = keyof typeof TIER_ONE_ENCOUNTERS;
+type BattleRoom = 'battle' | 'elite' | 'ambush' | 'boss';
 
 function freshCombat(previous: CombatState, enemies: readonly string[] = []): CombatState {
   const fresh = createCombatState(enemies);
@@ -31,11 +33,11 @@ function freshCombat(previous: CombatState, enemies: readonly string[] = []): Co
 }
 
 function prepareBattle(run: DungeonRunState, room: BattleRoom, announce: boolean, now: number, trap = false): DungeonRunState {
-  const random = randomStep(run.rngState);
-  const formations = trap ? TREASURE_CONFIG.trapEncounters : TIER_ONE_ENCOUNTERS[room];
-  const enemies = formations[Math.floor(random.value * formations.length)];
-  const combat = freshCombat(run.combat, enemies);
-  return { ...run, rngState: random.seed, currentRoom: trap ? 'treasure' : room, combatSource: trap ? 'treasure_trap' : 'room', roomOptions: [], currentCombatMs: 0,
+  const encounter = room === 'boss'
+    ? { enemyIds: BOSS_ENCOUNTERS[run.enemyTier], seed: run.rngState }
+    : generateEnemyEncounter(run.rngState, trap ? 'treasure_trap' : room, run.enemyTier);
+  const combat = { ...freshCombat(run.combat, encounter.enemyIds), skillRngState: encounter.seed };
+  return { ...run, rngState: encounter.seed, currentRoom: trap ? 'treasure' : room, combatSource: trap ? 'treasure_trap' : 'room', roomOptions: [], currentCombatMs: 0,
     runStatus: announce ? 'announcement' : 'battle', combat: announce ? combat : startCombat(combat, now) };
 }
 
@@ -190,6 +192,11 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
       if (run.runStatus !== 'battle' || !Number.isFinite(action.deltaMs) || action.deltaMs <= 0) return run;
       const elapsed = Math.min(action.deltaMs, GAME_CONFIG.maxFrameDeltaMs);
       return settleCombat({ ...run, currentCombatMs: run.currentCombatMs + elapsed }, tickCombat(run.combat, elapsed, action.now), action.now);
+    }
+    case 'move-enemy-target': {
+      if (run.runStatus !== 'battle') return run;
+      const combat = moveEnemyTarget(run.combat, action.direction);
+      return combat === run.combat ? run : { ...run, combat };
     }
     case 'select-enemy-target': {
       if (run.runStatus !== 'battle') return run;

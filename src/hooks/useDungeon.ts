@@ -9,6 +9,7 @@ import { createDungeonRun, reduceDungeon } from '../game/dungeon/dungeonEngine';
 import { LocalStorageSaveRepository } from '../game/save/LocalStorageSaveRepository';
 import { recordDungeonResult } from '../game/save/recordDungeonResult';
 import type { DungeonAction, DungeonRunState } from '../types/dungeon';
+import { consumeTargetNavigationKey, isCombatKeyboardBlocked } from '../game/combat/combatKeyboard';
 
 export function useDungeon() {
   const [run, setRun] = useState<DungeonRunState | null>(null);
@@ -52,8 +53,8 @@ export function useDungeon() {
       previous = time;
     }, GAME_CONFIG.combatTickMs);
     const input = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
-      if (event.target instanceof HTMLElement && event.target.closest('input, button, select, textarea, [contenteditable="true"]')) return;
+      if (isCombatKeyboardBlocked(event)) return;
+      if (consumeTargetNavigationKey(event, true, direction => dispatch({ type: 'move-enemy-target', direction }))) return;
       if (event.key === ' ') event.preventDefault();
       void audioManager.unlock();
       dispatch({ type: 'key', key: event.key, now: Date.now() });

@@ -1,9 +1,11 @@
 import type { EnemyDefinition } from '../types/game';
 import { indexById } from '../utils/indexById';
+import { ENEMY_SKILL_CONFIG as SKILL } from './enemySkills';
 
 export const ENEMY_DEFINITIONS = [
   {
     id: 'crypt-slime',
+    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight }],
     name: '墓所のスライム',
     englishName: 'Crypt Slime',
     maxHp: 150,
@@ -29,6 +31,7 @@ export const ENEMY_DEFINITIONS = [
   },
   {
     id: 'grave-shaman',
+    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight }],
     name: '墓守の呪術師',
     englishName: 'Grave Shaman',
     maxHp: 105,
@@ -57,6 +60,7 @@ export const ENEMY_DEFINITIONS = [
   },
   {
     id: 'goblin-archer',
+    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight }],
     name: '洞窟の射手',
     englishName: 'Cave Archer',
     maxHp: 92,
@@ -84,6 +88,12 @@ export const ENEMY_DEFINITIONS = [
 
 // Fixed Tier 1 variants. No floor-dependent multipliers are applied.
 export const DUNGEON_ENEMIES: readonly EnemyDefinition[] = [
+  { ...ENEMY_DEFINITIONS[0], id: 'enemy_guardian', name: 'ガーディアン', englishName: 'Guardian', sprite: 'guardian',
+    maxHp: 180, attack: 16, defense: 4, attackCooldown: 5000,
+    description: '墓道を塞ぐ、古びた盾を抱えた魔物。',
+    skills: [{ skillId: 'skill_attack', weight: SKILL.guardian.attackWeight }, { skillId: 'skill_cover', weight: SKILL.guardian.coverWeight }] },
+  { ...ENEMY_DEFINITIONS[1], id: 'enemy_shaman', name: 'シャーマン', englishName: 'Shaman',
+    skills: [{ skillId: 'skill_attack', weight: SKILL.shaman.attackWeight }, { skillId: 'skill_heal', weight: SKILL.shaman.healWeight }] },
   { ...ENEMY_DEFINITIONS[0], id: 'elite-slime', name: '重装の墓所スライム', englishName: 'Armored Crypt Slime',
     maxHp: 225, attack: 24, defense: 6, attackCooldown: 4800, elite: true,
     description: '厚い外殻を持つエリート。通常の粘体より強力。' },
@@ -103,4 +113,12 @@ export const DUNGEON_ENEMIES: readonly EnemyDefinition[] = [
   },
 ];
 
-export const ENEMIES_BY_ID: Record<string, EnemyDefinition> = indexById([...ENEMY_DEFINITIONS, ...DUNGEON_ENEMIES]);
+// Fixed Elite variants keep every randomly selected Elite slot stronger.
+// These multipliers author definitions once; they never depend on dungeon floor.
+export const ELITE_SKILL_ENEMIES: readonly EnemyDefinition[] = DUNGEON_ENEMIES
+  .filter(enemy => enemy.id === 'enemy_guardian' || enemy.id === 'enemy_shaman')
+  .map(enemy => ({ ...enemy, id: `${enemy.id}_elite`, name: `精鋭${enemy.name}`,
+    englishName: `Elite ${enemy.englishName}`, elite: true,
+    maxHp: Math.round(enemy.maxHp * 1.5), attack: Math.round(enemy.attack * 1.25), defense: enemy.defense + 3 }));
+
+export const ENEMIES_BY_ID: Record<string, EnemyDefinition> = indexById([...ENEMY_DEFINITIONS, ...DUNGEON_ENEMIES, ...ELITE_SKILL_ENEMIES]);

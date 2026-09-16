@@ -30,6 +30,7 @@ try {
     await page.goto(url);
     await page.evaluate(seed => Math.random = () => seed / 4294967296, seed);
     await page.getByRole('button', { name: 'GAME START', exact: true }).click();
+    assert(await page.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))), 'Exploration swallowed arrow');
     await page.locator('[data-room-type="battle"]').first().click();
     const cards = page.locator('.enemy-unit');
     const ids = await cards.evaluateAll(nodes => nodes.map(n => n.dataset.enemyId));
@@ -45,6 +46,36 @@ try {
       assert.equal(await page.locator('.miss-value').textContent(), misses);
       assert.equal(await page.evaluate(() => document.activeElement?.tagName === 'BUTTON'), false);
     }
+    const target = () => page.locator('.is-targeted').getAttribute('data-enemy-id');
+    const typingSnapshot = () => page.evaluate(() => ({
+      stats: document.querySelector('.typing-stats').textContent,
+      line: document.querySelector('.typing-line').textContent,
+      gauges: [...document.querySelectorAll('.party-panel [role="progressbar"], .enemy-unit .progress--special')].map(el => el.getAttribute('aria-valuenow')),
+      focus: document.activeElement?.tagName, scroll: [scrollX,scrollY],
+    }));
+    const beforeNavigation = await typingSnapshot();
+    for (const [keyName, index] of [['ArrowRight',0],['ArrowRight',1],['ArrowLeft',0],['ArrowLeft',1]]) {
+      await page.keyboard.press(keyName);
+      assert.equal(await target(), ids[index]);
+    }
+    await page.keyboard.down('ArrowRight');
+    assert.equal(await target(), ids[0]);
+    await page.keyboard.down('ArrowRight'); // repeated keydown must not move again
+    assert.equal(await target(), ids[0]);
+    await page.keyboard.up('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await target(), ids[1]);
+    assert.deepEqual(await typingSnapshot(), beforeNavigation, 'Arrows changed typing/gauges/focus/scroll');
+    assert.equal(await page.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', repeat: true, bubbles: true, cancelable: true }))), false);
+    // Settings own their keyboard while open, even when focus is outside a slider.
+    await page.locator('.dungeon-audio').click();
+    assert(await page.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }))));
+    assert.equal(await target(), ids[1]);
+    const volume = page.locator('.audio-settings input[type="range"]').first();
+    await volume.focus();
+    await page.keyboard.press('ArrowLeft');
+    assert.equal(await target(), ids[1]);
+    await page.getByRole('button', { name: '設定を閉じる' }).click();
     assert.deepEqual(await cards.evaluateAll(nodes => nodes.map(n => { const r = n.getBoundingClientRect(); return [r.x,r.y,r.width,r.height]; })), originalRects);
     const bounds = await page.evaluate(() => {
       const marker = document.querySelector('.enemy-target-marker').getBoundingClientRect();
@@ -55,6 +86,11 @@ try {
     });
     assert(bounds.page <= height && bounds.partyBottom <= height && bounds.markerInside, JSON.stringify(bounds));
     for (let i = 0; i < 29; i++) await key();
+    const duringTyping = await typingSnapshot();
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await target(), ids[1]);
+    assert.deepEqual(await typingSnapshot(), duringTyping, 'Navigation broke active combo');
     // Reset perfect streak so the first normal attack can be checked without AoE.
     const expected = (await page.locator('.typing-line mark').textContent()).trim();
     await page.keyboard.press(expected === 'z' ? 'q' : 'z');
@@ -71,6 +107,9 @@ try {
       if (++count > 500) throw Error('Selected enemy did not die');
     }
     assert.equal(await page.locator('.is-targeted').getAttribute('data-enemy-id'), ids[0]);
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await target(), ids[0], 'Dead enemy was targeted');
     await cards.nth(1).click();
     assert.equal(await page.locator('.is-targeted').getAttribute('data-enemy-id'), ids[0]);
     while (await page.locator('.dungeon-shell--combat').count()) {
@@ -78,6 +117,7 @@ try {
       if (++count > 1000) throw Error('Battle did not finish');
     }
     assert.equal(await page.locator('.enemy-target-marker').count(), 0);
+    assert(await page.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }))), 'Reward swallowed arrow');
     console.log('PASS target selection, typing, damage, retarget, victory', width, height, bounds);
   }
   assert.deepEqual(errors, []);

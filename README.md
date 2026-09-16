@@ -90,13 +90,15 @@ npm run build
 
 ## ダンジョンの拡張・調整
 
-`src/game/dungeon/dungeonConfig.ts` に階層上限・ボス階・安全階・奇襲率・Rest回復量・戦闘Gold報酬・敵編成を集約しています。Shopは `shopConfig.ts`、Treasureは `treasureConfig.ts` に分離しています。部屋の出現比率は `src/data/rooms/roomDefinitions.ts`。敵の基礎数値は `src/data/enemies.ts` です。
+`src/game/dungeon/dungeonConfig.ts` に階層上限・ボス階・安全階・奇襲率・Rest回復量・戦闘Gold報酬を集約しています。敵抽選は `enemyEncounterConfig.ts`、Shopは `shopConfig.ts`、Treasureは `treasureConfig.ts` に分離しています。部屋の出現比率は `src/data/rooms/roomDefinitions.ts`。敵の基礎数値は `src/data/enemies.ts` です。
 
 1～10F内の階層倍率はありません。通常・Elite・Bossの固定データだけが異なります。30F化はmaxFloorとbossFloorsを変更可能ですが、現段階では全てTier 1の編成を使います。11F・21Fの強化は今後Tier別の敵編成テーブルを追加して切り替える想定です。装備ドロップ・11F以降の専用コンテンツ・難易度選択は未実装です。
 
 `src/screens/CombatScreen.tsx` と `useCombat` は単体戦闘用として残し、共通の `BattleStage` を利用しています。現在のアプリの入口は `DungeonScreen` です。戦闘ルール・TypingEngineを探索UIへ移植していません。
 
-敵カード全体をクリックすると共有TARGETを切り替えられます（キーボード割り当てなし）。`CombatState.targetEnemyId` は敵のinstanceIdを保持し、`combat/enemyTarget.ts` が選択・生存確認・先頭の生存敵へのフォールバックを担当します。全員の通常Attackはこの対象へ、Mage全体Abilityは全生存敵へ作用します。対象撃破時は同じ入力処理内で再選択し、戦闘終了時はnull、新戦闘開始時は先頭の生存敵になります。クリックはフォーカスを奪わず、TARGET枠・マーカーは立ち絵モーションから分離しています。`scripts/verify-enemy-target.mjs` で実UIのクリック→タイピング→ダメージ→自動再選択を3サイズで検証できます。
+敵カード全体のクリック、または戦闘中の左右方向キーで共有TARGETを切り替えられます。`CombatState.targetEnemyId` は敵のinstanceIdを保持し、`combat/enemyTarget.ts` が選択・生存確認・先頭の生存敵へのフォールバックを担当します。左右キーは表示配列順に生存敵だけを循環し、同じ `selectEnemyTarget()` を利用します。全員の通常Attackはこの対象へ、Mage全体Abilityは全生存敵へ作用します。対象撃破時は同じ入力処理内で再選択し、戦闘終了時はnull、新戦闘開始時は先頭の生存敵になります。クリックはフォーカスを奪わず、TARGET枠・マーカーは立ち絵モーションから分離しています。`scripts/verify-enemy-target.mjs` で実UIのクリック／左右キー→タイピング→ダメージ→自動再選択を3サイズで検証できます。
+
+左右キーは既存の `useDungeon` / `useCombat` の入力listener内で `combatKeyboard.ts` がTypingEngineより先に消費します。長押しrepeatは移動せず消費し、1押下1移動です。探索・戦闘終了後・フォーム操作・IME変換・修飾キー併用・オーディオ設定表示中は捕捉しません。オーディオ設定などキーボードを占有するUIには `data-combat-input-blocker` を付けます。数字・上下・Tab・WASD等のTarget割り当てはありません。
 
 ## Run限定Buffと戦闘後の3択
 
@@ -179,7 +181,7 @@ Buff価格はCommon 100 / Uncommon 140 / Rare 200 / Epic 280 Gold。抽選比率
 | Rare以上Buff | 15% | Rare / Epic = 85 / 15の3択。低レアは混ざらない |
 | Trap Battle | 10% | 750msのTRAP警告後、通常相当の敵と既存Combatで戦闘 |
 
-設定・結果確率・Buff比率・Gold範囲・回復量・罠編成・罠報酬は `treasureConfig.ts` に集約しています。Buff候補不足時は残りのみ表示、0候補なら60 Goldへ置換し、確認後に進みます（Rare宝箱でも低レアへは置き換えません）。
+設定・結果確率・Buff比率・Gold範囲・回復量・罠報酬は `treasureConfig.ts` に集約しています。罠の敵抽選は `enemyEncounterConfig.ts` で通常戦と共通管理します。Buff候補不足時は残りのみ表示、0候補なら60 Goldへ置換し、確認後に進みます（Rare宝箱でも低レアへは置き換えません）。
 
 罠は `currentRoom: 'treasure'` のまま `combatSource: 'treasure_trap'` として識別。HP / Down / Run Buffを引き継ぎ、勝利報酬は10～25 Goldのみ。元の宝箱報酬も戦闘後Buffも付与せず、Treasureとして履歴に1回記録します。敗北は通常と同じGame Over。戦闘中の階層ヘッダーは罠でも非表示です。
 
@@ -195,3 +197,22 @@ Buff価格はCommon 100 / Uncommon 140 / Rare 200 / Epic 280 Gold。抽選比率
 部屋状態・在庫ID・Reroll世代・開封フラグ・Run/Floorトークンを確認し、古い入力や二重操作を拒否します。階層進行はDungeonEngineの共通処理だけで行います。蘇生はRest専用のままです。今後は価格バランス、商品のロック・割引、Treasure専用の敵などを追加できます。
 
 Shop / Treasure拡張後の確認：自動テスト172件、TypeScript/Viteビルド成功。Chromiumで宝箱5結果、Buff＋Small Potionの購入、Reroll、罠勝利・全滅を確認しました。開始seedを変えた複数の探索で検証し、10Fクリアの既存回帰シナリオも成功。1920×1080 / 1536×864 / 1366×768で戦闘ゲージの見切れ、ブラウザエラー、画像読込エラーはありません。部屋の価値・価格・Trap率の体感バランスは継続調整が必要です。
+
+## Enemy Skill / Guardian / Shaman
+
+- `src/data/enemySkills.ts`: Skill ID・効果・使用条件・対象・Cooldownと調整値。`EnemyDefinition.skills` はSkill IDと抽選weightを参照。Roleは追加せず、既存敵はAttackのみ。既存SPECIALゲージは別経路で維持。
+- `enemySkillEngine.ts`: 通常行動タイマー満了時、使用条件と個体別Cooldownを満たすSkillだけをシード付き加重抽選。戦闘内RNG・CooldownはCombat Stateに保持し、描画では抽選しない。
+- Guardian（`enemy_guardian`）: Attack70 / Cover30、Cover再使用10秒、生存仲間が必要。`cover.remainingHits` は3へrefreshし、加算しない。
+- Shaman（`enemy_shaman`）: Attack65 / Heal35、Heal再使用8秒。生存・負傷Enemyの最低HP割合へ最大HP25%回復（自身可、同率は表示順）。全快時は使わず、蘇生しない。
+- `enemyDamage.ts`: 味方通常Attack・Mage AoE・Streak追加Damageの共通経路。攻撃開始時に全HitのoriginalTarget→receiverをsnapshot。最初の生存Cover中Guardianが肩代わりし、他Guardianへの連鎖はしない。直接Guardianを殴るHitはCoverを消費しない。
+- AoEはCover残り1でも全Hitを固定したGuardianへ送る。途中でHP0になっても残りHitを元の敵へ戻さず、0実ダメージとして記録。各Hit後ではなく攻撃全体の終了後に回数をclampし、死亡通知・Cover/Cooldown/状態cleanup・Auto Retargetを実行。選択中の生存Enemy IDは維持。
+- Enemy個体IDは定義ID＋編成slotの一意ID。複数同種でもHP、Skill Cooldown、Coverを別管理し、次戦闘へ持ち越さない。
+- `EnemySkillFeedback.tsx`: 実行時のみ短いSkill名。Heal実対象には緑発光と回復数値、Cover中はShield ×N。AoE数値はHit別に表示。TargetマーカーとPortraitのtransformから分離し、敵3体はPCで横一列。
+
+### Random Encounter
+
+`enemyEncounterConfig.ts` と `enemyEncounterGenerator.ts` でTier別の個体数・Enemy Poolを管理。Battle / Ambush / Treasure Trapは1・2・3体を30/45/25、Eliteは20/45/35で抽選し、各slotを独立に重複あり抽選。Eliteは固定の強化版定義だけを抽選し、Floor単位のStat scalingはしない。通常戦の固定Compositionは撤去。Bossは別の `BOSS_ENCOUNTERS`（現状Tier1のCrypt Warden）を使用する。
+
+追加テストは `enemySkills.test.ts`、`enemyEncounterGenerator.test.ts`。Cover3/2/1/0、途中死亡、個別Hit、4キャラ通常Attack、Mage AoE、回復条件・対象・上限、Cooldown、加重抽選、重複編成、再入室拒否を検証。`scripts/verify-enemy-skills.mjs` は実Dungeonを固定seedで開始し、クリック＋左右キー、Cover、Heal、文字入力からVictoryまでを3解像度で検証する。Playwright環境と `APP_URL` は既存スクリプトと同じ形式。
+
+今回の確認結果: 269テスト成功（26件追加）、TypeScript/Viteビルド成功。Chromiumの1920×1080 / 1536×864 / 1366×768で3体戦のCover・Heal・Victory、クリック/左右キー・入力継続・Auto Retarget、スクロール/ゲージ見切れなしを確認。既存通しプレイスクリプトも1F→Buff取得→Elite→9F Rest/Shop→10F Boss→Dungeon Clear→新RunのBuff0まで成功。重複Guardian/ShamanやElite3体の難易度バランスは今後の調整対象。

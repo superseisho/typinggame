@@ -5,6 +5,7 @@ import { CombatFeedback } from './CombatFeedback';
 import { ProgressBar } from './ProgressBar';
 import { PortraitMotionLayer } from './PortraitMotionLayer';
 import { StatusChips } from './StatusChips';
+import { EnemySkillFeedback } from './EnemySkillFeedback';
 
 function hpSeverity(ratio: number) {
   if (ratio <= .25) return 'danger' as const;
@@ -39,6 +40,7 @@ function EnemyMotionPortrait({
           <div className="enemy-avatar__mist" />
           <div className="enemy-avatar__body"><span className="enemy-avatar__eye" /><span className="enemy-avatar__eye" /></div>
           {enemy.sprite === 'shaman' ? <span className="shaman-staff">✦</span> : null}
+          {enemy.sprite === 'guardian' ? <span className="guardian-shield" aria-hidden="true" /> : null}
         </div>
       </PortraitMotionLayer>
     </div>
@@ -87,6 +89,7 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING', onSelectEne
                   if (document.activeElement instanceof HTMLButtonElement) document.activeElement.blur();
                 }} /> : null}
               <CombatFeedback events={combat.events} targetId={enemyState.instanceId} />
+              <EnemySkillFeedback events={combat.events} enemyId={enemyState.instanceId} />
               {knockedOut ? <span className="down-stamp">DEFEATED</span> : null}
               {specialLevel === 'max' ? <span className="special-warning">WARNING</span> : null}
 
@@ -116,7 +119,8 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING', onSelectEne
               </div>
               <div className={`next-action ${pendingAbility ? 'is-special' : ''}`}>
                 <small>{pendingAbility ? 'SPECIAL' : 'NEXT'}</small>
-                <strong>{pendingAbility?.name ?? 'Attack'}</strong>
+                <strong>{pendingAbility?.name ?? 'Action'}</strong>
+                {enemyState.cover && enemyState.cover.remainingHits > 0 ? <span className="enemy-cover-counter">Shield ×{enemyState.cover.remainingHits}</span> : null}
               </div>
               <StatusChips statuses={enemyState.statuses} />
             </article>

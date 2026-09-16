@@ -11,6 +11,8 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
     const enemy = ENEMIES_BY_ID[enemyId];
     if (!enemy) throw new Error(`Unknown enemy: ${enemyId}`);
     return {
+      skillCooldowns: {},
+      cover: null,
       instanceId: `${enemyId}-${index + 1}`,
       definitionId: enemy.id,
       formationIndex: index,
@@ -26,6 +28,7 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
   });
 
   return {
+    skillRngState: 0x12345678,
     targetEnemyId: enemies[0]?.instanceId ?? null,
     runBuffs: [],
     buffResources: emptyBuffResources(),

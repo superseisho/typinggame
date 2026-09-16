@@ -527,3 +527,15 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+/* Enemy skill feedback never adds height or intercepts target clicks. */
+.enemy-skill-feedback { position: absolute; bottom: 12px; left: 58px; transform: translateX(-50%); z-index: 5; pointer-events: none; color: #dec58b; background: #101314dd; padding: 2px 4px; font-size: 11px; letter-spacing: .1em; text-shadow: 0 2px 5px #000; }
+.enemy-cover-counter { margin-left: auto; font-size: 11px; color: #b7cdda; white-space: nowrap; }
+.enemy-heal-flash { position: absolute; inset: 0; z-index: 3; pointer-events: none; animation: enemy-heal-glow .72s ease-out both; }
+@keyframes enemy-heal-glow { from { box-shadow: inset 0 0 32px #65d38b88; background: #65d38b20; } to { box-shadow: inset 0 0 0 transparent; background: transparent; } }
+.guardian-shield { position: absolute; bottom: 8%; left: 24%; width: 38px; height: 50px; background: #b9bfbd; clip-path: polygon(0 0,100% 0,92% 70%,50% 100%,8% 70%); }
+.guardian-shield::before { content: ''; position: absolute; inset: 3px; background: #43545a; clip-path: inherit; }
+.guardian-shield::after { content: ''; position: absolute; width: 3px; top: 6px; bottom: 8px; left: 18px; background: #98aaac; }
+.sprite--guardian .enemy-avatar__body { background: #58656a; border-radius: 35% 35% 18% 18%; }
+@media (min-width: 981px) {
+  .battle-stage .enemy-formation:has(> :nth-child(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(100%, 1160px); }
+}

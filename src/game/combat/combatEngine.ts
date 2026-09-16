@@ -11,6 +11,8 @@ import { areEnemiesDefeated, isPartyDefeated } from './combatSelectors';
 import { chooseEnemyAbility, executeEnemyAbility } from './enemyAbilityEngine';
 import { selectLowestPartyHpIndex } from './targeting';
 import { ensureValidEnemyTarget, resolveCurrentEnemyTarget } from './enemyTarget';
+import { cleanupEnemyState, resolveEnemyDamage } from './enemyDamage';
+import { performEnemySkill } from './enemySkillEngine';
 
 const ABILITY_STATUS_PREFIX = 'ability:';
 
@@ -47,41 +49,17 @@ function triggerAllyAbility(state: CombatState, characterId: string, applyPersis
 
 function applyAreaAbilityDamage(state: CombatState, characterId: string, power: number): CombatState {
   const character = CHARACTERS_BY_ID[characterId as keyof typeof CHARACTERS_BY_ID];
-  let nextState = state;
-  for (const target of state.enemies) {
-    if (target.currentHp <= 0) continue;
-    const enemy = ENEMIES_BY_ID[target.definitionId];
-    const defense = Math.round(enemy.defense * target.defenseMultiplier);
-    const damage = Math.max(1, power - defense);
-    const targetHp = Math.max(0, target.currentHp - damage);
-    nextState = {
-      ...nextState,
-      enemies: nextState.enemies.map((candidate) => candidate.instanceId === target.instanceId
-        ? { ...candidate, currentHp: targetHp }
-        : candidate),
-    };
-    nextState = appendEvent(
-      nextState,
-      'ally-ability-damage',
-      `${character.name}の「${character.ability.name}」！ ${enemy.name}へ ${damage} ダメージ。`,
-      {
-        actorId: character.id,
-        targetId: target.instanceId,
-        amount: damage,
-        abilityId: character.ability.id,
-      },
-    );
-    if (targetHp === 0) {
-      nextState = appendEvent(nextState, 'enemy-defeated', `${enemy.name}を撃破した。`, { targetId: target.instanceId });
-    }
-  }
-  return nextState;
+  return resolveEnemyDamage(state, {
+    targetIds: state.enemies.filter(enemy => enemy.currentHp > 0).map(enemy => enemy.instanceId),
+    power, kind: 'ally-ability-damage', label: `${character.name}の「${character.ability.name}」`,
+    actorId: character.id, abilityId: character.ability.id,
+  });
 }
 
 function finishIfDefeated(state: CombatState, now: number): CombatState {
   if (!isPartyDefeated(state.party)) return state;
   return appendEvent(
-    { ...state, targetEnemyId: null, status: 'defeat', stats: { ...state.stats, endedAt: now } },
+    cleanupEnemyState({ ...state, targetEnemyId: null, status: 'defeat', stats: { ...state.stats, endedAt: now } }),
     'defeat',
     'パーティーは闇に呑まれた。',
   );
@@ -222,7 +200,7 @@ export function applyCorrectTyping(
 
   if (areEnemiesDefeated(nextState.enemies)) {
     return appendEvent(
-      { ...nextState, targetEnemyId: null, status: 'victory', stats: { ...nextState.stats, endedAt: now } },
+      cleanupEnemyState({ ...nextState, targetEnemyId: null, status: 'victory', stats: { ...nextState.stats, endedAt: now } }),
       'victory',
       '敵部隊を殲滅した。',
     );
@@ -272,12 +250,9 @@ export function applyCorrectTyping(
     nextState = ensureValidEnemyTarget(nextState);
     const target = resolveCurrentEnemyTarget(nextState);
     if (!target) break;
-    const enemy = ENEMIES_BY_ID[target.definitionId];
-    const defense = Math.round(enemy.defense * target.defenseMultiplier);
     const comboMultiplier = getComboMultiplier(nextState, character.id);
     const counterBonus = nextState.buffResources.counters[character.id] ?? 0;
-    const damage = Math.max(1, Math.round(character.stats.attack * comboMultiplier * (1 + counterBonus)) - defense);
-    const targetHp = Math.max(0, target.currentHp - damage);
+    const power = Math.round(character.stats.attack * comboMultiplier * (1 + counterBonus));
     nextState = {
       ...nextState,
       party: nextState.party.map((member, index) => index === partyIndex
@@ -286,29 +261,13 @@ export function applyCorrectTyping(
             attackCharge: member.attackCharge - character.attackThreshold,
           }
         : member),
-      enemies: nextState.enemies.map((member) => member.instanceId === target.instanceId
-        ? { ...member, currentHp: targetHp }
-        : member),
       buffResources: { ...nextState.buffResources, counters: { ...nextState.buffResources.counters, [character.id]: 0 } },
     };
-    nextState = appendEvent(
-      nextState,
-      'ally-attack',
-      `${character.name}の攻撃！ ${enemy.name}へ ${damage} ダメージ。`,
-      {
-        actorId: character.id,
-        targetId: target.instanceId,
-        amount: damage,
-        soundId: character.audio.attack,
-      },
-    );
-
-    if (targetHp === 0) {
-      nextState = appendEvent(nextState, 'enemy-defeated', `${enemy.name}を撃破した。`, { targetId: target.instanceId });
-    }
+    nextState = resolveEnemyDamage(nextState, { targetIds: [target.instanceId], power,
+      kind: 'ally-attack', label: `${character.name}の攻撃`, actorId: character.id, soundId: character.audio.attack });
     if (areEnemiesDefeated(nextState.enemies)) {
       return appendEvent(
-        { ...nextState, targetEnemyId: null, status: 'victory', stats: { ...nextState.stats, endedAt: now } },
+        cleanupEnemyState({ ...nextState, targetEnemyId: null, status: 'victory', stats: { ...nextState.stats, endedAt: now } }),
         'victory',
         '敵部隊を殲滅した。',
       );
@@ -385,6 +344,7 @@ export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()
       : {
           ...enemy,
           cooldownRemainingMs: enemy.cooldownRemainingMs - deltaMs,
+          skillCooldowns: Object.fromEntries(Object.entries(enemy.skillCooldowns).map(([id, remaining]) => [id, Math.max(0, remaining - deltaMs)])),
           pendingSpecial: enemy.pendingSpecial
             ? { ...enemy.pendingSpecial, remainingMs: enemy.pendingSpecial.remainingMs - deltaMs }
             : null,
@@ -409,7 +369,7 @@ export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()
 
   for (let index = 0; index < nextState.enemies.length; index += 1) {
     if (nextState.enemies[index].currentHp > 0 && nextState.enemies[index].cooldownRemainingMs <= 0) {
-      nextState = performEnemyAttack(nextState, index, now);
+      nextState = performEnemySkill(nextState, index, now, performEnemyAttack);
       if (nextState.status === 'defeat') break;
     }
   }

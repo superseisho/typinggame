@@ -34,7 +34,7 @@ export function AudioSettingsPanel({ open, onClose }: AudioSettingsPanelProps) {
   if (!open) return null;
 
   return (
-    <aside className="audio-settings" aria-label="オーディオ設定">
+    <aside className="audio-settings" aria-label="オーディオ設定" data-combat-input-blocker>
       <div className="audio-settings__heading">
         <div><span className="eyebrow">AUDIO FEEDBACK</span><h2>Sound Settings</h2></div>
         <button type="button" onClick={onClose} aria-label="設定を閉じる">×</button>

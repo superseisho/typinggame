@@ -2,11 +2,8 @@ import { ROOM_DEFINITIONS } from '../../data/rooms/roomDefinitions';
 import type { RoomDefinition, RoomOption } from '../../types/dungeon';
 import { DUNGEON_CONFIG } from './dungeonConfig';
 
-/** Seeded random state makes each transition deterministic, including React retries. */
-export function randomStep(seed: number): { seed: number; value: number } {
-  const next = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-  return { seed: next, value: next / 4294967296 };
-}
+import { randomStep } from '../../utils/random';
+export { randomStep } from '../../utils/random';
 
 export function generatePreBossRooms(floor: number): RoomOption[] {
   return [{ id: `${floor}-rest`, type: 'rest' }, { id: `${floor}-shop`, type: 'shop' }];

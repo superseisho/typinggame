@@ -37,21 +37,25 @@ export function CombatFeedback({
   readonly events: readonly CombatEvent[];
   readonly targetId: string;
 }) {
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [feedback, setFeedback] = useState<readonly Feedback[]>([]);
   const lastShownId = useRef(0);
+  const matching = events.map(event => toFeedback(event, targetId)).filter((item): item is Feedback => item !== null);
+  const latestId = matching.at(-1)?.id;
 
   useEffect(() => {
-    const latest = [...events].reverse().map((event) => toFeedback(event, targetId)).find(Boolean);
-    if (!latest || latest.id <= lastShownId.current) return;
-    lastShownId.current = latest.id;
-    setFeedback(latest);
-    const timeoutId = window.setTimeout(() => setFeedback(null), 720);
+    if (latestId === undefined) { setFeedback([]); return; }
+    const fresh = matching.filter(item => item.id > lastShownId.current).slice(-8);
+    lastShownId.current = latestId;
+    if (fresh.length) setFeedback(fresh);
+    const timeoutId = window.setTimeout(() => setFeedback([]), 720);
     return () => window.clearTimeout(timeoutId);
-  }, [events, targetId]);
+  // Only a new feedback event restarts its lifetime, not typing/timer renders.
+  }, [latestId, targetId]);
 
-  return feedback ? (
-    <span className={`combat-feedback combat-feedback--${feedback.kind}`} key={feedback.id}>
-      {feedback.text}
+  return <>{feedback.map((item, index) => (
+    <span className={`combat-feedback combat-feedback--${item.kind}`} key={item.id}
+      style={{ right: `${13 + index * 35}px`, animationDelay: `${index * 35}ms` }}>
+      {item.text}
     </span>
-  ) : null;
+  ))}</>;
 }

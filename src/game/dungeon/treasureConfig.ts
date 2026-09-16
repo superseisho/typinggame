@@ -5,7 +5,6 @@ export const TREASURE_CONFIG = {
   rareBuffWeights: { common: 0, uncommon: 0, rare: 85, epic: 15 },
   trapGold: [10, 25],
   trapAnnouncementMs: 750,
-  trapEncounters: [['crypt-slime'], ['goblin-archer'], ['crypt-slime', 'grave-shaman']],
 } as const;
 
 export function getTreasureTrapPercent(): number {

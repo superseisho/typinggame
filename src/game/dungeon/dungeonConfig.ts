@@ -10,12 +10,3 @@ export const DUNGEON_CONFIG = {
   rest: { partyRatio: 0.3, focusedRatio: 0.6, reviveRatio: 0.3 },
   rewards: { battle: [45, 65], elite: [100, 130], ambush: [55, 75], boss: [200, 260] },
 } as const;
-
-// Tier is an encounter-table boundary, not a per-floor stat multiplier.
-// Future tiers can add their own tables without changing CombatEngine.
-export const TIER_ONE_ENCOUNTERS = {
-  battle: [['crypt-slime'], ['goblin-archer'], ['crypt-slime', 'grave-shaman']],
-  elite: [['elite-slime'], ['elite-slime', 'grave-shaman']],
-  ambush: [['goblin-archer', 'grave-shaman']],
-  boss: [['crypt-warden']],
-} as const;

@@ -1,5 +1,5 @@
 import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
-import { ENEMIES_BY_ID } from '../../data/enemies';
+import { resolveEnemyDamage } from '../combat/enemyDamage';
 import type { BuffDefinition, BuffEffect } from '../../types/buffs';
 import type { CharacterId, CombatState } from '../../types/game';
 import { appendEvent } from '../combat/combatEvents';
@@ -47,16 +47,8 @@ const handlers: Partial<Record<BuffEffect['type'], Handler>> = {
   },
   'streak-damage': (state, effect, stacks, trigger, buff) => {
     if (effect.type !== 'streak-damage' || trigger.type !== 'perfect-streak' || trigger.streak <= 0 || trigger.streak % effect.threshold !== 0) return state;
-    let next = announce(state, buff);
-    for (const enemy of state.enemies) {
-      if (enemy.currentHp <= 0) continue;
-      const definition = ENEMIES_BY_ID[enemy.definitionId];
-      const damage = Math.min(enemy.currentHp, Math.max(1, Math.round(effect.value * stacks - definition.defense * enemy.defenseMultiplier)));
-      next = appendEvent({ ...next, enemies: next.enemies.map(target => target.instanceId === enemy.instanceId ? { ...target, currentHp: target.currentHp - damage } : target) },
-        'ally-ability-damage', `${buff.name} · ${definition.name} −${damage}`, { targetId: enemy.instanceId, amount: damage, abilityId: buff.id });
-      if (damage === enemy.currentHp) next = appendEvent(next, 'enemy-defeated', `${definition.name}を撃破した。`, { targetId: enemy.instanceId });
-    }
-    return next;
+    return resolveEnemyDamage(announce(state, buff), { targetIds: state.enemies.filter(enemy => enemy.currentHp > 0).map(enemy => enemy.instanceId),
+      power: effect.value * stacks, kind: 'ally-ability-damage', label: buff.name, abilityId: buff.id });
   },
 };
 

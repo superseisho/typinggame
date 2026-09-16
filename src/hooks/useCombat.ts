@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GAME_CONFIG } from '../data/gameConfig';
 import { startCombat, tickCombat } from '../game/combat/combatEngine';
-import { selectEnemyTarget } from '../game/combat/enemyTarget';
+import { moveEnemyTarget, selectEnemyTarget } from '../game/combat/enemyTarget';
+import { consumeTargetNavigationKey, isCombatKeyboardBlocked } from '../game/combat/combatKeyboard';
 import { createCombatState } from '../game/combat/createCombatState';
 import { handleCombatTyping } from '../game/combat/handleCombatTyping';
 import { LocalStorageSaveRepository } from '../game/save/LocalStorageSaveRepository';
@@ -46,8 +47,8 @@ export function useCombat() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
-      if (event.target instanceof HTMLElement && event.target.closest('input, button, select, textarea')) return;
+      if (isCombatKeyboardBlocked(event)) return;
+      if (consumeTargetNavigationKey(event, combat.status === 'active', direction => setCombat(current => moveEnemyTarget(current, direction)))) return;
       void audioManager.unlock();
       if (event.key === ' ') event.preventDefault();
       setCombat((current) => {
@@ -60,7 +61,7 @@ export function useCombat() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [combat.status]);
 
   const start = useCallback(() => {
     void audioManager.unlock();

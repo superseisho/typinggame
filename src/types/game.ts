@@ -134,6 +134,7 @@ export interface EnemyRewards {
 }
 
 export interface EnemyDefinition {
+  readonly skills: readonly { readonly skillId: string; readonly weight: number }[];
   readonly id: string;
   readonly name: string;
   readonly englishName: string;
@@ -161,6 +162,8 @@ export interface CharacterCombatState {
 }
 
 export interface EnemyCombatState {
+  readonly skillCooldowns: Readonly<Record<string, number>>;
+  readonly cover: { readonly remainingHits: number } | null;
   readonly instanceId: string;
   readonly definitionId: string;
   readonly formationIndex: number;
@@ -184,6 +187,8 @@ export interface CombatStats {
 }
 
 export type CombatEventKind =
+  | 'enemy-skill-used'
+  | 'enemy-cover'
   | 'system'
   | 'typing-correct'
   | 'typing-miss'
@@ -207,6 +212,9 @@ export type CombatEventKind =
   | 'defeat';
 
 export interface CombatEvent {
+  readonly skillId?: string;
+  readonly originalTargetId?: string;
+  readonly actualDamage?: number;
   readonly id: number;
   readonly kind: CombatEventKind;
   readonly message: string;
@@ -221,6 +229,7 @@ export interface CombatEvent {
 }
 
 export interface CombatState {
+  readonly skillRngState: number;
   readonly targetEnemyId: string | null;
   readonly runBuffs: readonly RunBuff[];
   readonly buffResources: BuffCombatResources;
