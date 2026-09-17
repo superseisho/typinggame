@@ -10,7 +10,7 @@ const initial = () => startCombat(createCombatState(['enemy_guardian', 'enemy_sh
 function scheduled(index: number, skill: string): CombatState {
   const state = initial();
   return { ...state, enemies: state.enemies.map((e,i) => ({ ...e,
-    currentHp: i === 0 ? 90 : e.currentHp, cooldownRemainingMs: i === index ? 100 : 10000,
+    currentHp: i === 0 ? 90 : e.currentHp, actionRemainingMs: i === index ? 100 : 10000,
     nextActionSkillId: i === index ? skill : e.nextActionSkillId,
   })) };
 }
@@ -31,12 +31,9 @@ describe('planned normal enemy actions', () => {
       expect(before.skillRngState).toBe(state.skillRngState);
       const next = tickCombat(before, 1, 101);
       expect(next.events.find(e => e.kind === 'enemy-skill-used')?.skillId).toBe(skill);
-      expect(next.enemies[index].cooldownRemainingMs).toBeGreaterThan(0);
+      expect(next.enemies[index].actionRemainingMs).toBeGreaterThan(0);
       expect(next.enemies[index].nextActionSkillId).toBeTruthy();
-      if (skill === 'skill_cover' || skill === 'skill_heal') {
-        expect(next.enemies[index].skillCooldowns[skill]).toBeGreaterThan(0);
-        expect(next.enemies[index].nextActionSkillId).toBe('skill_attack');
-      }
+      expect(next.enemies[index].actionRemainingMs).toBe(next.enemies[index].actionDurationMs);
     });
   it('duplicate Guardians can hold independent plans', () => {
     let state = initial();
@@ -67,7 +64,7 @@ describe('planned normal enemy actions', () => {
     state = applyCorrectTyping(state, state.typing);
     for (let i = 0; i < 4; i++) state = applyTypingMiss(state, state.typing);
     expect(state.enemies[0].pendingSpecial).not.toBeNull();
-    state = { ...state, enemies: state.enemies.map(e => ({ ...e, cooldownRemainingMs: 10000 })) };
+    state = { ...state, enemies: state.enemies.map(e => ({ ...e, actionRemainingMs: 10000 })) };
     state = tickCombat(state, 800, 801);
     expect(state.enemies.map(e => e.nextActionSkillId)).toEqual(plans);
     expect(state.skillRngState).toBe(rng);

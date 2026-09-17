@@ -121,7 +121,7 @@ describe('run buff inventory and rewards', () => {
     const initial = createDungeonRun(2, 'fail');
     const powered = combat('power-rune');
     const defeat = reduceDungeon({ ...initial, runStatus: 'battle', currentRoom: 'battle', activeBuffs: powered.runBuffs,
-      combat: { ...powered, party: powered.party.map((member, i) => ({ ...member, currentHp: i ? 0 : 1 })), enemies: powered.enemies.map(enemy => ({ ...enemy, cooldownRemainingMs: 0 })) } }, { type: 'tick', deltaMs: 50, now: 100 });
+      combat: { ...powered, party: powered.party.map((member, i) => ({ ...member, currentHp: i ? 0 : 1 })), enemies: powered.enemies.map(enemy => ({ ...enemy, actionRemainingMs: 0 })) } }, { type: 'tick', deltaMs: 50, now: 100 });
     expect(defeat.runStatus).toBe('game_over');
     expect(defeat.activeBuffs).toEqual([]);
     expect(defeat.combat.runBuffs).toEqual([]);
@@ -183,7 +183,7 @@ describe('derived combat stats and conditional effects', () => {
   });
   it('guard buffs activate on consumption, heal actual HP and consume the next counter once', () => {
     let state = combat('reinforced-shield', 'guardian-oath', 'fortress');
-    state = { ...state, party: state.party.map((member, i) => i === 0 ? { ...member, currentHp: 100, statuses: ['ability:guard'] } : member), enemies: state.enemies.map(enemy => ({ ...enemy, cooldownRemainingMs: 0 })) };
+    state = { ...state, party: state.party.map((member, i) => i === 0 ? { ...member, currentHp: 100, statuses: ['ability:guard'] } : member), enemies: state.enemies.map(enemy => ({ ...enemy, actionRemainingMs: 0 })) };
     const guarded = tickCombat(state, 1, 1);
     expect(guarded.party[0].statuses).not.toContain('ability:guard');
     expect(guarded.party[0].currentHp).toBe(109);

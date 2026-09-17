@@ -102,7 +102,7 @@ export type EnemyAbilityEffect =
   | {
       readonly effectType: 'buff' | 'debuff';
       readonly targetType: EnemyAbilityTarget;
-      readonly stat: 'attack' | 'defense' | 'attackCooldown' | 'attackThreshold';
+      readonly stat: 'attack' | 'defense' | 'actionTime' | 'attackThreshold';
       readonly value: number;
       readonly durationMs?: number;
     };
@@ -134,14 +134,13 @@ export interface EnemyRewards {
 }
 
 export interface EnemyDefinition {
-  readonly skills: readonly { readonly skillId: string; readonly weight: number }[];
+  readonly skills: readonly { readonly skillId: string; readonly weight: number; readonly actionTimeMs: number }[];
   readonly id: string;
   readonly name: string;
   readonly englishName: string;
   readonly maxHp: number;
   readonly attack: number;
   readonly defense: number;
-  readonly attackCooldown: number;
   readonly specialGaugeMax: number;
   readonly specialAbilities: readonly EnemySpecialAbility[];
   readonly aiRules: readonly EnemyAiRule[];
@@ -163,17 +162,17 @@ export interface CharacterCombatState {
 
 export interface EnemyCombatState {
   readonly nextActionSkillId: string | null;
-  readonly skillCooldowns: Readonly<Record<string, number>>;
+  readonly actionDurationMs: number;
   readonly cover: { readonly remainingHits: number } | null;
   readonly instanceId: string;
   readonly definitionId: string;
   readonly formationIndex: number;
   readonly currentHp: number;
-  readonly cooldownRemainingMs: number;
+  readonly actionRemainingMs: number;
   readonly specialGauge: number;
   readonly attackMultiplier: number;
   readonly defenseMultiplier: number;
-  readonly cooldownMultiplier: number;
+  readonly actionTimeMultiplier: number;
   readonly statuses: readonly string[];
   readonly pendingSpecial: {
     readonly abilityId: string;

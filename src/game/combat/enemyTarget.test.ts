@@ -110,7 +110,7 @@ describe('shared enemy target', () => {
 
   it('clears on defeat and does not carry the last selection into a new battle', () => {
     const state = selectEnemyTarget(battle(), battle().enemies[1].instanceId);
-    const doomed = { ...state, party: state.party.map(p => ({ ...p, currentHp: 1 })), enemies: state.enemies.map(e => ({ ...e, cooldownRemainingMs: 0 })) };
+    const doomed = { ...state, party: state.party.map(p => ({ ...p, currentHp: 1 })), enemies: state.enemies.map(e => ({ ...e, actionRemainingMs: 0 })) };
     let next: CombatState = doomed;
     for (let i = 0; i < 5; i++) next = tickCombat(next, 10000, i + 2);
     expect(next.status).toBe('defeat');

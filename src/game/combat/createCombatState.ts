@@ -11,18 +11,18 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
     const enemy = ENEMIES_BY_ID[enemyId];
     if (!enemy) throw new Error(`Unknown enemy: ${enemyId}`);
     return {
-      skillCooldowns: {},
+      actionDurationMs: 0,
       nextActionSkillId: null,
       cover: null,
       instanceId: `${enemyId}-${index + 1}`,
       definitionId: enemy.id,
       formationIndex: index,
       currentHp: enemy.maxHp,
-      cooldownRemainingMs: enemy.attackCooldown,
+      actionRemainingMs: 0,
       specialGauge: 0,
       attackMultiplier: 1,
       defenseMultiplier: 1,
-      cooldownMultiplier: 1,
+      actionTimeMultiplier: 1,
       statuses: [],
       pendingSpecial: null,
     };

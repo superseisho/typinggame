@@ -5,13 +5,12 @@ import { ENEMY_SKILL_CONFIG as SKILL } from './enemySkills';
 export const ENEMY_DEFINITIONS = [
   {
     id: 'crypt-slime',
-    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight }],
+    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight, actionTimeMs: 5000 }],
     name: '墓所のスライム',
     englishName: 'Crypt Slime',
     maxHp: 150,
     attack: 19,
     defense: 3,
-    attackCooldown: 5_000,
     specialGaugeMax: 100,
     specialAbilities: [{
       id: 'corrosive-burst',
@@ -31,13 +30,12 @@ export const ENEMY_DEFINITIONS = [
   },
   {
     id: 'grave-shaman',
-    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight }],
+    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight, actionTimeMs: 6500 }],
     name: '墓守の呪術師',
     englishName: 'Grave Shaman',
     maxHp: 105,
     attack: 14,
     defense: 1,
-    attackCooldown: 6_500,
     specialGaugeMax: 100,
     specialAbilities: [{
       id: 'healing-prayer',
@@ -60,13 +58,12 @@ export const ENEMY_DEFINITIONS = [
   },
   {
     id: 'goblin-archer',
-    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight }],
+    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight, actionTimeMs: 4200 }],
     name: '洞窟の射手',
     englishName: 'Cave Archer',
     maxHp: 92,
     attack: 18,
     defense: 2,
-    attackCooldown: 4_200,
     specialGaugeMax: 100,
     specialAbilities: [{
       id: 'execution-shot',
@@ -89,16 +86,18 @@ export const ENEMY_DEFINITIONS = [
 // Fixed Tier 1 variants. No floor-dependent multipliers are applied.
 export const DUNGEON_ENEMIES: readonly EnemyDefinition[] = [
   { ...ENEMY_DEFINITIONS[0], id: 'enemy_guardian', name: 'ガーディアン', englishName: 'Guardian', sprite: 'guardian',
-    maxHp: 180, attack: 16, defense: 4, attackCooldown: 5000,
+    maxHp: 180, attack: 16, defense: 4,
     description: '墓道を塞ぐ、古びた盾を抱えた魔物。',
-    skills: [{ skillId: 'skill_attack', weight: SKILL.guardian.attackWeight }, { skillId: 'skill_cover', weight: SKILL.guardian.coverWeight }] },
+    skills: [{ skillId: 'skill_attack', weight: SKILL.guardian.attackWeight, actionTimeMs: SKILL.guardian.attackTimeMs }, { skillId: 'skill_cover', weight: SKILL.guardian.coverWeight, actionTimeMs: SKILL.guardian.coverTimeMs }] },
   { ...ENEMY_DEFINITIONS[1], id: 'enemy_shaman', name: 'シャーマン', englishName: 'Shaman',
-    skills: [{ skillId: 'skill_attack', weight: SKILL.shaman.attackWeight }, { skillId: 'skill_heal', weight: SKILL.shaman.healWeight }] },
+    skills: [{ skillId: 'skill_attack', weight: SKILL.shaman.attackWeight, actionTimeMs: SKILL.shaman.attackTimeMs }, { skillId: 'skill_heal', weight: SKILL.shaman.healWeight, actionTimeMs: SKILL.shaman.healTimeMs }] },
   { ...ENEMY_DEFINITIONS[0], id: 'elite-slime', name: '重装の墓所スライム', englishName: 'Armored Crypt Slime',
-    maxHp: 225, attack: 24, defense: 6, attackCooldown: 4800, elite: true,
+    maxHp: 225, attack: 24, defense: 6, elite: true,
+    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight, actionTimeMs: 4800 }],
     description: '厚い外殻を持つエリート。通常の粘体より強力。' },
   { ...ENEMY_DEFINITIONS[1], id: 'crypt-warden', name: '墓所の守護者', englishName: 'Warden of the Crypt',
-    maxHp: 550, attack: 28, defense: 7, attackCooldown: 5500, boss: true,
+    maxHp: 550, attack: 28, defense: 7, boss: true,
+    skills: [{ skillId: 'skill_attack', weight: SKILL.attackWeight, actionTimeMs: 5500 }],
     description: '第1区画の出口を封じる守護者。傷つくと自身を癒やす。',
     specialAbilities: [
       { id: 'warden-ruin', name: '滅びの波動', description: '全員に闇属性ダメージ。', gaugeCost: 100,

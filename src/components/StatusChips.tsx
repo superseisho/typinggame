@@ -1,6 +1,6 @@
 function statusLabel(status: string): { readonly label: string; readonly beneficial: boolean } {
   const [kind, rawName = status] = status.split(':');
-  const name = rawName.replace(/attackCooldown/i, 'HASTE').replace(/attackThreshold/i, 'FOCUS').toUpperCase();
+  const name = rawName.replace(/actionTime/i, 'HASTE').replace(/attackThreshold/i, 'FOCUS').toUpperCase();
   const beneficial = kind === 'buff' || kind === 'ability';
   return { label: `${kind === 'ability' ? '◆' : beneficial ? '▲' : '▼'} ${name}`, beneficial };
 }

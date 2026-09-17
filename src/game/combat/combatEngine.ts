@@ -304,7 +304,6 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number)
   state = incoming.state;
   const damage = incoming.damage;
   const targetHp = Math.max(0, target.currentHp - damage);
-  const cooldown = enemyDefinition.attackCooldown * actor.cooldownMultiplier;
 
   let nextState: CombatState = {
     ...state,
@@ -315,9 +314,6 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number)
         ? member.statuses.filter((status) => status !== `${ABILITY_STATUS_PREFIX}guard`)
         : member.statuses,
     } : member),
-    enemies: state.enemies.map((enemy, index) => index === enemyIndex
-      ? { ...enemy, cooldownRemainingMs: Math.max(0, cooldown + enemy.cooldownRemainingMs) }
-      : enemy),
     partyTargetCursor: state.partyTargetCursor + 1,
   };
   nextState = guarded
@@ -348,8 +344,7 @@ export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()
       ? enemy
       : {
           ...enemy,
-          cooldownRemainingMs: enemy.cooldownRemainingMs - deltaMs,
-          skillCooldowns: Object.fromEntries(Object.entries(enemy.skillCooldowns).map(([id, remaining]) => [id, Math.max(0, remaining - deltaMs)])),
+          actionRemainingMs: enemy.actionRemainingMs - deltaMs,
           pendingSpecial: enemy.pendingSpecial
             ? { ...enemy.pendingSpecial, remainingMs: enemy.pendingSpecial.remainingMs - deltaMs }
             : null,
@@ -373,7 +368,7 @@ export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()
   }
 
   for (let index = 0; index < nextState.enemies.length; index += 1) {
-    if (nextState.enemies[index].currentHp > 0 && nextState.enemies[index].cooldownRemainingMs <= 0) {
+    if (nextState.enemies[index].currentHp > 0 && nextState.enemies[index].actionRemainingMs <= 0) {
       nextState = performEnemySkill(nextState, index, now, performEnemyAttack);
       if (nextState.status === 'defeat') break;
     }

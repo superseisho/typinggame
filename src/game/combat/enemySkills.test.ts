@@ -50,7 +50,7 @@ describe('attack-snapshot Cover', () => {
     expect(next.events.filter(e => e.kind === 'enemy-defeated')).toHaveLength(1);
     expect(next.events.at(-1)?.kind).toBe('enemy-defeated');
     expect(next.enemies[0].cover).toBeNull();
-    expect(next.enemies[0].skillCooldowns).toEqual({});
+    expect(next.enemies[0].actionDurationMs).toBe(0);
     expect(next.targetEnemyId).toBe(next.enemies[1].instanceId);
     expect(hit(next, [1]).enemies[1].currentHp).toBe(82);
   });
@@ -96,17 +96,13 @@ describe('normal enemy Skill selection', () => {
       expect(usableEnemySkills(state, state.enemies[0]).map(s => s.skillId)).toEqual(['skill_attack']);
     }
   });
-  it('Cover refreshes to three, cooldown is per instance, and reuse waits for cooldown', () => {
+  it('Cover refreshes to three and remains immediately eligible for the next plan', () => {
     const state = forceSkill(cover(1), 0, 'skill_cover');
     const next = performEnemySkill(state, 0, 2, vi.fn());
     expect(next.enemies[0].cover?.remainingHits).toBe(3);
-    expect(next.enemies[0].skillCooldowns.skill_cover).toBe(10000);
-    expect(usableEnemySkills(next, next.enemies[0]).map(s => s.skillId)).toEqual(['skill_attack']);
-    const quiet = { ...next, enemies: next.enemies.map(e => ({ ...e, cooldownRemainingMs: 20000 })) };
-    const elapsed = tickCombat(quiet, 10000, 10002);
-    expect(elapsed.enemies[0].skillCooldowns.skill_cover).toBe(0);
-    expect(usableEnemySkills(elapsed, elapsed.enemies[0]).map(s => s.skillId)).toContain('skill_cover');
-    expect(elapsed.enemies[1].skillCooldowns).toEqual({});
+    expect(usableEnemySkills(next, next.enemies[0]).map(s => s.skillId)).toEqual(['skill_attack', 'skill_cover']);
+    expect(next.enemies[0].actionRemainingMs).toBe(next.enemies[0].actionDurationMs);
+    expect(next.enemies[1]).toEqual(state.enemies[1]);
   });
   it('Heal picks lowest alive HP ratio, not lowest raw HP; no dead revival', () => {
     const base = battle();
@@ -114,7 +110,7 @@ describe('normal enemy Skill selection', () => {
     const next = performEnemySkill(state, 1, 2, vi.fn());
     expect(next.enemies.map(e => e.currentHp)).toEqual([105, 50, 0]);
     expect(next.events.at(-1)).toMatchObject({ kind: 'enemy-heal', targetId: state.enemies[0].instanceId, amount: 45 });
-    expect(next.enemies[1].skillCooldowns.skill_heal).toBe(8000);
+    expect(usableEnemySkills(next, next.enemies[1]).map(s => s.skillId)).toContain('skill_heal');
   });
   it('Shaman heals itself and caps healing at max HP', () => {
     const base = startCombat(createCombatState(['enemy_shaman']));
@@ -136,18 +132,18 @@ describe('normal enemy Skill selection', () => {
   });
   it('tick executes Skill, preserves typing/target/SPECIAL, and stops after defeat', () => {
     const base = forceSkill(cover(0), 0, 'skill_cover');
-    const state = { ...base, enemies: base.enemies.map((e,i) => ({ ...e, cooldownRemainingMs: i ? 9999 : 1 })) };
+    const state = { ...base, enemies: base.enemies.map((e,i) => ({ ...e, actionRemainingMs: i ? 9999 : 1 })) };
     const next = tickCombat(state, 1, 2);
     expect(next.enemies[0].cover?.remainingHits).toBe(3);
     expect(next.typing).toBe(state.typing);
     expect(next.targetEnemyId).toBe(state.targetEnemyId);
     expect(next.enemies.map(e => e.specialGauge)).toEqual(state.enemies.map(e => e.specialGauge));
     const losing = { ...next, party: next.party.map(e => ({ ...e, currentHp: 1 })),
-      enemies: next.enemies.map(e => ({ ...e, cooldownRemainingMs: 0, skillCooldowns: { skill_cover: 99999, skill_heal: 99999 } })) };
+      enemies: next.enemies.map(e => ({ ...e, actionRemainingMs: 0, nextActionSkillId: 'skill_attack' })) };
     let ended = losing as CombatState;
     for (let i = 0; i < 10 && ended.status === 'active'; i++) ended = tickCombat(ended, 10000, i);
     expect(ended.status).toBe('defeat');
-    expect(ended.enemies.every(e => !e.cover && !Object.keys(e.skillCooldowns).length)).toBe(true);
+    expect(ended.enemies.every(e => !e.cover && e.actionDurationMs === 0 && e.actionRemainingMs === 0)).toBe(true);
     expect(tickCombat(ended, 1000)).toBe(ended);
     expect(createCombatState(['enemy_guardian']).enemies[0].cover).toBeNull();
   });

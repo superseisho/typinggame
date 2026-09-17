@@ -89,7 +89,7 @@ describe('combat engine', () => {
       abilityId: 'guard',
     });
 
-    const attacked = tickCombat(guarded, ENEMIES_BY_ID['crypt-slime'].attackCooldown, 6_000);
+    const attacked = tickCombat(guarded, ENEMIES_BY_ID['crypt-slime'].skills[0].actionTimeMs, 6_000);
     expect(attacked.party[0].currentHp).toBe(CHARACTERS_BY_ID.warrior.stats.maxHp);
     expect(attacked.party[0].statuses).not.toContain('ability:guard');
     expect(getCharacterVisualState(CHARACTERS_BY_ID.warrior, attacked.party[0])).toBe('normal');
@@ -138,11 +138,11 @@ describe('combat engine', () => {
     });
   });
 
-  it('lets every living enemy advance and perform cooldown attacks', () => {
+  it('lets every living enemy advance and perform planned actions', () => {
     const state = startCombat(createCombatState(['crypt-slime', 'grave-shaman']), 1_000);
-    const next = tickCombat(state, ENEMIES_BY_ID['crypt-slime'].attackCooldown, 6_000);
+    const next = tickCombat(state, ENEMIES_BY_ID['crypt-slime'].skills[0].actionTimeMs, 6_000);
     expect(next.party[0].currentHp).toBeLessThan(CHARACTERS_BY_ID.warrior.stats.maxHp);
-    expect(next.enemies[1].cooldownRemainingMs).toBe(1_500);
+    expect(next.enemies[1].actionRemainingMs).toBe(1_500);
     const hit = next.events.find(event => event.kind === 'ally-damaged')!;
     expect(hit.targetHpAfter).toBe(next.party[0].currentHp);
     expect(hit.amount).toBe(state.party[0].currentHp - next.party[0].currentHp);

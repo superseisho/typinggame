@@ -173,7 +173,7 @@ function applyEffect(
     if (!targets.includes(index)) return enemy;
     if (effect.stat === 'attack') return { ...enemy, attackMultiplier: enemy.attackMultiplier * multiplier };
     if (effect.stat === 'defense') return { ...enemy, defenseMultiplier: enemy.defenseMultiplier * multiplier };
-    if (effect.stat === 'attackCooldown') return { ...enemy, cooldownMultiplier: enemy.cooldownMultiplier * multiplier };
+    if (effect.stat === 'actionTime') return { ...enemy, actionTimeMultiplier: enemy.actionTimeMultiplier * multiplier };
     return enemy;
   });
   for (const index of targets) {

@@ -17,7 +17,7 @@ export function usableEnemySkills(state: CombatState, actor: EnemyCombatState) {
   if (actor.currentHp <= 0) return [];
   return ENEMIES_BY_ID[actor.definitionId].skills.filter(binding => {
     const skill = ENEMY_SKILLS[binding.skillId];
-    return binding.weight > 0 && skill && (actor.skillCooldowns[skill.id] ?? 0) <= 0 && conditions[skill.requirement](state, actor);
+    return binding.weight > 0 && skill && conditions[skill.requirement](state, actor);
   });
 }
 export function chooseEnemySkill(state: CombatState, actor: EnemyCombatState) {
@@ -35,8 +35,10 @@ export function planEnemyAction(state: CombatState, actorIndex: number): CombatS
   const actor = state.enemies[actorIndex];
   if (!actor || actor.currentHp <= 0 || state.status !== 'active') return state;
   const selection = chooseEnemySkill(state, actor);
+  const binding = ENEMIES_BY_ID[actor.definitionId].skills.find(s => s.skillId === selection.skill?.id);
+  const duration = binding ? Math.max(1, Math.round(binding.actionTimeMs * actor.actionTimeMultiplier)) : 0;
   return { ...selection.state, enemies: selection.state.enemies.map((e, index) => index === actorIndex
-    ? { ...e, nextActionSkillId: selection.skill?.id ?? null } : e) };
+    ? { ...e, nextActionSkillId: selection.skill?.id ?? null, actionDurationMs: duration, actionRemainingMs: duration } : e) };
 }
 
 /** A stale plan falls back deterministically; execution never draws a new skill. */
@@ -59,8 +61,6 @@ export function performEnemySkill(state: CombatState, actorIndex: number, now: n
   }, false);
   if (skill.effect === 'attack') return planEnemyAction(attack(next, actorIndex, now), actorIndex);
   next = { ...next, enemies: next.enemies.map(e => e.instanceId === actor.instanceId ? { ...e,
-    cooldownRemainingMs: Math.max(0, e.cooldownRemainingMs + definition.attackCooldown * e.cooldownMultiplier),
-    skillCooldowns: { ...e.skillCooldowns, [skill.id]: skill.cooldownMs },
     cover: skill.effect === 'cover' ? { remainingHits: ENEMY_SKILL_CONFIG.guardian.maxHits } : e.cover,
   } : e) };
   if (skill.effect === 'heal') {

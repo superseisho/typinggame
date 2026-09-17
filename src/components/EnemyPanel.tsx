@@ -63,7 +63,8 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING', onSelectEne
           const enemy = ENEMIES_BY_ID[enemyState.definitionId];
           const hpRatio = enemyState.currentHp / enemy.maxHp;
           const specialRatio = enemyState.specialGauge / enemy.specialGaugeMax;
-          const attackRatio = Math.max(0, Math.min(1, (enemy.attackCooldown - enemyState.cooldownRemainingMs) / enemy.attackCooldown));
+          const actionRatio = enemyState.actionDurationMs > 0
+            ? Math.max(0, Math.min(1, 1 - enemyState.actionRemainingMs / enemyState.actionDurationMs)) : 0;
           const knockedOut = enemyState.currentHp <= 0;
           const targeted = combat.status === 'active' && !knockedOut && combat.targetEnemyId === enemyState.instanceId;
           const selectable = combat.status === 'active' && !knockedOut && !!onSelectEnemyTarget;
@@ -71,7 +72,7 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING', onSelectEne
 
           return (
             <article
-              className={`enemy-unit hp-${hpSeverity(hpRatio)} special-${specialLevel} ${attackRatio >= .8 ? 'attack-imminent' : ''} ${knockedOut ? 'is-defeated' : ''} ${targeted ? 'is-targeted' : ''} ${selectable ? 'is-selectable' : ''}`}
+              className={`enemy-unit hp-${hpSeverity(hpRatio)} special-${specialLevel} ${actionRatio >= .8 ? 'attack-imminent' : ''} ${knockedOut ? 'is-defeated' : ''} ${targeted ? 'is-targeted' : ''} ${selectable ? 'is-selectable' : ''}`}
               key={enemyState.instanceId}
               data-enemy-id={enemyState.instanceId}
             >
@@ -107,8 +108,8 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING', onSelectEne
               </div>
               <div className="enemy-unit__gauges">
                 <div>
-                  <div className="gauge-label"><span>ATTACK</span><strong>{Math.max(0, enemyState.cooldownRemainingMs / 1_000).toFixed(1)}s</strong></div>
-                  <ProgressBar value={attackRatio} max={1} tone="attack" severity={attackRatio >= .8 ? 'warning' : 'normal'} compact label={`${enemy.name}の攻撃クールダウン`} />
+                  <div className="gauge-label"><span>ACTION</span><strong>{Math.max(0, enemyState.actionRemainingMs / 1_000).toFixed(1)}s</strong></div>
+                  <ProgressBar value={Math.max(0, enemyState.actionDurationMs - enemyState.actionRemainingMs)} max={enemyState.actionDurationMs} tone="attack" severity={actionRatio >= .8 ? 'warning' : 'normal'} compact label={`${enemy.name}のAction進行`} />
                 </div>
                 <div>
                   <div className="gauge-label"><span>SPECIAL</span><strong>{Math.round(specialRatio * 100)}%</strong></div>

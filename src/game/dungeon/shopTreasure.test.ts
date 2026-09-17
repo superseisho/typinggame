@@ -186,7 +186,7 @@ describe('Treasure', () => {
   it('Trap defeat is Game Over, never grants treasure or battle rewards', () => {
     let run = treasure('trap_battle');
     run = reduceDungeon(run, { type: 'enter-battle', now: 10 });
-    run = { ...run, combat: { ...run.combat, party: run.combat.party.map((member, i) => ({ ...member, currentHp: i ? 0 : 1 })), enemies: run.combat.enemies.map(enemy => ({ ...enemy, cooldownRemainingMs: 0 })) } };
+    run = { ...run, combat: { ...run.combat, party: run.combat.party.map((member, i) => ({ ...member, currentHp: i ? 0 : 1 })), enemies: run.combat.enemies.map(enemy => ({ ...enemy, actionRemainingMs: 0 })) } };
     run = reduceDungeon(run, { type: 'tick', deltaMs: 50, now: 100 });
     expect(run.runStatus).toBe('game_over'); expect(run.gold).toBe(1000); expect(run.buffOptions).toEqual([]);
     expect(run.clearedRooms[0]).toMatchObject({ roomType: 'treasure', result: 'failed', goldReward: 0 });
