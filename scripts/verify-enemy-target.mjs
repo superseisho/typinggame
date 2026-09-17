@@ -91,14 +91,18 @@ try {
     await page.keyboard.press('ArrowRight');
     assert.equal(await target(), ids[1]);
     assert.deepEqual(await typingSnapshot(), duringTyping, 'Navigation broke active combo');
-    // Reset perfect streak so the first normal attack can be checked without AoE.
+    // Miss clears Fighter streak, but Mage still fires AoE alongside its normal attack.
     const expected = (await page.locator('.typing-line mark').textContent()).trim();
     await page.keyboard.press(expected === 'z' ? 'q' : 'z');
     const before = await hp();
     await key();
     const after = await hp();
-    assert.equal(after[0], before[0]);
-    assert(after[1] < before[1], 'Normal attack did not hit selected enemy');
+    const defenses = await page.evaluate(async ids => {
+      const { ENEMIES_BY_ID } = await import('/src/data/enemies.ts');
+      return ids.map(id => ENEMIES_BY_ID[id.replace(/-\d+$/, '')].defense);
+    }, ids);
+    assert.equal(before[0] - after[0], 24 - defenses[0], 'Unselected enemy should receive AoE only');
+    assert.equal(before[1] - after[1], 24 + 23 - 2 * defenses[1], 'Selected enemy should receive AoE plus normal attack');
     assert.equal(await page.locator('.is-targeted').getAttribute('data-enemy-id'), ids[1]);
     if (process.env.SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/enemy-target-${height}.png` });
     let count = 0;

@@ -57,8 +57,8 @@ export const CHARACTER_DEFINITIONS = [
     ability: {
       id: 'arcane-burst',
       name: 'ARCANE BURST',
-      description: '30文字ノーミスで敵全体へ魔法攻撃を放つ。',
-      trigger: { type: 'perfect-streak', threshold: 30 },
+      description: '正しく30文字入力すると、敵全体へ魔法攻撃を放つ。',
+      trigger: { type: 'correct-characters', threshold: 30 },
       effects: [{ type: 'damage-all-enemies', power: 24 }],
       visual: { kind: 'cast', persistence: 'instant', displayMs: TRANSIENT_ABILITY_VISUAL_MS },
       soundId: 'mage_focus',
@@ -81,8 +81,8 @@ export const CHARACTER_DEFINITIONS = [
     ability: {
       id: 'heal',
       name: 'HEAL',
-      description: '50文字ノーミスで、最も傷ついた味方を回復する。',
-      trigger: { type: 'perfect-streak', threshold: 50 },
+      description: '正しく50文字入力すると、最も傷ついた味方を回復する。',
+      trigger: { type: 'correct-characters', threshold: 50 },
       effects: [{ type: 'heal-lowest-ally', power: 30 }],
       visual: { kind: 'heal', persistence: 'instant', displayMs: TRANSIENT_ABILITY_VISUAL_MS },
       soundId: 'cleric_heal',

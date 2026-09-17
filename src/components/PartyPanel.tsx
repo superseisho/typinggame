@@ -17,8 +17,8 @@ function abilityView(character: CharacterDefinition, combat: CombatState) {
     const value = combat.typing.completedSentences % trigger.threshold;
     return { value, max: trigger.threshold, text: `${value} / ${trigger.threshold}` };
   }
-  if (trigger.type === 'perfect-streak') {
-    const value = combat.typing.currentCombo % trigger.threshold;
+  if (trigger.type === 'correct-characters') {
+    const value = combat.party.find(member => member.definitionId === character.id)?.abilityCharge ?? 0;
     return { value, max: trigger.threshold, text: `${value} / ${trigger.threshold}` };
   }
   const combo = combat.typing.currentCombo;

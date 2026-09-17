@@ -61,14 +61,14 @@ try {
     assert.deepEqual(await cards.locator('.next-action strong').allTextContents(), ['Cover', 'Attack', 'Attack']);
     for (let i = 0; i < 29; i++) await key();
     const expected = (await page.locator('.typing-line mark').textContent()).trim();
-    await page.keyboard.press(expected === 'z' ? 'q' : 'z'); // separate normal attack from Mage AoE
+    await page.keyboard.press(expected === 'z' ? 'q' : 'z'); // Mage retains charge despite this miss
     await page.waitForFunction(() => document.querySelector('.enemy-cover-counter')?.textContent === 'Shield ×3', undefined, { timeout: 10000 });
     const before = await hp();
-    await key(); // Mage normal attack against selected Shaman, redirected to Guardian
+    await key(); // Mage AoE plus normal attack, all redirected to Guardian
     const after = await hp();
     assert(after[0] < before[0]);
     assert.deepEqual(after.slice(1), before.slice(1));
-    assert.equal(await page.locator('.enemy-cover-counter').textContent(), 'Shield ×2');
+    assert.equal(await page.locator('.enemy-cover-counter').count(), 0); // AoE consumes 2, normal hit consumes 1
     assert.equal(await cards.first().locator('.enemy-skill-feedback').textContent(), 'COVER');
     assert.equal(await cards.first().locator('.next-action strong').textContent(), 'Attack');
     assert((await page.locator('.is-targeted').getAttribute('data-enemy-id')).startsWith('enemy_shaman'));

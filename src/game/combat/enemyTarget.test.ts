@@ -60,7 +60,8 @@ describe('shared enemy target', () => {
   });
 
   it('Mage AoE remains independent of the selected target', () => {
-    const state = selectEnemyTarget(battle(), battle().enemies[1].instanceId);
+    const base = battle();
+    const state = selectEnemyTarget({ ...base, party: base.party.map(p => ({ ...p, abilityCharge: p.definitionId === 'mage' ? 29 : 0 })) }, base.enemies[1].instanceId);
     const next = applyCorrectTyping(state, { ...state.typing, currentCombo: 30 }, 2);
     for (let i = 0; i < 3; i++) expect(next.enemies[i].currentHp).toBeLessThan(state.enemies[i].currentHp);
     expect(next.targetEnemyId).toBe(state.targetEnemyId);
@@ -68,7 +69,8 @@ describe('shared enemy target', () => {
 
   it('retargets when AoE kills the selected enemy without a normal attack', () => {
     const selected = selectEnemyTarget(battle(), battle().enemies[1].instanceId);
-    const state = { ...selected, enemies: selected.enemies.map((e, i) => i === 1 ? { ...e, currentHp: 1 } : e) };
+    const state = { ...selected, party: selected.party.map(p => ({ ...p, abilityCharge: p.definitionId === 'mage' ? 29 : 0 })),
+      enemies: selected.enemies.map((e, i) => i === 1 ? { ...e, currentHp: 1 } : e) };
     const next = applyCorrectTyping(state, { ...state.typing, currentCombo: 30 }, 2);
     expect(next.targetEnemyId).toBe(state.enemies[0].instanceId);
     expect(next.events.filter(e => e.kind === 'ally-attack')).toHaveLength(0);
@@ -76,7 +78,7 @@ describe('shared enemy target', () => {
 
   it('Heal, Guard and enemy attacks are independent of enemy selection', () => {
     const base = battle();
-    const injured = { ...base, party: base.party.map(p => ({ ...p, currentHp: p.currentHp - 40 })) };
+    const injured = { ...base, party: base.party.map(p => ({ ...p, currentHp: p.currentHp - 40, abilityCharge: p.definitionId === 'cleric' ? 49 : 0 })) };
     const selected = selectEnemyTarget(injured, injured.enemies[1].instanceId);
     const typing = { ...base.typing, currentCombo: 50, completedSentences: 3 };
     const a = applyCorrectTyping(injured, typing, 2);

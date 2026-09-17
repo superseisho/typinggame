@@ -41,7 +41,7 @@ export interface BaseStats {
 
 export type AbilityTrigger =
   | { readonly type: 'completed-prompts'; readonly threshold: number }
-  | { readonly type: 'perfect-streak'; readonly threshold: number }
+  | { readonly type: 'correct-characters'; readonly threshold: number }
   | { readonly type: 'combo-milestones'; readonly thresholds: readonly number[] };
 
 export type AbilityEffect =

@@ -14,7 +14,7 @@ export const BUFF_DEFINITIONS: readonly BuffDefinition[] = [
   define('fortress', 'Fortress', 'rare', ['Knight', 'Defensive'], 'Guard成功後、次のミスによる敵全体のSpecial Gauge増加を15軽減。1回消費・重ね掛けなし。', [{ type: 'guard-gauge-shield', target: 'warrior', value: 15 }], 1),
   define('arcane-power', 'Arcane Power', 'common', ['Mage'], '魔法使いの通常Attack +15%。', [modifier('attack', .15, 'mage')]),
   define('wide-magic', 'Wide Magic', 'uncommon', ['Mage'], '魔法使いの全体攻撃Abilityの威力 +25%。', [modifier('abilityDamage', .25, 'mage')]),
-  define('mana-surge', 'Mana Surge', 'rare', ['Mage', 'Typing'], '魔法使いのAbilityに必要な連続正解数 −20%。端数切り上げ。', [modifier('abilityThreshold', -.2, 'mage')]),
+  define('mana-surge', 'Mana Surge', 'rare', ['Mage', 'Typing'], '魔法使いのAbilityに必要な正解文字数 −20%。端数切り上げ。', [modifier('abilityThreshold', -.2, 'mage')]),
   define('healing-prayer', 'Healing Prayer', 'common', ['Cleric'], '僧侶のHeal基本回復量 +20%。', [modifier('healPower', .2, 'cleric')]),
   define('sacred-healing', 'Sacred Healing', 'uncommon', ['Cleric'], '僧侶のHealに、対象の最大HPの5%を追加。', [{ type: 'heal-extra', target: 'cleric', value: .05 }]),
   define('guardian-blessing', 'Guardian Blessing', 'rare', ['Cleric', 'Defensive'], '僧侶が実際に回復した味方へ、次の被ダメージ −25%の障壁。1回消費・重ね掛けなし。', [{ type: 'heal-shield', target: 'cleric', value: .25 }], 1),

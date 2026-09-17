@@ -126,7 +126,7 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 | 戦士 | Fortress | Guard成功後、次のミス時の敵全体Gauge増加を15軽減・1回消費 |
 | 魔法使い | Arcane Power | 通常Attack +15% |
 | 魔法使い | Wide Magic | 全体攻撃Ability威力 +25% |
-| 魔法使い | Mana Surge | Ability必要連続正解数 −20% |
+| 魔法使い | Mana Surge | Ability必要正解文字数 −20% |
 | 僧侶 | Healing Prayer | Heal基本回復量 +20% |
 | 僧侶 | Sacred Healing | Healに対象Max HPの5%を追加 |
 | 僧侶 | Guardian Blessing | 実際にHealされた味方の次の被ダメージ −25%・通常攻撃/SPECIAL共通 |
@@ -218,3 +218,9 @@ Shop / Treasure拡張後の確認：自動テスト172件、TypeScript/Viteビ�
 今回の確認結果: 269テスト成功（26件追加）、TypeScript/Viteビルド成功。Chromiumの1920×1080 / 1536×864 / 1366×768で3体戦のCover・Heal・Victory、クリック/左右キー・入力継続・Auto Retarget、スクロール/ゲージ見切れなしを確認。既存通しプレイスクリプトも1F→Buff取得→Elite→9F Rest/Shop→10F Boss→Dungeon Clear→新RunのBuff0まで成功。重複Guardian/ShamanやElite3体の難易度バランスは今後の調整対象。
 
 NEXT予告対応: `plannedEnemyAction.test.ts` に初期計画、予定4パターンの実行、個体独立性、Fallback、SPECIAL/Typing/Targetからの独立性、死亡時消去の10テストを追加（全279件成功）。Chromiumの上記3解像度でNEXT Cover→Cover、NEXT Heal→Heal→NEXT Attack、Victoryと既存ターゲット操作の回帰検証に成功。TypeScript/Viteビルド成功。
+
+## Character Abilityの蓄積
+
+Mage / Clericは `correct-characters` Triggerと各個体の既存 `abilityCharge` を使用。生存中の正解1文字で+1、Missでは維持し、実効Threshold以上で発動・0リセットします。Mageは30文字（Mana Surgeで24）、Clericは50文字。全快時のHealも発動分のChargeを消費しますが、実回復なしのHeal Eventは発生させません。PartyPanelも同じChargeを表示し、次戦闘へは持ち越しません。
+
+KnightのCompleted Prompt方式、FighterのCombo方式、Flow / Perfect Rhythmの `perfect-streak` は従来どおりです。Character用ChargeとTypingの連続正解数は独立しており、MissによるFighter解除・敵SPECIAL増加は維持します。`abilityCharge.test.ts` にMiss保持、発動・消費、Down、UI描画、Mana Surge、Streak Buff、階層遷移の回帰テストを追加しました。

@@ -160,10 +160,12 @@ export function applyCorrectTyping(
     typing,
     party: state.party.map((character) => character.currentHp <= 0
       ? character
-      : { ...character, attackCharge: character.attackCharge + 1 }),
+      : { ...character, attackCharge: character.attackCharge + 1,
+          abilityCharge: character.abilityCharge + (getEffectiveCharacter(state, character.definitionId).ability.trigger.type === 'correct-characters' ? 1 : 0) }),
   };
   nextState = appendEvent(nextState, 'typing-correct', '正解入力', {}, false);
   nextState = handleBuffTrigger(nextState, { type: 'perfect-streak', streak: typing.currentCombo });
+  const chargedAbilities = new Set<string>();
 
   for (const combatant of nextState.party) {
     if (combatant.currentHp <= 0) continue;
@@ -176,9 +178,12 @@ export function applyCorrectTyping(
       }
       continue;
     }
-    if (trigger.type === 'perfect-streak') {
-      const reachedThreshold = typing.currentCombo > 0 && typing.currentCombo % trigger.threshold === 0;
+    if (trigger.type === 'correct-characters') {
+      const reachedThreshold = combatant.abilityCharge >= trigger.threshold;
       if (!reachedThreshold) continue;
+      chargedAbilities.add(character.id);
+      nextState = { ...nextState, party: nextState.party.map(member => member.definitionId === character.id
+        ? { ...member, abilityCharge: 0 } : member) };
       nextState = triggerAllyAbility(
         nextState,
         character.id,
@@ -212,9 +217,7 @@ export function applyCorrectTyping(
     if (combatant.currentHp <= 0) continue;
     const character = getEffectiveCharacter(nextState, combatant.definitionId);
     const trigger = character.ability.trigger;
-    if (trigger.type !== 'perfect-streak'
-      || typing.currentCombo === 0
-      || typing.currentCombo % trigger.threshold !== 0) continue;
+    if (trigger.type !== 'correct-characters' || !chargedAbilities.has(character.id)) continue;
     for (const effect of character.ability.effects) {
       if (effect.type !== 'heal-lowest-ally') continue;
       const targetIndex = selectLowestPartyHpIndex(nextState);

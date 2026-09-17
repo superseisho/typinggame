@@ -74,7 +74,8 @@ describe('attack-snapshot Cover', () => {
   });
   it('Mage ability uses the same snapshot with Cover and hits everyone without Cover', () => {
     for (const hits of [0, 1]) {
-      const state = cover(hits);
+      const base = cover(hits);
+      const state = { ...base, party: base.party.map(p => ({ ...p, abilityCharge: p.definitionId === 'mage' ? 29 : 0 })) };
       const next = applyCorrectTyping(state, { ...state.typing, currentCombo: 30 });
       const damage = next.events.filter(e => e.kind === 'ally-ability-damage');
       expect(damage).toHaveLength(3);

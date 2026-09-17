@@ -42,19 +42,19 @@ describe('combat engine', () => {
       state = applyCorrectTyping(state, state.typing, 1_001 + index);
     }
     const slime = ENEMIES_BY_ID['crypt-slime'];
-    expect(state.enemies[0].currentHp).toBe(slime.maxHp - (CHARACTERS_BY_ID.mage.stats.attack - slime.defense));
-    expect(state.enemies[1].currentHp).toBe(ENEMIES_BY_ID['grave-shaman'].maxHp);
+    expect(state.enemies[0].currentHp).toBe(slime.maxHp - (CHARACTERS_BY_ID.mage.stats.attack - slime.defense) - (24 - slime.defense));
+    expect(state.enemies[1].currentHp).toBe(ENEMIES_BY_ID['grave-shaman'].maxHp - 23);
     const attackEvent = state.events.find((event) => event.kind === 'ally-attack');
     expect(attackEvent).toMatchObject({ actorId: 'mage', amount: 20, soundId: 'mage_attack' });
   });
 
-  it('emits an audible cleric heal event at a 50-character perfect streak', () => {
+  it('emits an audible cleric heal event at 50 accumulated correct characters', () => {
     const started = startCombat(createCombatState(['crypt-slime']), 1_000);
     const injured = {
       ...started,
       party: started.party.map((member) => member.definitionId === 'warrior'
         ? { ...member, currentHp: member.currentHp - 40 }
-        : member),
+        : { ...member, abilityCharge: member.definitionId === 'cleric' ? 49 : 0 }),
     };
     const typing = { ...injured.typing, currentCombo: 50, maxCombo: 50, correctCharacterCount: 50 };
     const healed = applyCorrectTyping(injured, typing, 2_000);
@@ -73,7 +73,7 @@ describe('combat engine', () => {
   it('does not emit an ally heal event when nobody can recover HP', () => {
     const started = startCombat(createCombatState(['crypt-slime']), 1_000);
     const typing = { ...started.typing, currentCombo: 50, maxCombo: 50, correctCharacterCount: 50 };
-    const healed = applyCorrectTyping(started, typing, 2_000);
+    const healed = applyCorrectTyping({ ...started, party: started.party.map(p => ({ ...p, abilityCharge: p.definitionId === 'cleric' ? 49 : 0 })) }, typing, 2_000);
 
     expect(healed.events.some((event) => event.kind === 'ally-heal')).toBe(false);
   });
@@ -123,7 +123,7 @@ describe('combat engine', () => {
     const started = startCombat(createCombatState(['crypt-slime', 'grave-shaman']), 1_000);
     const primed = {
       ...started,
-      party: started.party.map((member) => ({ ...member, attackCharge: 0 })),
+      party: started.party.map((member) => ({ ...member, attackCharge: 0, abilityCharge: member.definitionId === 'mage' ? 29 : 0 })),
     };
     const typing = { ...primed.typing, currentCombo: 30, maxCombo: 30 };
     const cast = applyCorrectTyping(primed, typing, 1_001);

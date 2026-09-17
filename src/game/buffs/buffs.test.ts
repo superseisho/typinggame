@@ -171,14 +171,15 @@ describe('derived combat stats and conditional effects', () => {
   });
   it('Healing Prayer/Sacred Healing change actual heal amount and grant a consumable shield only on actual heals', () => {
     let state = combat('healing-prayer', 'sacred-healing', 'guardian-blessing');
-    state = { ...state, party: state.party.map((member, i) => ({ ...member, currentHp: i === 0 ? 20 : member.currentHp })) };
+    state = { ...state, party: state.party.map((member, i) => ({ ...member, currentHp: i === 0 ? 20 : member.currentHp, abilityCharge: member.definitionId === 'cleric' ? 49 : 0 })) };
     const healed = correct(state, 50);
     expect(healed.events.find(event => event.kind === 'ally-heal')?.amount).toBe(45);
     expect(healed.party[0].currentHp).toBe(65);
     const blocked = consumeDamageShield(healed, 'warrior', 40);
     expect(blocked.damage).toBe(30);
     expect(consumeDamageShield(blocked.state, 'warrior', 40).damage).toBe(40);
-    expect(correct(combat('guardian-blessing'), 50).buffResources.shields).toEqual({});
+    const full = combat('guardian-blessing');
+    expect(correct({ ...full, party: full.party.map(p => ({ ...p, abilityCharge: p.definitionId === 'cleric' ? 49 : 0 })) }, 50).buffResources.shields).toEqual({});
   });
   it('guard buffs activate on consumption, heal actual HP and consume the next counter once', () => {
     let state = combat('reinforced-shield', 'guardian-oath', 'fortress');
@@ -206,9 +207,10 @@ describe('derived combat stats and conditional effects', () => {
     expect(result.state.buffResources.shields.warrior).toBe(0);
   });
   it('Mana Surge lowers ability threshold; Wide Magic increases actual AoE damage', () => {
-    const original = correct(combat(), 24);
+    const charged = (state: CombatState) => ({ ...state, party: state.party.map(p => ({ ...p, abilityCharge: p.definitionId === 'mage' ? 23 : 0 })) });
+    const original = correct(charged(combat()), 24);
     expect(original.events.some(event => event.kind === 'ally-ability-triggered' && event.actorId === 'mage')).toBe(false);
-    const enhanced = correct(combat('mana-surge', 'wide-magic'), 24);
+    const enhanced = correct(charged(combat('mana-surge', 'wide-magic')), 24);
     expect(enhanced.events.some(event => event.kind === 'ally-ability-triggered' && event.actorId === 'mage')).toBe(true);
     expect(enhanced.events.find(event => event.kind === 'ally-ability-damage')?.amount).toBe(30 - ENEMIES_BY_ID['crypt-warden'].defense);
     for (let i = 0, state = enhanced; i < 10; i++) {
