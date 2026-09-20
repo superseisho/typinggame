@@ -5,6 +5,8 @@ import { planEnemyAction } from './enemySkillEngine';
 import { selectEnemyTarget, moveEnemyTarget } from './enemyTarget';
 import { resolveEnemyDamage } from './enemyDamage';
 import type { CombatState } from '../../types/game';
+import { ENEMIES_BY_ID } from '../../data/enemies';
+import { GAME_CONFIG } from '../../data/gameConfig';
 
 const initial = () => startCombat(createCombatState(['enemy_guardian', 'enemy_shaman', 'enemy_guardian']), 1);
 function scheduled(index: number, skill: string): CombatState {
@@ -62,7 +64,8 @@ describe('planned normal enemy actions', () => {
     state = selectEnemyTarget(state, state.enemies[1].instanceId);
     state = moveEnemyTarget(state, 'right');
     state = applyCorrectTyping(state, state.typing);
-    for (let i = 0; i < 4; i++) state = applyTypingMiss(state, state.typing);
+    const misses = Math.ceil(ENEMIES_BY_ID[state.enemies[0].definitionId].specialGaugeMax / GAME_CONFIG.enemySpecialGaugeOnMiss);
+    for (let i = 0; i < misses; i++) state = applyTypingMiss(state, state.typing);
     expect(state.enemies[0].pendingSpecial).not.toBeNull();
     state = { ...state, enemies: state.enemies.map(e => ({ ...e, actionRemainingMs: 10000 })) };
     state = tickCombat(state, 800, 801);

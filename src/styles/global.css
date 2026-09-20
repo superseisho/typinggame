@@ -536,6 +536,13 @@ button { cursor: pointer; }
 .guardian-shield::before { content: ''; position: absolute; inset: 3px; background: #43545a; clip-path: inherit; }
 .guardian-shield::after { content: ''; position: absolute; width: 3px; top: 6px; bottom: 8px; left: 18px; background: #98aaac; }
 .sprite--guardian .enemy-avatar__body { background: #58656a; border-radius: 35% 35% 18% 18%; }
+.sprite--executioner .enemy-avatar__body { background: #512d32; border-radius: 22% 22% 12% 12%; transform: scaleX(1.15); border-top: 8px solid #292328; }
+.sprite--executioner::after { content: ''; position: absolute; width: 13px; height: 85%; right: 2%; top: 8%; background: #777071; border: 2px solid #362d2e; transform: rotate(-12deg); clip-path: polygon(0 0, 100% 0, 100% 70%, 40% 100%, 0 70%); }
+.sprite--cultist .enemy-avatar__body { background: #423148; border-radius: 50% 50% 10% 10%; transform: scaleX(.8); border-bottom: 3px solid #9e8756; }
+.sprite--cultist::after { content: '◇'; position: absolute; bottom: 12%; left: 43%; color: #b39a65; font-size: 24px; }
+.sprite--wraith .enemy-avatar__body { background: #78789d; opacity: .68; border-radius: 50% 50% 30% 30%; clip-path: polygon(0 0,100% 0,100% 100%,75% 83%,50% 100%,25% 83%,0 100%); }
+.sprite--wraith .enemy-avatar__eye { background: #c8e3f2; box-shadow: 0 0 8px #babbe6; }
+.typing-panel__hint.typing-curse { color: #bf9dce; }
 @media (min-width: 981px) {
   .battle-stage .enemy-formation:has(> :nth-child(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(100%, 1160px); }
 }

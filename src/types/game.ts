@@ -87,6 +87,8 @@ export interface CharacterDefinition {
 
 export type EnemyAbilityTarget = 'singleParty' | 'allParty' | 'self' | 'singleEnemy' | 'allEnemies';
 export type EnemyAbilityEffect =
+  | { readonly effectType: 'empower-next-attack'; readonly targetType: EnemyAbilityTarget; readonly multiplier: number }
+  | { readonly effectType: 'typing-curse'; readonly bonus: number }
   | {
       readonly effectType: 'damage';
       readonly targetType: EnemyAbilityTarget;
@@ -161,6 +163,7 @@ export interface CharacterCombatState {
 }
 
 export interface EnemyCombatState {
+  readonly nextAttackEmpowerMultiplier: number;
   readonly nextActionSkillId: string | null;
   readonly actionDurationMs: number;
   readonly cover: { readonly remainingHits: number } | null;
@@ -229,6 +232,7 @@ export interface CombatEvent {
 }
 
 export interface CombatState {
+  readonly typingCurseBonus: number;
   readonly skillRngState: number;
   readonly targetEnemyId: string | null;
   readonly runBuffs: readonly RunBuff[];

@@ -6,6 +6,9 @@ const normalPool: readonly WeightedEnemy[] = [
   { enemyId: 'grave-shaman', weight: 10 },
   { enemyId: 'enemy_guardian', weight: 20 },
   { enemyId: 'enemy_shaman', weight: 20 },
+  { enemyId: 'enemy_executioner', weight: 15 },
+  { enemyId: 'enemy_cultist', weight: 15 },
+  { enemyId: 'enemy_wraith', weight: 15 },
 ];
 
 /** Tier selects fixed definitions, never floor-scaled stats or fixed formations. */

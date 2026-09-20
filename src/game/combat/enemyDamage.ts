@@ -19,7 +19,7 @@ export function cleanupEnemyState(state: CombatState): CombatState {
   const ended = state.status === 'victory' || state.status === 'defeat';
   return { ...state, enemies: state.enemies.map(e => ended || e.currentHp <= 0
     ? { ...e, nextActionSkillId: null, cover: null, actionDurationMs: 0, pendingSpecial: null, statuses: [], specialGauge: 0, actionRemainingMs: 0,
-        attackMultiplier: 1, defenseMultiplier: 1, actionTimeMultiplier: 1 }
+        attackMultiplier: 1, defenseMultiplier: 1, actionTimeMultiplier: 1, nextAttackEmpowerMultiplier: 1 }
     : e.cover && e.cover.remainingHits <= 0 ? { ...e, cover: null } : e) };
 }
 

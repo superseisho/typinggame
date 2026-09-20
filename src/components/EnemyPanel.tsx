@@ -121,7 +121,9 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING', onSelectEne
                 <strong>{knockedOut ? '—' : ENEMY_SKILLS[enemyState.nextActionSkillId ?? '']?.name ?? '—'}</strong>
                 {enemyState.cover && enemyState.cover.remainingHits > 0 ? <span className="enemy-cover-counter">Shield ×{enemyState.cover.remainingHits}</span> : null}
               </div>
-              <StatusChips statuses={enemyState.statuses} />
+              <StatusChips statuses={enemyState.nextAttackEmpowerMultiplier > 1
+                ? [`buff:EMPOWER ×${enemyState.nextAttackEmpowerMultiplier.toFixed(2)}`, ...enemyState.statuses]
+                : enemyState.statuses} />
             </article>
           );
         })}

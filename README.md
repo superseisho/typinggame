@@ -200,6 +200,7 @@ Shop / Treasure拡張後の確認：自動テスト172件、TypeScript/Viteビ�
 
 ## Enemy Skill / Guardian / Shaman
 
+- `src/data/enemies.ts` の `ENEMY_DEFINITIONS` が全12体の唯一の性能データ。通常・Elite・Bossをそれぞれ完全な独立オブジェクトとして記述し、他EnemyのSpreadや倍率による自動生成はしない。`ENEMIES_BY_ID` はこの配列だけを索引化する。出現分類・weightは既存の `enemyEncounterConfig.ts` のID参照で管理する。`enemies.test.ts` は既存9体の実効値のスナップショット、全ID重複・参照・データ独立性を検証する。バランスを意図的に変更した際はスナップショット差分を確認して更新する。
 - `src/data/enemySkills.ts`: Skill ID・効果・使用条件・対象と調整値。`EnemyDefinition.skills` はSkill ID・抽選weight・Enemy固有の `actionTimeMs` を保持する。Skill再使用Cooldownは存在しない。既存SPECIALゲージは別経路で維持。
 - `enemySkillEngine.ts`: 戦闘開始時と各通常行動の解決後、使用条件を満たすSkillをシード付き加重抽選。個体の `nextActionSkillId` と `actionDurationMs` / `actionRemainingMs` を同時に設定する。時間はBindingの `actionTimeMs × actionTimeMultiplier`。速度Modifierは次Cycleの計画時に適用する。満了時は保存済みSkillを実行し、使用不能ならAttack優先の決定的Fallbackを待ち時間なしで実行する。描画・Typing・Target変更では再抽選しない。
 - Guardian（`enemy_guardian`）: Attack70 / Cover30、準備時間はAttack5秒・Cover8秒。Coverには生存仲間が必要。`cover.remainingHits` は3へrefreshし、加算しない。条件を満たせば連続Coverも可能。
@@ -210,6 +211,15 @@ Shop / Treasure拡張後の確認：自動テスト172件、TypeScript/Viteビ�
 - `EnemyPanel.tsx` のNEXTは、予定IDからSkillDefinitionのnameを表示（Attack / Cover / Heal）。全Skill一覧は表示せず、死亡時は「—」。SPECIALは独立系統のまま、NEXTを上書きしない。`EnemySkillFeedback.tsx` は実行時に短いSkill名を表示。Heal実対象には緑発光と回復数値、Cover中はShield ×N。AoE数値はHit別に表示。TargetマーカーとPortraitのtransformから分離し、敵3体はPCで横一列。
 
 ### Random Encounter
+
+Tier 1通常Pool（Battle / Ambush / Treasure Trap）にExecutioner・Cultist・Wraithを各weight15で追加。既存weightと1～3体の独立抽選・同種重複を維持し、Elite Poolと固定Bossは変更しない。
+
+- Executioner: Attack5.5秒／Heavy Attack11.5秒。Heavyは既存通常攻撃経路で基礎Attack×攻撃Modifier×1.8×Empowerを丸めてDefense計算へ渡す。Guard・Shield・Target Cursor・Damage Eventも共通。Specialは最低HP割合の味方へ44ダメージ。
+- Cultist: Attack6秒／Empower8.5秒。自分以外の生存・未強化Enemyから実効Attack最大（同率は表示順）へ、次の通常攻撃系Skill×1.30を付与。個体の `nextAttackEmpowerMultiplier` に保存し、通常攻撃系Skillでのみ消費。Dark Ritualは生存Enemy全員へ×1.35。付与は常に `max(現在値, 新値)` とし、乗算Stackしない。
+- Wraith: Attack4.5秒／Curse8秒。Combat共通の `typingCurseBonus` に次Miss加算10を保持。計算順は `(基礎Miss増加 + Curse) × 既存軽減 − Gauge Shield`（下限0）。次Missで全生存Enemyへ適用して消費、Correctや術者死亡では消えない。Curse中は通常Curseを抽選しない。Soul Erosionは生存Party全体16ダメージ＋同じCurseを付与する。
+- `enemyCombatEffects.ts` が通常Skill／Special共通のEmpower・Curse付与処理。Enemy ID分岐は使わない。Battle開始時に両状態を初期化。Special発動後のゲージ0リセットは維持。
+- UI: CSS立ち絵3種類、EnemyのEMPOWER状態チップ、Typing見出し行のCURSED警告。NEXTはSkill Definition名をそのまま表示。
+- `tacticalEnemies.test.ts` とEncounter回帰テストで発動時間・倍率・Guard・Shield・非Stack・効果消費・Miss軽減・Special・単体/混成/重複抽選を検証。`scripts/verify-tactical-enemies.mjs` は通常Dungeonで実際に抽選される3体混成seedを探し、3解像度でNEXT→Curse→Empower→Heavy Attack→Miss→Victoryを実入力で確認する（固定編成や戦闘State注入はしない）。Playwright環境変数は既存検証スクリプトと共通。
 
 `enemyEncounterConfig.ts` と `enemyEncounterGenerator.ts` でTier別の個体数・Enemy Poolを管理。Battle / Ambush / Treasure Trapは1・2・3体を30/45/25、Eliteは20/45/35で抽選し、各slotを独立に重複あり抽選。Eliteは固定の強化版定義だけを抽選し、Floor単位のStat scalingはしない。通常戦の固定Compositionは撤去。Bossは別の `BOSS_ENCOUNTERS`（現状Tier1のCrypt Warden）を使用する。
 

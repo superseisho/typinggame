@@ -82,7 +82,7 @@ export function applyTypingMiss(
   _now = Date.now(),
 ): CombatState {
   if (state.status !== 'active') return state;
-  const gaugeGain = Math.max(0, GAME_CONFIG.enemySpecialGaugeOnMiss * Math.max(BUFF_CONFIG.minMissGaugeMultiplier, 1 + getBuffModifier(state.runBuffs, 'missGauge', 'warrior')) - state.buffResources.gaugeShield);
+  const gaugeGain = Math.max(0, (GAME_CONFIG.enemySpecialGaugeOnMiss + state.typingCurseBonus) * Math.max(BUFF_CONFIG.minMissGaugeMultiplier, 1 + getBuffModifier(state.runBuffs, 'missGauge', 'warrior')) - state.buffResources.gaugeShield);
   const endedComboUsers = state.party.filter((member) => {
     const character = CHARACTERS_BY_ID[member.definitionId];
     return character.ability.visual.kind === 'combo'
@@ -93,6 +93,7 @@ export function applyTypingMiss(
       ...state,
       typing,
       buffResources: { ...state.buffResources, gaugeShield: 0 },
+      typingCurseBonus: 0,
       party: state.party.map((member) => {
         const character = CHARACTERS_BY_ID[member.definitionId];
         return character.ability.visual.kind !== 'combo' ? member : {
@@ -281,7 +282,7 @@ export function applyCorrectTyping(
   return ensureValidEnemyTarget(nextState);
 }
 
-function performEnemyAttack(state: CombatState, enemyIndex: number, now: number): CombatState {
+function performEnemyAttack(state: CombatState, enemyIndex: number, now: number, powerMultiplier = 1): CombatState {
   const actor = state.enemies[enemyIndex];
   if (!actor || actor.currentHp <= 0) return state;
   const livingParty = state.party
@@ -298,7 +299,7 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number)
   const target = state.party[targetIndex];
   const targetDefinition = getEffectiveCharacter(state, target.definitionId);
   const enemyDefinition = ENEMIES_BY_ID[actor.definitionId];
-  const attack = Math.round(enemyDefinition.attack * actor.attackMultiplier);
+  const attack = Math.round(enemyDefinition.attack * actor.attackMultiplier * powerMultiplier * actor.nextAttackEmpowerMultiplier);
   const guarded = guardedIndex === targetIndex;
   const incoming = consumeDamageShield(state, target.definitionId, guarded ? 0 : Math.max(1, attack - targetDefinition.stats.defense));
   state = incoming.state;
@@ -315,6 +316,8 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number)
         : member.statuses,
     } : member),
     partyTargetCursor: state.partyTargetCursor + 1,
+    enemies: state.enemies.map((enemy, index) => index === enemyIndex
+      ? { ...enemy, nextAttackEmpowerMultiplier: 1 } : enemy),
   };
   nextState = guarded
     ? appendEvent(

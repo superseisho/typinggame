@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CHARACTERS_BY_ID } from '../../data/characters';
 import { ENEMIES_BY_ID } from '../../data/enemies';
+import { GAME_CONFIG } from '../../data/gameConfig';
 import { applyCorrectTyping, applyTypingMiss, startCombat, tickCombat } from './combatEngine';
 import { getCharacterVisualState } from './characterVisualState';
 import { createCombatState } from './createCombatState';
@@ -154,7 +155,9 @@ describe('combat engine', () => {
       ...state,
       enemies: state.enemies.map((enemy, index) => index === 0 ? { ...enemy, currentHp: enemy.currentHp - 50 } : enemy),
     };
-    for (let index = 0; index < 4; index += 1) {
+    const requiredMisses = Math.max(...state.enemies.map(enemy =>
+      Math.ceil(ENEMIES_BY_ID[enemy.definitionId].specialGaugeMax / GAME_CONFIG.enemySpecialGaugeOnMiss)));
+    for (let index = 0; index < requiredMisses; index += 1) {
       const typing = { ...state.typing, missCount: state.typing.missCount + 1 };
       state = applyTypingMiss(state, typing, 2_000 + index);
     }
@@ -163,7 +166,7 @@ describe('combat engine', () => {
     state = tickCombat(state, 750, 2_750);
     expect(state.party.every((member) => member.currentHp < CHARACTERS_BY_ID[member.definitionId].stats.maxHp)).toBe(true);
     expect(state.enemies[0].currentHp).toBeGreaterThan(100);
-    expect(state.enemies.every((enemy) => enemy.specialGauge === 0)).toBe(true);
+    expect(state.enemies.every(enemy => enemy.specialGauge === 0)).toBe(true);
     expect(state.log.some((event) => event.kind === 'enemy-special-used')).toBe(true);
     expect(state.events.find((event) => event.kind === 'enemy-special-used')).toMatchObject({
       effectType: 'damage',
@@ -188,7 +191,8 @@ describe('combat engine', () => {
     const state = {
       ...started,
       party: started.party.map((member) => ({ ...member, currentHp: 1 })),
-      enemies: started.enemies.map((enemy) => ({ ...enemy, specialGauge: 75 })),
+      enemies: started.enemies.map((enemy) => ({ ...enemy,
+        specialGauge: ENEMIES_BY_ID[enemy.definitionId].specialGaugeMax - GAME_CONFIG.enemySpecialGaugeOnMiss })),
     };
     const typing = { ...state.typing, missCount: 1 };
     const warned = applyTypingMiss(state, typing, 2_000);

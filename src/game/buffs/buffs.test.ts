@@ -229,7 +229,8 @@ describe('derived combat stats and conditional effects', () => {
   it('Calm Mind and Precision reduce miss gain additively and preserve warnings', () => {
     const state = miss(combat('calm-mind', 'precision'));
     expect(state.enemies[0].specialGauge).toBeCloseTo(17.5);
-    const nearMax = { ...state, enemies: state.enemies.map(enemy => ({ ...enemy, specialGauge: 99 })) };
+    const nearMax = { ...state, enemies: state.enemies.map(enemy => ({ ...enemy,
+      specialGauge: ENEMIES_BY_ID[enemy.definitionId].specialGaugeMax - 1 })) };
     expect(miss(nearMax).events.some(event => event.kind === 'enemy-special-ready')).toBe(true);
   });
   it('Flow and Perfect Rhythm fire on 50/100 perfect chars, not misses, and skip fallen allies', () => {

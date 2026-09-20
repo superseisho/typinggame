@@ -10,6 +10,7 @@ import type {
   EnemySpecialAbility,
 } from '../../types/game';
 import { selectLowestPartyHpIndex } from './targeting';
+import { applyTypingCurse, empowerEnemies } from './enemyCombatEffects';
 
 export interface AbilityEvent {
   readonly kind: CombatEventKind;
@@ -61,6 +62,7 @@ export function chooseEnemyAbility(
 }
 
 function enemyTargets(state: CombatState, actorIndex: number, effect: EnemyAbilityEffect): number[] {
+  if (!('targetType' in effect)) return [];
   if (effect.targetType === 'self') return [actorIndex];
   const living = state.enemies
     .map((enemy, index) => ({ enemy, index }))
@@ -75,6 +77,7 @@ function enemyTargets(state: CombatState, actorIndex: number, effect: EnemyAbili
 }
 
 function partyTargets(state: CombatState, effect: EnemyAbilityEffect): number[] {
+  if (!('targetType' in effect)) return [];
   if (effect.targetType === 'allParty') {
     return state.party.map((member, index) => member.currentHp > 0 ? index : -1).filter((index) => index >= 0);
   }
@@ -99,6 +102,12 @@ function applyEffect(
 ): AbilityResolution {
   const events: AbilityEvent[] = [];
   const actor = state.enemies[actorIndex];
+
+  if (effect.effectType === 'typing-curse') return { state: applyTypingCurse(state, effect.bonus), events };
+  if (effect.effectType === 'empower-next-attack') {
+    const ids = enemyTargets(state, actorIndex, effect).map(index => state.enemies[index].instanceId);
+    return { state: empowerEnemies(state, ids, effect.multiplier), events };
+  }
 
   if (effect.effectType === 'damage') {
     const targets = partyTargets(state, effect);
@@ -204,7 +213,8 @@ export function executeEnemyAbility(
     enemies: state.enemies.map((enemy, index) =>
       index === actorIndex ? {
         ...enemy,
-        specialGauge: Math.max(0, enemy.specialGauge - ability.gaugeCost),
+        // A SPECIAL consumes the entire charged gauge, even when its cap exceeds the skill cost.
+        specialGauge: 0,
         pendingSpecial: null,
       } : enemy
     ),

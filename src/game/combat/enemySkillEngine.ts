@@ -3,6 +3,7 @@ import { ENEMY_SKILLS, ENEMY_SKILL_CONFIG, type EnemySkillDefinition } from '../
 import type { CombatState, EnemyCombatState } from '../../types/game';
 import { randomStep } from '../../utils/random';
 import { appendEvent } from './combatEvents';
+import { applyTypingCurse, empowerEnemies, empowermentTarget } from './enemyCombatEffects';
 
 export function lowestInjuredEnemy(state: CombatState): EnemyCombatState | undefined {
   return state.enemies.filter(e => e.currentHp > 0 && e.currentHp < ENEMIES_BY_ID[e.definitionId].maxHp)
@@ -12,6 +13,8 @@ const conditions: Record<EnemySkillDefinition['requirement'], (s: CombatState, a
   always: () => true,
   'other-alive': (s,a) => s.enemies.some(e => e.instanceId !== a.instanceId && e.currentHp > 0),
   'injured-alive': s => !!lowestInjuredEnemy(s),
+  'empowerable-other': (s,a) => !!empowermentTarget(s,a),
+  'not-cursed': s => s.typingCurseBonus === 0,
 };
 export function usableEnemySkills(state: CombatState, actor: EnemyCombatState) {
   if (actor.currentHp <= 0) return [];
@@ -29,7 +32,7 @@ export function chooseEnemySkill(state: CombatState, actor: EnemyCombatState) {
   return { state: { ...state, skillRngState: random.seed }, skill: ENEMY_SKILLS[selected.skillId] };
 }
 
-type NormalAttack = (state: CombatState, actorIndex: number, now: number) => CombatState;
+type NormalAttack = (state: CombatState, actorIndex: number, now: number, powerMultiplier?: number) => CombatState;
 /** Only called at battle/cycle boundaries, never from rendering or typing. */
 export function planEnemyAction(state: CombatState, actorIndex: number): CombatState {
   const actor = state.enemies[actorIndex];
@@ -59,7 +62,12 @@ export function performEnemySkill(state: CombatState, actorIndex: number, now: n
   let next = appendEvent(state, 'enemy-skill-used', `${definition.name} · ${skill.name}`, {
     actorId: actor.instanceId, skillId: skill.id, abilityId: skill.id,
   }, false);
-  if (skill.effect === 'attack') return planEnemyAction(attack(next, actorIndex, now), actorIndex);
+  if (skill.effect === 'attack') return planEnemyAction(attack(next, actorIndex, now, skill.powerMultiplier ?? 1), actorIndex);
+  if (skill.effect === 'empower-next-attack') {
+    const target = empowermentTarget(next, actor)!;
+    next = empowerEnemies(next, [target.instanceId], skill.empowerMultiplier ?? 1);
+  }
+  if (skill.effect === 'typing-curse') next = applyTypingCurse(next, skill.curseBonus ?? 0);
   next = { ...next, enemies: next.enemies.map(e => e.instanceId === actor.instanceId ? { ...e,
     cover: skill.effect === 'cover' ? { remainingHits: ENEMY_SKILL_CONFIG.guardian.maxHits } : e.cover,
   } : e) };

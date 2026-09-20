@@ -1,0 +1,590 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`explicit enemy definitions > preserves all resolved enemy data from before the definition refactor 1`] = `
+{
+  "crypt-slime": {
+    "aiRules": [
+      {
+        "abilityId": "corrosive-burst",
+        "condition": {
+          "type": "always",
+        },
+        "priority": 1,
+      },
+    ],
+    "attack": 19,
+    "boss": false,
+    "defense": 3,
+    "description": "忘れられた墓所の瘴気を吸い、青白く肥大した粘体。",
+    "elite": false,
+    "englishName": "Crypt Slime",
+    "id": "crypt-slime",
+    "maxHp": 150,
+    "name": "墓所のスライム",
+    "rewards": {
+      "buffRarities": [
+        "common",
+      ],
+      "experience": 12,
+      "gold": [
+        18,
+        30,
+      ],
+    },
+    "skills": [
+      {
+        "actionTimeMs": 5000,
+        "skillId": "skill_attack",
+        "weight": 70,
+      },
+    ],
+    "specialAbilities": [
+      {
+        "description": "パーティー全体へ腐蝕ダメージを与える。",
+        "effects": [
+          {
+            "effectType": "damage",
+            "targetType": "allParty",
+            "value": 18,
+            "valueType": "flat",
+          },
+        ],
+        "gaugeCost": 150,
+        "id": "corrosive-burst",
+        "name": "腐蝕の奔流",
+        "soundId": "enemy_special_damage",
+      },
+    ],
+    "specialGaugeMax": 150,
+    "sprite": "slime",
+    "tier": 1,
+  },
+  "crypt-warden": {
+    "aiRules": [
+      {
+        "abilityId": "warden-mend",
+        "condition": {
+          "percent": 30,
+          "type": "self-hp-below",
+        },
+        "priority": 10,
+      },
+      {
+        "abilityId": "warden-ruin",
+        "condition": {
+          "type": "always",
+        },
+        "priority": 1,
+      },
+    ],
+    "attack": 28,
+    "boss": true,
+    "defense": 7,
+    "description": "第1区画の出口を封じる守護者。傷つくと自身を癒やす。",
+    "elite": false,
+    "englishName": "Warden of the Crypt",
+    "id": "crypt-warden",
+    "maxHp": 550,
+    "name": "墓所の守護者",
+    "rewards": {
+      "buffRarities": [
+        "common",
+        "uncommon",
+      ],
+      "experience": 18,
+      "gold": [
+        24,
+        38,
+      ],
+    },
+    "skills": [
+      {
+        "actionTimeMs": 5500,
+        "skillId": "skill_attack",
+        "weight": 70,
+      },
+    ],
+    "specialAbilities": [
+      {
+        "description": "全員に闇属性ダメージ。",
+        "effects": [
+          {
+            "effectType": "damage",
+            "targetType": "allParty",
+            "value": 24,
+            "valueType": "flat",
+          },
+        ],
+        "gaugeCost": 200,
+        "id": "warden-ruin",
+        "name": "滅びの波動",
+        "soundId": "enemy_special_damage",
+      },
+      {
+        "description": "自身のHPを20%回復。",
+        "effects": [
+          {
+            "effectType": "heal",
+            "targetType": "self",
+            "value": 20,
+            "valueType": "max-hp-percent",
+          },
+        ],
+        "gaugeCost": 200,
+        "id": "warden-mend",
+        "name": "暗黒再生",
+        "soundId": "enemy_special_heal",
+      },
+    ],
+    "specialGaugeMax": 200,
+    "sprite": "shaman",
+    "tier": 1,
+  },
+  "elite-slime": {
+    "aiRules": [
+      {
+        "abilityId": "corrosive-burst",
+        "condition": {
+          "type": "always",
+        },
+        "priority": 1,
+      },
+    ],
+    "attack": 24,
+    "boss": false,
+    "defense": 6,
+    "description": "厚い外殻を持つエリート。通常の粘体より強力。",
+    "elite": true,
+    "englishName": "Armored Crypt Slime",
+    "id": "elite-slime",
+    "maxHp": 225,
+    "name": "重装の墓所スライム",
+    "rewards": {
+      "buffRarities": [
+        "common",
+      ],
+      "experience": 12,
+      "gold": [
+        18,
+        30,
+      ],
+    },
+    "skills": [
+      {
+        "actionTimeMs": 4800,
+        "skillId": "skill_attack",
+        "weight": 70,
+      },
+    ],
+    "specialAbilities": [
+      {
+        "description": "パーティー全体へ腐蝕ダメージを与える。",
+        "effects": [
+          {
+            "effectType": "damage",
+            "targetType": "allParty",
+            "value": 18,
+            "valueType": "flat",
+          },
+        ],
+        "gaugeCost": 150,
+        "id": "corrosive-burst",
+        "name": "腐蝕の奔流",
+        "soundId": "enemy_special_damage",
+      },
+    ],
+    "specialGaugeMax": 150,
+    "sprite": "slime",
+    "tier": 1,
+  },
+  "enemy_guardian": {
+    "aiRules": [
+      {
+        "abilityId": "corrosive-burst",
+        "condition": {
+          "type": "always",
+        },
+        "priority": 1,
+      },
+    ],
+    "attack": 16,
+    "boss": false,
+    "defense": 4,
+    "description": "墓道を塞ぐ、古びた盾を抱えた魔物。",
+    "elite": false,
+    "englishName": "Guardian",
+    "id": "enemy_guardian",
+    "maxHp": 180,
+    "name": "ガーディアン",
+    "rewards": {
+      "buffRarities": [
+        "common",
+      ],
+      "experience": 12,
+      "gold": [
+        18,
+        30,
+      ],
+    },
+    "skills": [
+      {
+        "actionTimeMs": 5000,
+        "skillId": "skill_attack",
+        "weight": 70,
+      },
+      {
+        "actionTimeMs": 8000,
+        "skillId": "skill_cover",
+        "weight": 30,
+      },
+    ],
+    "specialAbilities": [
+      {
+        "description": "パーティー全体へ腐蝕ダメージを与える。",
+        "effects": [
+          {
+            "effectType": "damage",
+            "targetType": "allParty",
+            "value": 18,
+            "valueType": "flat",
+          },
+        ],
+        "gaugeCost": 150,
+        "id": "corrosive-burst",
+        "name": "腐蝕の奔流",
+        "soundId": "enemy_special_damage",
+      },
+    ],
+    "specialGaugeMax": 150,
+    "sprite": "guardian",
+    "tier": 1,
+  },
+  "enemy_guardian_elite": {
+    "aiRules": [
+      {
+        "abilityId": "corrosive-burst",
+        "condition": {
+          "type": "always",
+        },
+        "priority": 1,
+      },
+    ],
+    "attack": 20,
+    "boss": false,
+    "defense": 7,
+    "description": "墓道を塞ぐ、古びた盾を抱えた魔物。",
+    "elite": true,
+    "englishName": "Elite Guardian",
+    "id": "enemy_guardian_elite",
+    "maxHp": 270,
+    "name": "精鋭ガーディアン",
+    "rewards": {
+      "buffRarities": [
+        "common",
+      ],
+      "experience": 12,
+      "gold": [
+        18,
+        30,
+      ],
+    },
+    "skills": [
+      {
+        "actionTimeMs": 5000,
+        "skillId": "skill_attack",
+        "weight": 70,
+      },
+      {
+        "actionTimeMs": 8000,
+        "skillId": "skill_cover",
+        "weight": 30,
+      },
+    ],
+    "specialAbilities": [
+      {
+        "description": "パーティー全体へ腐蝕ダメージを与える。",
+        "effects": [
+          {
+            "effectType": "damage",
+            "targetType": "allParty",
+            "value": 18,
+            "valueType": "flat",
+          },
+        ],
+        "gaugeCost": 100,
+        "id": "corrosive-burst",
+        "name": "腐蝕の奔流",
+        "soundId": "enemy_special_damage",
+      },
+    ],
+    "specialGaugeMax": 100,
+    "sprite": "guardian",
+    "tier": 1,
+  },
+  "enemy_shaman": {
+    "aiRules": [
+      {
+        "abilityId": "healing-prayer",
+        "condition": {
+          "percent": 80,
+          "type": "ally-hp-below",
+        },
+        "priority": 10,
+      },
+      {
+        "abilityId": "healing-prayer",
+        "condition": {
+          "type": "always",
+        },
+        "priority": 1,
+      },
+    ],
+    "attack": 14,
+    "boss": false,
+    "defense": 1,
+    "description": "死者の囁きを操り、傷ついた魔物を癒やす後衛の術師。",
+    "elite": false,
+    "englishName": "Shaman",
+    "id": "enemy_shaman",
+    "maxHp": 105,
+    "name": "シャーマン",
+    "rewards": {
+      "buffRarities": [
+        "common",
+        "uncommon",
+      ],
+      "experience": 18,
+      "gold": [
+        24,
+        38,
+      ],
+    },
+    "skills": [
+      {
+        "actionTimeMs": 6500,
+        "skillId": "skill_attack",
+        "weight": 65,
+      },
+      {
+        "actionTimeMs": 10000,
+        "skillId": "skill_heal",
+        "weight": 35,
+      },
+    ],
+    "specialAbilities": [
+      {
+        "description": "最もHP割合が低い敵を最大HPの30%回復する。",
+        "effects": [
+          {
+            "effectType": "heal",
+            "targetType": "singleEnemy",
+            "value": 30,
+            "valueType": "max-hp-percent",
+          },
+        ],
+        "gaugeCost": 200,
+        "id": "healing-prayer",
+        "name": "穢れた祈り",
+        "soundId": "enemy_special_heal",
+      },
+    ],
+    "specialGaugeMax": 200,
+    "sprite": "shaman",
+    "tier": 1,
+  },
+  "enemy_shaman_elite": {
+    "aiRules": [
+      {
+        "abilityId": "healing-prayer",
+        "condition": {
+          "percent": 80,
+          "type": "ally-hp-below",
+        },
+        "priority": 10,
+      },
+      {
+        "abilityId": "healing-prayer",
+        "condition": {
+          "type": "always",
+        },
+        "priority": 1,
+      },
+    ],
+    "attack": 18,
+    "boss": false,
+    "defense": 4,
+    "description": "死者の囁きを操り、傷ついた魔物を癒やす後衛の術師。",
+    "elite": true,
+    "englishName": "Elite Shaman",
+    "id": "enemy_shaman_elite",
+    "maxHp": 158,
+    "name": "精鋭シャーマン",
+    "rewards": {
+      "buffRarities": [
+        "common",
+        "uncommon",
+      ],
+      "experience": 18,
+      "gold": [
+        24,
+        38,
+      ],
+    },
+    "skills": [
+      {
+        "actionTimeMs": 6500,
+        "skillId": "skill_attack",
+        "weight": 65,
+      },
+      {
+        "actionTimeMs": 10000,
+        "skillId": "skill_heal",
+        "weight": 35,
+      },
+    ],
+    "specialAbilities": [
+      {
+        "description": "最もHP割合が低い敵を最大HPの30%回復する。",
+        "effects": [
+          {
+            "effectType": "heal",
+            "targetType": "singleEnemy",
+            "value": 30,
+            "valueType": "max-hp-percent",
+          },
+        ],
+        "gaugeCost": 150,
+        "id": "healing-prayer",
+        "name": "穢れた祈り",
+        "soundId": "enemy_special_heal",
+      },
+    ],
+    "specialGaugeMax": 150,
+    "sprite": "shaman",
+    "tier": 1,
+  },
+  "goblin-archer": {
+    "aiRules": [
+      {
+        "abilityId": "execution-shot",
+        "condition": {
+          "type": "always",
+        },
+        "priority": 1,
+      },
+    ],
+    "attack": 18,
+    "boss": false,
+    "defense": 2,
+    "description": "闇に紛れ、弱った獲物を執拗に狙う射手。",
+    "elite": false,
+    "englishName": "Cave Archer",
+    "id": "goblin-archer",
+    "maxHp": 92,
+    "name": "洞窟の射手",
+    "rewards": {
+      "buffRarities": [
+        "common",
+      ],
+      "experience": 15,
+      "gold": [
+        20,
+        34,
+      ],
+    },
+    "skills": [
+      {
+        "actionTimeMs": 4200,
+        "skillId": "skill_attack",
+        "weight": 70,
+      },
+    ],
+    "specialAbilities": [
+      {
+        "description": "最もHP割合が低い冒険者を狙い撃つ。",
+        "effects": [
+          {
+            "effectType": "damage",
+            "targetType": "singleParty",
+            "value": 34,
+            "valueType": "flat",
+          },
+        ],
+        "gaugeCost": 150,
+        "id": "execution-shot",
+        "name": "処刑の矢",
+        "soundId": "enemy_special_damage",
+      },
+    ],
+    "specialGaugeMax": 150,
+    "sprite": "archer",
+    "tier": 1,
+  },
+  "grave-shaman": {
+    "aiRules": [
+      {
+        "abilityId": "healing-prayer",
+        "condition": {
+          "percent": 80,
+          "type": "ally-hp-below",
+        },
+        "priority": 10,
+      },
+      {
+        "abilityId": "healing-prayer",
+        "condition": {
+          "type": "always",
+        },
+        "priority": 1,
+      },
+    ],
+    "attack": 14,
+    "boss": false,
+    "defense": 1,
+    "description": "死者の囁きを操り、傷ついた魔物を癒やす後衛の術師。",
+    "elite": false,
+    "englishName": "Grave Shaman",
+    "id": "grave-shaman",
+    "maxHp": 105,
+    "name": "墓守の呪術師",
+    "rewards": {
+      "buffRarities": [
+        "common",
+        "uncommon",
+      ],
+      "experience": 18,
+      "gold": [
+        24,
+        38,
+      ],
+    },
+    "skills": [
+      {
+        "actionTimeMs": 6500,
+        "skillId": "skill_attack",
+        "weight": 70,
+      },
+    ],
+    "specialAbilities": [
+      {
+        "description": "最もHP割合が低い敵を最大HPの30%回復する。",
+        "effects": [
+          {
+            "effectType": "heal",
+            "targetType": "singleEnemy",
+            "value": 30,
+            "valueType": "max-hp-percent",
+          },
+        ],
+        "gaugeCost": 200,
+        "id": "healing-prayer",
+        "name": "穢れた祈り",
+        "soundId": "enemy_special_heal",
+      },
+    ],
+    "specialGaugeMax": 200,
+    "sprite": "shaman",
+    "tier": 1,
+  },
+}
+`;
