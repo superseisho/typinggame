@@ -90,6 +90,16 @@ npm run build
 
 ## ダンジョンの拡張・調整
 
+### タイピング文章とShuffle Bag
+
+`src/data/typingSentences.ts` の既存12件と `src/data/typingSentences/additional.ts` の188件を合わせ、全200件を `TYPING_SENTENCES` として公開します。難易度1/2/3は60/80/60件で、出題確率は全件同等です。
+
+`src/game/typing/sentenceDeck.ts` は既存 `randomStep` を使うFisher–Yates Shuffle Bagです。Run seedから独立した文章用seedを作り、`CombatState.sentenceDeck` の残りID・直前ID・RNG状態を `freshCombat()` で次Battleへ引き継ぎます。Battle開始と文章完成後の表示時に消費するため、未完成のまま勝利した文章も再出題しません。探索・戦闘予告中や、文章完成と同時に勝利した際の未表示文章は消費しません。
+
+200件を使い切ると再Shuffleし、直前の文章と新Cycleの先頭が一致する場合は入れ替えます。NEW EXPEDITIONではDeckを新規作成し、永続Saveには保存しません。文章選択はReact描画や敵・Room抽選のRNGから独立しています。ローマ字入力ルールとTyping UIは変更していません。
+
+`sentenceDeck.test.ts` / `sentenceRun.test.ts` はデータ件数・一意性・再現性・Cycle境界・Battle間引き継ぎを検証し、既存 `typingEngine.test.ts` は全200件をCompileして完走します。`scripts/verify-sentence-deck.mjs` は実ブラウザで2戦をプレイし、実際に表示された文章順とDeckを比較します。
+
 `src/game/dungeon/dungeonConfig.ts` に階層上限・ボス階・安全階・奇襲率・Rest回復量・戦闘Gold報酬を集約しています。敵抽選は `enemyEncounterConfig.ts`、Shopは `shopConfig.ts`、Treasureは `treasureConfig.ts` に分離しています。部屋の出現比率は `src/data/rooms/roomDefinitions.ts`。敵の基礎数値は `src/data/enemies.ts` です。
 
 1～10F内の階層倍率はありません。通常・Elite・Bossの固定データだけが異なります。30F化はmaxFloorとbossFloorsを変更可能ですが、現段階では全てTier 1の編成を使います。11F・21Fの強化は今後Tier別の敵編成テーブルを追加して切り替える想定です。装備ドロップ・11F以降の専用コンテンツ・難易度選択は未実装です。

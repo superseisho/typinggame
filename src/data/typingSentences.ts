@@ -1,4 +1,6 @@
 import type { TypingSentence } from '../types/typing';
+import { ADDITIONAL_SENTENCES } from './typingSentences/additional';
+import { indexById } from '../utils/indexById';
 
 export const TYPING_SENTENCES = [
   { id: 'sentence_001', text: '勇者は剣を構えた', reading: 'ゆうしゃ は けん を かまえた', difficulty: 1, category: 'fantasy' },
@@ -13,4 +15,7 @@ export const TYPING_SENTENCES = [
   { id: 'sentence_010', text: '勝利への道は指先で開く', reading: 'しょうり へ の みち は ゆびさき で ひらく', difficulty: 3, category: 'battle' },
   { id: 'sentence_011', text: '新聞に迷宮の記事が載った', reading: 'しんぶん に めいきゅう の きじ が のった', difficulty: 3, category: 'town' },
   { id: 'sentence_012', text: '烈火の魔術で敵を焼き払う', reading: 'れっか の まじゅつ で てき を やきはらう', difficulty: 3, category: 'magic' },
+  ...ADDITIONAL_SENTENCES,
 ] as const satisfies readonly TypingSentence[];
+
+export const TYPING_SENTENCES_BY_ID: Readonly<Record<string, TypingSentence>> = indexById(TYPING_SENTENCES);

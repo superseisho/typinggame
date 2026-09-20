@@ -19,6 +19,7 @@ import { getBuffModifier, getComboMultiplier, getEffectiveCharacter } from './bu
 import { consumeDamageShield, handleBuffTrigger } from './buffEffectHandlers';
 import { BUFF_CONFIG } from './buffConfig';
 import { describeBuffTotals } from './buffDescriptions';
+import { getTypingDisplay } from '../typing/typingEngine';
 
 function combat(...buffIds: string[]) {
   const initial = startCombat(createCombatState(['crypt-warden']), 0);
@@ -35,7 +36,7 @@ function victory(room: 'battle' | 'elite' | 'ambush' | 'boss' = 'battle', floor 
   const ready = applyRunBuffs(startCombat(createCombatState(['crypt-slime']), 0), buffs);
   return reduceDungeon({ ...run, currentFloor: floor, currentRoom: room, runStatus: 'battle', activeBuffs: buffs,
     combat: { ...ready, enemies: ready.enemies.map(enemy => ({ ...enemy, currentHp: 1 })), party: ready.party.map(member => ({ ...member, attackCharge: 100 })) } },
-  { type: 'key', key: 'y', now: 100 });
+  { type: 'key', key: getTypingDisplay(ready.typing).current, now: 100 });
 }
 
 describe('run buff inventory and rewards', () => {
@@ -166,7 +167,7 @@ describe('derived combat stats and conditional effects', () => {
     const healed = recoverParty(boosted, 1);
     expect(healed.party[0].currentHp).toBe(198);
     expect(recoveryTargets(healed)).toEqual([]);
-    expect(recoverParty(boosted, .3, 'mage', true).party[1].currentHp).toBe(Math.ceil(101 * .3));
+    expect(recoverParty(boosted, .3, 'mage', true).party[1].currentHp).toBe(Math.ceil(getEffectiveCharacter(boosted, 'mage').stats.maxHp * .3));
     expect(applyRunBuffs(boosted, []).party[0].currentHp).toBe(80);
   });
   it('Healing Prayer/Sacred Healing change actual heal amount and grant a consumable shield only on actual heals', () => {

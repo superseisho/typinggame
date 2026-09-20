@@ -1,12 +1,12 @@
 import { CHARACTER_DEFINITIONS } from '../../data/characters';
 import { ENEMIES_BY_ID } from '../../data/enemies';
 import { GAME_CONFIG } from '../../data/gameConfig';
-import { TYPING_SENTENCES } from '../../data/typingSentences';
+import { createSentenceDeck } from '../typing/sentenceDeck';
 import type { CombatState } from '../../types/game';
 import { createTypingEngineState } from '../typing/typingEngine';
 import { emptyBuffResources } from '../buffs/buffConfig';
 
-export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firstEncounterEnemyIds): CombatState {
+export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firstEncounterEnemyIds, sentenceDeck = createSentenceDeck(0x73656e74)): CombatState {
   const enemies = enemyIds.map((enemyId, index) => {
     const enemy = ENEMIES_BY_ID[enemyId];
     if (!enemy) throw new Error(`Unknown enemy: ${enemyId}`);
@@ -30,6 +30,7 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
   });
 
   return {
+    sentenceDeck,
     typingCurseBonus: 0,
     typingCurseRemainingMs: 0,
     skillRngState: 0x12345678,
@@ -45,7 +46,8 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
       statuses: [],
     })),
     enemies,
-    typing: createTypingEngineState(TYPING_SENTENCES[0]),
+    // Exploration / announcement does not display or consume a sentence.
+    typing: { ...createTypingEngineState({ id: '', text: '', reading: '', difficulty: 1 }), completed: true },
     stats: {
       startedAt: null,
       endedAt: null,

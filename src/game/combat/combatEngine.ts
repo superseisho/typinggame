@@ -13,6 +13,9 @@ import { selectLowestPartyHpIndex } from './targeting';
 import { ensureValidEnemyTarget, resolveCurrentEnemyTarget } from './enemyTarget';
 import { cleanupEnemyState, resolveEnemyDamage } from './enemyDamage';
 import { performEnemySkill, planEnemyAction } from './enemySkillEngine';
+import { drawSentence } from '../typing/sentenceDeck';
+import { createTypingEngineState } from '../typing/typingEngine';
+import { TYPING_SENTENCES_BY_ID } from '../../data/typingSentences';
 
 const ABILITY_STATUS_PREFIX = 'ability:';
 
@@ -67,7 +70,9 @@ function finishIfDefeated(state: CombatState, now: number): CombatState {
 
 export function startCombat(state: CombatState, now = Date.now()): CombatState {
   if (state.status !== 'ready') return state;
-  state = { ...state, status: 'active' };
+  const drawn = drawSentence(state.sentenceDeck);
+  state = { ...state, status: 'active', sentenceDeck: drawn.deck,
+    typing: createTypingEngineState(TYPING_SENTENCES_BY_ID[drawn.sentenceId]) };
   for (let index = 0; index < state.enemies.length; index++) state = planEnemyAction(state, index);
   return appendEvent(
     { ...state, targetEnemyId: state.enemies.find(enemy => enemy.currentHp > 0)?.instanceId ?? null, status: 'active', stats: { ...state.stats, startedAt: now } },

@@ -169,9 +169,10 @@ describe('rest, shop and treasure', () => {
     expect(reduceDungeon(living, { type: 'rest', action: 'revive', targetId: 'mage' })).toBe(living);
     const room = withHp(living, [50, 0, 40, 0]);
     const revived = reduceDungeon(room, { type: 'rest', action: 'revive', targetId: 'mage' });
-    expect(revived.combat.party.map((p) => p.currentHp)).toEqual([50, 28, 40, 0]);
+    const revivedHp = Math.ceil(CHARACTERS_BY_ID.mage.stats.maxHp * DUNGEON_CONFIG.rest.reviveRatio);
+    expect(revived.combat.party.map((p) => p.currentHp)).toEqual([50, revivedHp, 40, 0]);
     const next = choose('battle', advance(revived));
-    expect(next.combat.party[1].currentHp).toBe(28);
+    expect(next.combat.party[1].currentHp).toBe(revivedHp);
     expect(next.combat.party[3].currentHp).toBe(0);
   });
   // Shop stock and the five Treasure outcomes are covered in shopTreasure.test.ts.

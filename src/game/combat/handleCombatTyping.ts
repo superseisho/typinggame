@@ -1,12 +1,8 @@
-import { TYPING_SENTENCES } from '../../data/typingSentences';
+import { TYPING_SENTENCES_BY_ID } from '../../data/typingSentences';
+import { drawSentence } from '../typing/sentenceDeck';
 import type { CombatState } from '../../types/game';
 import { inputTypingKey, moveToSentence } from '../typing/typingEngine';
 import { applyCorrectTyping, applyTypingMiss } from './combatEngine';
-
-function nextSentenceId(currentId: string): number {
-  const currentIndex = TYPING_SENTENCES.findIndex((sentence) => sentence.id === currentId);
-  return (currentIndex + 1) % TYPING_SENTENCES.length;
-}
 
 export function handleCombatTyping(state: CombatState, key: string, now = Date.now()): CombatState {
   if (state.status !== 'active') return state;
@@ -14,8 +10,9 @@ export function handleCombatTyping(state: CombatState, key: string, now = Date.n
   if (transition.result === 'ignored') return state;
   if (transition.result === 'miss') return applyTypingMiss(state, transition.state, now);
 
-  const typing = transition.result === 'completed'
-    ? moveToSentence(transition.state, TYPING_SENTENCES[nextSentenceId(transition.state.sentenceId)])
-    : transition.state;
-  return applyCorrectTyping(state, typing, now);
+  const next = applyCorrectTyping(state, transition.state, now);
+  if (transition.result !== 'completed' || next.status !== 'active') return next;
+  const drawn = drawSentence(next.sentenceDeck);
+  return { ...next, sentenceDeck: drawn.deck,
+    typing: moveToSentence(next.typing, TYPING_SENTENCES_BY_ID[drawn.sentenceId]) };
 }

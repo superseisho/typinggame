@@ -22,11 +22,12 @@ import { generateBuffRewards } from '../buffs/buffRewards';
 import { BUFF_CONFIG, emptyBuffResources } from '../buffs/buffConfig';
 import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
 import { appendEvent } from '../combat/combatEvents';
+import { createSentenceDeck } from '../typing/sentenceDeck';
 
 type BattleRoom = 'battle' | 'elite' | 'ambush' | 'boss';
 
 function freshCombat(previous: CombatState, enemies: readonly string[] = []): CombatState {
-  const fresh = createCombatState(enemies);
+  const fresh = createCombatState(enemies, previous.sentenceDeck);
   return { ...fresh, runBuffs: previous.runBuffs, eventSequence: previous.eventSequence, party: fresh.party.map((member) => ({
     ...member, currentHp: previous.party.find((old) => old.definitionId === member.definitionId)?.currentHp ?? member.currentHp,
   })) };
@@ -62,7 +63,7 @@ export function createDungeonRun(seed: number, id: string): DungeonRunState {
     activeBuffs: [], buffOptions: [], acquiredBuffId: null,
     id, rngState: seed >>> 0, currentFloor: 1, maxFloor: DUNGEON_CONFIG.maxFloor, enemyTier: 1,
     selectedDifficulty: 'normal', gold: DUNGEON_CONFIG.startingGold, goldEarned: 0,
-    currentRoom: null, runStatus: 'choosing', roomOptions: [], combat: createCombatState([]),
+    currentRoom: null, runStatus: 'choosing', roomOptions: [], combat: createCombatState([], createSentenceDeck((seed ^ 0x73656e74) >>> 0)),
     currentCombatMs: 0, statistics: { correctCharacters: 0, misses: 0, maxCombo: 0, timeoutCount: 0, combatMs: 0, enemiesDefeated: 0 },
     clearedRooms: [], roomMessage: '', endedAt: null,
   });

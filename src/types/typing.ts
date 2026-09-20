@@ -6,6 +6,12 @@ export interface TypingSentence {
   readonly category?: string;
 }
 
+export interface TypingSentenceDeck {
+  readonly remainingSentenceIds: readonly string[];
+  readonly lastSentenceId: string | null;
+  readonly rngState: number;
+}
+
 export interface RomajiSegment {
   readonly kana: string;
   readonly alternatives: readonly string[];
