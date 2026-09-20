@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ENEMIES_BY_ID } from '../../data/enemies';
+import { ENEMY_SKILL_CONFIG } from '../../data/enemySkills';
+import { GAME_CONFIG } from '../../data/gameConfig';
 import { CHARACTERS_BY_ID } from '../../data/characters';
 import { EnemyPanel } from '../../components/EnemyPanel';
 import { TypingPanel } from '../../components/TypingPanel';
@@ -15,6 +17,8 @@ import { resolveEnemyDamage } from './enemyDamage';
 import { addBuff, applyRunBuffs } from '../buffs/runBuffManager';
 
 const battle = (...ids: string[]) => startCombat(createCombatState(ids));
+const { curseDurationMs: duration, curseMissGaugeBonus: bonus } = ENEMY_SKILL_CONFIG.wraith;
+const cursedGain = GAME_CONFIG.enemySpecialGaugeOnMiss + bonus;
 function plan(state: CombatState, index: number, skill: string) {
   for (let seed = 0; seed < 10000; seed++) {
     const next = planEnemyAction({ ...state, skillRngState: seed }, index);
@@ -38,6 +42,12 @@ describe('new tactical Enemy actions', () => {
     ['enemy_cultist','skill_empower',8500,'Empower'],
     ['enemy_wraith','skill_attack',4500,'Attack'],
     ['enemy_wraith','skill_curse',8000,'Curse'],
+    ['enemy_executioner_elite','skill_attack',5500,'Attack'],
+    ['enemy_executioner_elite','skill_heavy_attack',11500,'Heavy Attack'],
+    ['enemy_cultist_elite','skill_attack',6000,'Attack'],
+    ['enemy_cultist_elite','skill_empower',8500,'Empower'],
+    ['enemy_wraith_elite','skill_attack',4500,'Attack'],
+    ['enemy_wraith_elite','skill_curse',8000,'Curse'],
   ] as const)('%s plans %s for %ims and executes the displayed action', (id,skill,time,name) => {
     const planned = plan(battle(id,'crypt-slime'),0,skill);
     expect(planned.enemies[0].actionDurationMs).toBe(time);
@@ -49,19 +59,19 @@ describe('new tactical Enemy actions', () => {
     expect(before.events.some(e => e.kind === 'enemy-skill-used')).toBe(false);
     expect(tickCombat(before,1).events.find(e => e.kind === 'enemy-skill-used')?.skillId).toBe(skill);
   });
-  it.each([1,1.3])('Heavy Attack uses defense and both skill/empower multipliers (%s)', multiplier => {
-    let state = battle('enemy_executioner');
+  it.each([['enemy_executioner',24,1],['enemy_executioner',24,1.3],['enemy_executioner_elite',30,1],['enemy_executioner_elite',30,1.3]] as const)('%s Heavy Attack uses defense and both multipliers (%s / %s)', (id,attack,multiplier) => {
+    let state = battle(id);
     state = empowerEnemies(state,[state.enemies[0].instanceId],multiplier);
     state = { ...state, enemies: state.enemies.map(e => ({ ...e, attackMultiplier:1.2 })) };
     const next = execute(state,0,'skill_heavy_attack');
-    const damage = Math.round(24 * 1.2 * 1.8 * multiplier) - CHARACTERS_BY_ID.warrior.stats.defense;
+    const damage = Math.round(attack * 1.2 * 1.8 * multiplier) - CHARACTERS_BY_ID.warrior.stats.defense;
     expect(next.party[0].currentHp).toBe(state.party[0].currentHp - damage);
     expect(next.enemies[0].nextAttackEmpowerMultiplier).toBe(1);
     expect(next.partyTargetCursor).toBe(1);
     expect(next.events.find(e => e.kind === 'ally-damaged')?.amount).toBe(damage);
   });
-  it('Guard blocks even Empowered Heavy Attack and consumes its charge', () => {
-    const base = battle('enemy_executioner');
+  it.each(['enemy_executioner','enemy_executioner_elite'])('%s Guard blocks Empowered Heavy Attack and consumes its charge', id => {
+    const base = battle(id);
     const state = { ...empowerEnemies(base,[base.enemies[0].instanceId],1.3),
       party: base.party.map((p,i) => i ? p : { ...p,statuses:['ability:guard'] }) };
     const next = execute(state,0,'skill_heavy_attack');
@@ -78,8 +88,8 @@ describe('new tactical Enemy actions', () => {
     const dying = { ...base,party:base.party.map((p,i) => ({...p,currentHp:i === 0 ? 1 : 0})) };
     expect(execute(dying,0,'skill_heavy_attack').status).toBe('defeat');
   });
-  it('Execution targets the lowest HP ratio and does not consume Empower', () => {
-    const base = battle('enemy_executioner');
+  it.each(['enemy_executioner','enemy_executioner_elite'])('%s Execution targets the lowest HP ratio and does not consume Empower', id => {
+    const base = battle(id);
     const state = { ...empowerEnemies(base,[base.enemies[0].instanceId],1.3),
       party: base.party.map((p,i) => i === 2 ? { ...p,currentHp:50 } : p) };
     const next = special(state,0);
@@ -90,8 +100,8 @@ describe('new tactical Enemy actions', () => {
 });
 
 describe('Empower and Dark Ritual', () => {
-  it('chooses the strongest effective attack, then formation order; excludes self/dead/charged', () => {
-    let state = battle('enemy_cultist','enemy_executioner','enemy_wraith','enemy_executioner');
+  it.each(['enemy_cultist','enemy_cultist_elite'])('%s chooses strongest effective attack; excludes self/dead/charged', id => {
+    let state = battle(id,'enemy_executioner','enemy_wraith','enemy_executioner');
     expect(hasSkill(state,0,'skill_empower')).toBe(true);
     expect(empowermentTarget(state,state.enemies[0])?.instanceId).toBe(state.enemies[1].instanceId);
     state = { ...state,enemies:state.enemies.map((e,i) => i === 2 ? { ...e,attackMultiplier:2 } : e) };
@@ -112,8 +122,8 @@ describe('Empower and Dark Ritual', () => {
         enemies:base.enemies.map((e,i) => i ? { ...e,currentHp:50 } : { ...e,nextAttackEmpowerMultiplier:1.3 }) };
       expect(execute(state,0,skill).enemies[0].nextAttackEmpowerMultiplier).toBe(1.3);
     });
-  it('Attack consumes Empower once, while Dark Ritual upgrades without stacking and skips dead enemies', () => {
-    const base = battle('enemy_cultist','enemy_executioner','crypt-slime');
+  it.each(['enemy_cultist','enemy_cultist_elite'])('%s Dark Ritual upgrades without stacking; Attack consumes once', id => {
+    const base = battle(id,'enemy_executioner','crypt-slime');
     let state = empowerEnemies(base,base.enemies.map(e => e.instanceId),1.3);
     state = { ...state,enemies:state.enemies.map((e,i) => i === 2 ? { ...e,currentHp:0,nextAttackEmpowerMultiplier:1 } : e) };
     state = special(special(state,0),0);
@@ -138,35 +148,36 @@ describe('Typing Curse', () => {
     state = plan(state,1,'skill_curse');
     const next = tickCombat(state,8000);
     expect(next.events.filter(e => e.kind === 'enemy-skill-used').map(e => e.skillId)).toEqual(['skill_curse','skill_attack']);
-    expect(next.typingCurseBonus).toBe(10);
+    expect(next.typingCurseBonus).toBe(bonus);
     expect(next.enemies.every(e => e.nextActionSkillId === 'skill_attack')).toBe(true);
   });
-  it('is shared, nonstacking, persists through correct input and caster death, and is consumed by one miss', () => {
+  it('is shared, nonstacking, persists through correct input, caster death and multiple misses', () => {
     let state = battle('enemy_wraith','enemy_wraith','crypt-slime');
     expect(hasSkill(state,0,'skill_curse')).toBe(true);
     state = execute(state,0,'skill_curse');
-    expect(state.typingCurseBonus).toBe(10);
+    expect(state.typingCurseBonus).toBe(bonus);
     expect(hasSkill(state,1,'skill_curse')).toBe(false);
-    state = applyTypingCurse(state,10);
+    state = applyTypingCurse(state,bonus);
     state = applyCorrectTyping(state,state.typing);
     state = tickCombat(state,1000);
     state = resolveEnemyDamage(state,{targetIds:[state.enemies[0].instanceId],power:999,kind:'ally-attack',label:'test'});
-    expect(state.typingCurseBonus).toBe(10);
+    expect(state.typingCurseBonus).toBe(bonus);
     const next = applyTypingMiss(state,state.typing);
-    expect(next.enemies.map(e => e.specialGauge)).toEqual([0,35,35]);
-    expect(next.typingCurseBonus).toBe(0);
-    expect(hasSkill(next,1,'skill_curse')).toBe(true);
-    expect(applyTypingMiss(next,next.typing).enemies[1].specialGauge).toBe(60);
+    expect(next.enemies.map(e => e.specialGauge)).toEqual([0,cursedGain,cursedGain]);
+    expect(next.typingCurseBonus).toBe(bonus);
+    expect(next.typingCurseRemainingMs).toBe(state.typingCurseRemainingMs);
+    expect(hasSkill(next,1,'skill_curse')).toBe(false);
+    expect(applyTypingMiss(next,next.typing).enemies[1].specialGauge).toBe(2 * cursedGain);
     expect(createCombatState(['enemy_wraith']).typingCurseBonus).toBe(0);
   });
   it('applies Calm Mind + Precision and shield to the combined base + Curse', () => {
     let state = applyRunBuffs(battle('enemy_wraith'),addBuff(addBuff([],'calm-mind'),'precision'));
-    state = applyTypingCurse(state,10);
+    state = applyTypingCurse(state,bonus);
     state = { ...state,buffResources:{...state.buffResources,gaugeShield:5} };
     const next = applyTypingMiss(state,state.typing);
-    expect(next.enemies[0].specialGauge).toBeCloseTo(35 * .7 - 5);
+    expect(next.enemies[0].specialGauge).toBeCloseTo(cursedGain * .7 - 5);
     expect(next.buffResources.gaugeShield).toBe(0);
-    expect(next.typingCurseBonus).toBe(0);
+    expect(next.typingCurseBonus).toBe(bonus);
     expect(applyTypingMiss({ ...state,buffResources:{...state.buffResources,gaugeShield:100} },state.typing).enemies[0].specialGauge).toBe(0);
   });
   it('Soul Erosion deals 16 to living party members and reapplies only one Curse', () => {
@@ -174,14 +185,46 @@ describe('Typing Curse', () => {
     state = { ...state,party:state.party.map((p,i) => i === 1 ? { ...p,currentHp:0 } : p) };
     const next = special(special(state,0),0);
     expect(next.party.map(p => p.currentHp)).toEqual(state.party.map(p => p.currentHp > 0 ? p.currentHp - 32 : 0));
-    expect(next.typingCurseBonus).toBe(10);
+    expect(next.typingCurseBonus).toBe(bonus);
   });
-  it('uses compact shared UI, and clears the warning on consumption', () => {
+  it('uses the combat timer in compact shared UI and clears the warning on expiry', () => {
     const base = battle('enemy_wraith','enemy_executioner');
-    const state = applyTypingCurse(empowerEnemies(base,[base.enemies[1].instanceId],1.3),10);
+    const state = applyTypingCurse(empowerEnemies(base,[base.enemies[1].instanceId],1.3),bonus);
     expect(renderToStaticMarkup(createElement(EnemyPanel,{combat:state}))).toContain('EMPOWER ×1.30');
-    expect(renderToStaticMarkup(createElement(TypingPanel,{combat:state}))).toContain('CURSED · Next Miss: Special Gauge +10');
-    const next = applyTypingMiss(state,state.typing);
+    expect(renderToStaticMarkup(createElement(TypingPanel,{combat:state}))).toContain(`CURSED · Miss Gauge +${bonus} · ${(duration / 1000).toFixed(1)}s`);
+    const next = tickCombat({ ...state,enemies:state.enemies.map(e => ({ ...e,actionRemainingMs:duration + 1000 })) },duration);
     expect(renderToStaticMarkup(createElement(TypingPanel,{combat:next}))).not.toContain('CURSED');
+  });
+  it('expires exactly at the configured duration and refreshes without stacking', () => {
+    const base = battle('enemy_wraith');
+    let state = applyTypingCurse({ ...base,enemies:base.enemies.map(e => ({...e,actionRemainingMs:duration * 10})) },bonus);
+    expect(state.typingCurseRemainingMs).toBe(duration);
+    state = tickCombat(state,duration * .4);
+    expect(state.typingCurseRemainingMs).toBe(duration * .6);
+    expect(state.typingCurseBonus).toBe(bonus);
+    state = applyCorrectTyping(state,state.typing);
+    expect(state.typingCurseRemainingMs).toBe(duration * .6);
+    state = tickCombat(state,duration * .2);
+    state = applyTypingCurse(state,bonus);
+    expect(state.typingCurseRemainingMs).toBe(duration);
+    expect(state.typingCurseBonus).toBe(bonus);
+    state = tickCombat(state,duration - 1);
+    expect(hasSkill(state,0,'skill_curse')).toBe(false);
+    state = tickCombat(state,1);
+    expect(state.typingCurseRemainingMs).toBe(0);
+    expect(state.typingCurseBonus).toBe(0);
+    expect(hasSkill(state,0,'skill_curse')).toBe(true);
+    expect(applyTypingMiss(state,state.typing).enemies[0].specialGauge).toBe(GAME_CONFIG.enemySpecialGaugeOnMiss);
+    expect(createCombatState(['enemy_wraith']).typingCurseRemainingMs).toBe(0);
+  });
+  it.each(['enemy_wraith','enemy_wraith_elite'])('%s Soul Erosion damages again and refreshes the shared duration', id => {
+    const base = battle(id);
+    let state = special(base,0);
+    expect(state.typingCurseRemainingMs).toBe(duration);
+    state = tickCombat({ ...state,enemies:state.enemies.map(e => ({...e,actionRemainingMs:duration * 10})) },duration * .6);
+    const next = special(state,0);
+    expect(next.typingCurseRemainingMs).toBe(duration);
+    expect(next.typingCurseBonus).toBe(bonus);
+    expect(next.party.map(p => p.currentHp)).toEqual(base.party.map(p => p.currentHp - 32));
   });
 });

@@ -233,6 +233,7 @@ export interface CombatEvent {
 
 export interface CombatState {
   readonly typingCurseBonus: number;
+  readonly typingCurseRemainingMs: number;
   readonly skillRngState: number;
   readonly targetEnemyId: string | null;
   readonly runBuffs: readonly RunBuff[];

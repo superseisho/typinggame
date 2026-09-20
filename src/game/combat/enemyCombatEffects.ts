@@ -1,4 +1,5 @@
 import { ENEMIES_BY_ID } from '../../data/enemies';
+import { ENEMY_SKILL_CONFIG } from '../../data/enemySkills';
 import type { CombatState, EnemyCombatState } from '../../types/game';
 
 /** Stable formation order breaks ties; a charge is never stacked or replaced by a weaker one. */
@@ -14,5 +15,6 @@ export function empowerEnemies(state: CombatState, targetIds: readonly string[],
 }
 
 export function applyTypingCurse(state: CombatState, bonus: number): CombatState {
-  return { ...state, typingCurseBonus: Math.max(state.typingCurseBonus, bonus) };
+  return { ...state, typingCurseBonus: Math.max(state.typingCurseBonus, bonus),
+    typingCurseRemainingMs: ENEMY_SKILL_CONFIG.wraith.curseDurationMs };
 }

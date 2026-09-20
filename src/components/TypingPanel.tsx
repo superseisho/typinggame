@@ -9,8 +9,8 @@ export function TypingPanel({ combat }: { readonly combat: CombatState }) {
     <section className={`typing-panel ${combat.typing.lastInput === 'miss' ? 'is-miss' : ''}`} aria-label="タイピングエリア">
       <div className="typing-panel__topline">
         <span className="eyebrow">COMBAT SCRIPT</span>
-        <span className={`typing-panel__hint ${combat.typingCurseBonus > 0 ? 'typing-curse' : ''}`}>
-          {combat.typingCurseBonus > 0 ? `CURSED · Next Miss: Special Gauge +${combat.typingCurseBonus}` : 'スペース入力不要 · 複数ローマ字対応'}
+        <span className={`typing-panel__hint ${combat.typingCurseRemainingMs > 0 ? 'typing-curse' : ''}`}>
+          {combat.typingCurseRemainingMs > 0 ? `CURSED · Miss Gauge +${combat.typingCurseBonus} · ${(combat.typingCurseRemainingMs / 1000).toFixed(1)}s` : 'スペース入力不要 · 複数ローマ字対応'}
         </span>
       </div>
       <div className="japanese-sentence">{combat.typing.sentenceText}</div>

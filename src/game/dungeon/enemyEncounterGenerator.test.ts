@@ -6,6 +6,15 @@ import { createCombatState } from '../combat/createCombatState';
 import { createDungeonRun, reduceDungeon } from './dungeonEngine';
 
 describe('independent random enemy slots', () => {
+  it('preserves every normal weight, with no duplicate or Elite registrations', () => {
+    for (const source of ['battle','ambush','treasure_trap'] as const) {
+      expect(ENEMY_ENCOUNTER_CONFIG[1][source].pool).toEqual([
+        {enemyId:'crypt-slime',weight:25},{enemyId:'goblin-archer',weight:25},
+        {enemyId:'grave-shaman',weight:10},{enemyId:'enemy_guardian',weight:20},{enemyId:'enemy_shaman',weight:20},
+        {enemyId:'enemy_executioner',weight:15},{enemyId:'enemy_cultist',weight:15},{enemyId:'enemy_wraith',weight:15},
+      ]);
+    }
+  });
   it.each(['battle','ambush','treasure_trap'] as const)('%s adds tactical enemies at weight 15 without pairing or duplicate restrictions', source => {
     const config = ENEMY_ENCOUNTER_CONFIG[1][source];
     expect(config.countWeights).toEqual([30,45,25]);
@@ -28,9 +37,10 @@ describe('independent random enemy slots', () => {
       expect(seenDuplicate.has(id)).toBe(true);
     }
   });
-  it('keeps the Elite pool and fixed Boss unchanged', () => {
+  it('extends only the Elite pool and keeps its counts and fixed Boss unchanged', () => {
     expect(ENEMY_ENCOUNTER_CONFIG[1].elite).toEqual({countWeights:[20,45,35],pool:[
       {enemyId:'elite-slime',weight:50},{enemyId:'enemy_guardian_elite',weight:25},{enemyId:'enemy_shaman_elite',weight:25},
+      {enemyId:'enemy_executioner_elite',weight:25},{enemyId:'enemy_cultist_elite',weight:25},{enemyId:'enemy_wraith_elite',weight:25},
     ]});
     expect(BOSS_ENCOUNTERS).toEqual({1:['crypt-warden']});
   });

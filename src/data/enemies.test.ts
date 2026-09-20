@@ -4,13 +4,29 @@ import { BOSS_ENCOUNTERS, ENEMY_ENCOUNTER_CONFIG } from '../game/dungeon/enemyEn
 import { GAME_CONFIG } from './gameConfig';
 
 describe('explicit enemy definitions', () => {
+  it.each([
+    ['enemy_executioner',203,30,5,175],
+    ['enemy_cultist',173,16,5,200],
+    ['enemy_wraith',143,21,4,150],
+  ] as const)('%s has a complete independent Elite definition with shared skill effects', (id,maxHp,attack,defense,specialGaugeMax) => {
+    const normal = ENEMIES_BY_ID[id];
+    const elite = ENEMIES_BY_ID[`${id}_elite`];
+    expect(elite).toMatchObject({maxHp,attack,defense,specialGaugeMax,tier:1,boss:false,elite:true});
+    expect(elite.skills).toEqual(normal.skills);
+    expect(elite.specialAbilities).toEqual(normal.specialAbilities);
+    expect(elite.aiRules).toEqual(normal.aiRules);
+    expect(elite.skills).not.toBe(normal.skills);
+    expect(elite.specialAbilities).not.toBe(normal.specialAbilities);
+    expect(elite.rewards.gold[0]).toBeGreaterThan(normal.rewards.gold[0]);
+    expect(elite.rewards.gold[1]).toBeGreaterThan(normal.rewards.gold[1]);
+  });
   it('preserves all resolved enemy data from before the definition refactor', () => {
-    const additions = new Set(['enemy_executioner', 'enemy_cultist', 'enemy_wraith']);
+    const additions = new Set(['enemy_executioner', 'enemy_cultist', 'enemy_wraith', 'enemy_executioner_elite', 'enemy_cultist_elite', 'enemy_wraith_elite']);
     expect(Object.fromEntries(Object.entries(ENEMIES_BY_ID).filter(([id]) => !additions.has(id)))).toMatchSnapshot();
   });
-  it('defines all twelve unique IDs and indexes only the canonical definitions', () => {
+  it('defines all fifteen unique IDs and indexes only the canonical definitions', () => {
     const ids = ENEMY_DEFINITIONS.map(e => e.id);
-    expect(ids).toHaveLength(12);
+    expect(ids).toHaveLength(15);
     expect(new Set(ids).size).toBe(ids.length);
     expect(Object.keys(ENEMIES_BY_ID)).toEqual(ids);
     for (const enemy of ENEMY_DEFINITIONS) expect(ENEMIES_BY_ID[enemy.id]).toBe(enemy);

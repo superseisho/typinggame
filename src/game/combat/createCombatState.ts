@@ -31,6 +31,7 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
 
   return {
     typingCurseBonus: 0,
+    typingCurseRemainingMs: 0,
     skillRngState: 0x12345678,
     targetEnemyId: enemies[0]?.instanceId ?? null,
     runBuffs: [],

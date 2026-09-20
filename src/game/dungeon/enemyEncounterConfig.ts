@@ -23,6 +23,9 @@ export const ENEMY_ENCOUNTER_CONFIG: Readonly<Record<number, Readonly<Record<Ran
       { enemyId: 'elite-slime', weight: 50 },
       { enemyId: 'enemy_guardian_elite', weight: 25 },
       { enemyId: 'enemy_shaman_elite', weight: 25 },
+      { enemyId: 'enemy_executioner_elite', weight: 25 },
+      { enemyId: 'enemy_cultist_elite', weight: 25 },
+      { enemyId: 'enemy_wraith_elite', weight: 25 },
     ] },
   },
 };

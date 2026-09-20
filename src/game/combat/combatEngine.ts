@@ -93,7 +93,6 @@ export function applyTypingMiss(
       ...state,
       typing,
       buffResources: { ...state.buffResources, gaugeShield: 0 },
-      typingCurseBonus: 0,
       party: state.party.map((member) => {
         const character = CHARACTERS_BY_ID[member.definitionId];
         return character.ability.visual.kind !== 'combo' ? member : {
@@ -341,8 +340,11 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number,
 
 export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()): CombatState {
   if (state.status !== 'active' || deltaMs <= 0) return state;
+  const typingCurseRemainingMs = Math.max(0, state.typingCurseRemainingMs - deltaMs);
   let nextState: CombatState = {
     ...state,
+    typingCurseRemainingMs,
+    typingCurseBonus: typingCurseRemainingMs > 0 ? state.typingCurseBonus : 0,
     enemies: state.enemies.map((enemy) => enemy.currentHp <= 0
       ? enemy
       : {

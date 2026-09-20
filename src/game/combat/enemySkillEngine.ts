@@ -14,7 +14,7 @@ const conditions: Record<EnemySkillDefinition['requirement'], (s: CombatState, a
   'other-alive': (s,a) => s.enemies.some(e => e.instanceId !== a.instanceId && e.currentHp > 0),
   'injured-alive': s => !!lowestInjuredEnemy(s),
   'empowerable-other': (s,a) => !!empowermentTarget(s,a),
-  'not-cursed': s => s.typingCurseBonus === 0,
+  'not-cursed': s => s.typingCurseRemainingMs <= 0,
 };
 export function usableEnemySkills(state: CombatState, actor: EnemyCombatState) {
   if (actor.currentHp <= 0) return [];
