@@ -83,7 +83,7 @@ export const CHARACTER_DEFINITIONS = [
       name: 'HEAL',
       description: '正しく50文字入力すると、最も傷ついた味方を回復する。',
       trigger: { type: 'correct-characters', threshold: 50 },
-      effects: [{ type: 'heal-lowest-ally', power: 30 }],
+      effects: [{ type: 'heal-lowest-ally', power: 50 }],
       visual: { kind: 'heal', persistence: 'instant', displayMs: TRANSIENT_ABILITY_VISUAL_MS },
       soundId: 'cleric_heal',
     },
