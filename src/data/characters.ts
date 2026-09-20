@@ -49,7 +49,7 @@ export const CHARACTER_DEFINITIONS = [
     portraitGlyph: 'M',
     accentColor: '#a58bff',
     art: createArtSet('mage', 'cast'),
-    stats: { maxHp: 92, attack: 23, defense: 2 },
+    stats: { maxHp: 120, attack: 23, defense: 2 },
     attackThreshold: 30,
     attackElement: 'fire',
     targetRule: 'lowest-hp',
