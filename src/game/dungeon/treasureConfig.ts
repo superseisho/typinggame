@@ -1,8 +1,8 @@
 export const TREASURE_CONFIG = {
   outcomeWeights: { buff: 30, gold: 25, party_heal: 20, rare_buff: 15, trap_battle: 10 },
   gold: { min: 150, max: 250 }, healRatio: .3,
-  buffWeights: { common: 45, uncommon: 35, rare: 17, epic: 3 },
-  rareBuffWeights: { common: 0, uncommon: 0, rare: 85, epic: 15 },
+  buffWeights: { common: 44, uncommon: 35, rare: 17, epic: 3, legendary: 1 },
+  rareBuffWeights: { common: 0, uncommon: 0, rare: 82, epic: 15, legendary: 3 },
   trapGold: [10, 25],
   trapAnnouncementMs: 750,
 } as const;

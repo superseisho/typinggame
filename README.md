@@ -12,7 +12,7 @@ GAME START → 3択の部屋選択 → 部屋攻略 → 次の階へ進み、10F
 - Shop: 入室時に回復2商品＋Buff2商品を抽選。単体30%/60%、全体20%の回復とBuff販売。Rerollは40 Gold。購入せず退出も可能。
 - Treasure: OPEN TREASUREで一度だけ開封。無料Buff30%、大量Gold25%、全体回復20%、Rare以上Buff15%、罠戦闘10%。蘇生はありません。
 - Event: 5種類の出来事から抽選。直前と同じEventは除外。Gold・HP・Buff・何もせず退出から行動を選び、結果画面のCONTINUEで進行します。
-- Altar: 生存者の最大HP20%を犠牲（最低HP1）にするか、150 Goldを支払い、Rare / EpicのBuffを1つ選択。無料でLeaveも可能。取得後はCONTINUEまで階層を維持します。
+- Altar: 生存者の最大HP20%を犠牲（最低HP1）にするか、150 Goldを支払い、Rare以上のBuffを1つ選択。無料でLeaveも可能。取得後はCONTINUEまで階層を維持します。
 - Ambush: 通常階で8%。1Fは選択を保証する安全階。ボス階とその直前階では奇襲抽選を行いません。
 - 9F: 「BOSS AHEAD / Prepare for the Boss」を表示し、Rest / Shopの固定2択。Restは行動・結果確認後、ShopはLEAVE SHOPで10Fへ進みます。`floorRules.ts`の次階Boss判定を共通利用するため、bossFloorsを拡張すれば19F / 29Fにも適用されます。
 - 10F: 900msのボス予告後に自動開戦。550HPの固定ボスを撃破すると探索完了。
@@ -31,7 +31,7 @@ GAME START → 3択の部屋選択 → 部屋攻略 → 次の階へ進み、10F
 - Healing Fountain: 生存者25%回復、50～100 Gold、またはLeave。
 - Ancient Inscription: 無料Buff選択、またはIgnore It。
 
-通常Event BuffはCommon / Uncommon / Rare / Epicが50 / 32 / 15 / 3。AltarはBlood OfferingでRare / Epicが80 / 20、Gold Offeringで90 / 10。取得可能なレアリティの中で再配分し、既存Buff候補生成・Stack上限・Unique除外を共用します。候補不足は少数候補、0個は既存の60 Gold代替報酬です。犠牲確定後は選び直せません。
+通常Event BuffはCommon / Uncommon / Rare / Epic / Legendaryが49 / 32 / 15 / 3 / 1。AltarはBlood OfferingでRare / Epic / Legendaryが75 / 20 / 5、Gold Offeringで85 / 10 / 5。取得可能なレアリティの中で再配分し、既存Buff候補生成・Stack上限・Unique除外を共用します。候補不足は少数候補、0個は既存の60 Gold代替報酬です。犠牲確定後は選び直せません。
 
 `types/encounters.ts` のRequirementとEffectでGold、HP条件、単体/全体回復・ダメージ、重み付き結果、Buff、無効果を表現し、`encounterEngine.ts` が処理します。Reactは条件と結果を表示するだけです。入室時のIDと選択済みID・costPaid・resolvedをRunへ保存し、Buff取得後も共通の部屋完了・CONTINUEを経て1階だけ進みます。蘇生や恒久デメリットは追加していません。
 
@@ -116,20 +116,21 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 
 | レアリティ | Battle / Ambush | Elite / 途中Boss |
 | --- | ---: | ---: |
-| Common | 55% | 20% |
+| Common | 54% | 18% |
 | Uncommon | 30% | 40% |
 | Rare | 13% | 30% |
 | Epic | 2% | 10% |
+| Legendary | 1% | 2% |
 
 各カードで取得可能なレアリティを重み付き抽選し、そのプールから1種類を選びます。選択済み候補・取得済みUnique・最大Stackは除外。空になったレアリティの重みは残りへ再配分するため、2・3枚目や取得状況に応じて実際の確率は変わります。候補が2個以下なら残りのみ表示し、0個なら追加60 Goldと通常の「次の階へ」を表示します。
 
-### 初期Buff（20種類）
+### Run Buff（33種類）
 
 | 対象 | 名前 | 効果（1 Stack） |
 | --- | --- | --- |
-| 全員 | Power Rune | Attack +10% |
-| 全員 | Vitality Rune | Max HP +10%、生存者の現在HPに最大HP増加分を加算 |
-| 全員 | Swift Fingers | Attack必要文字数 −8% |
+| 全員 | Power Rune | Attack +5% |
+| 全員 | Vitality Rune | Max HP +5%、生存者の現在HPに最大HP増加分を加算 |
+| 全員 | Swift Fingers | Attack必要文字数 −5% |
 | 全員 | Calm Mind | ミス時の敵Special Gauge増加 −20% |
 | 戦士 | Reinforced Shield | Guard成功時Max HPの5%回復 |
 | 戦士 | Guardian Oath | Guard成功後、次の通常Attack +30%・1回消費 |
@@ -146,9 +147,22 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 | タイピング | Precision | ミス時の敵Special Gauge増加 −10% |
 | タイピング | Flow | 50連続正解ごとに生存者のAttack Gauge +5文字 |
 | タイピング | Perfect Rhythm | 50連続正解ごとに敵全体へ威力15の追加攻撃、防御適用 |
-| 全員・Epic | Ascendant Rune | Attack +20%、Max HP +10% |
+| 全員・Common | Defense Rune | Defense +5% |
+| 全員・Uncommon | Greater Power / Vitality / Defense Rune（3種） | 各Attack / Max HP / Defense +10% |
+| 全員・Rare | Superior Power / Vitality / Defense Rune（3種） | 各Attack / Max HP / Defense +15% |
+| 全員・Rare | Lightning Fingers | Attack必要文字数 −10% |
+| タイピング・Epic | Vital Rhythm | 100連続正解ごとに生存Partyを各Max HPの5%回復 |
+| タイピング・Epic | Seal Rhythm | 100連続正解ごとに生存EnemyのGaugeを各最大値の10%減少 |
+| 全員・Epic | Ascendant Rune | Attack / Max HP / Defense +20% |
+| タイピング・Legendary | Unbroken Focus | Stackごとに1 Charge、ミスの戦闘ペナルティを防ぐ。消費から30秒で個別回復 |
+| 全員・Legendary | Reaper's Blessing | 直接攻撃が対象ごとに5%で即死。Boss本体・Buff追加攻撃は除外 |
+| 全員・Legendary | Echoing Assault | 通常Attackごとに30%で全体攻撃。Abilityは除外 |
 
-Guardian Oath / Fortress / Guardian Blessing / Ascendant RuneはUnique（1個）。他は最大3 Stack。同じ補正は基礎値に対して加算します（Power Rune ×2は+20%）。AttackとAbility必要文字数は端数切り上げ・最低5文字、ミスGauge倍率は最低10%。防御力は強化後の攻撃威力から引きます。Max HP増加でDownを蘇生しません。僧侶の追加回復・障壁は僧侶のHealが対象で、Restやポーションの割合回復は既存仕様です。
+Guardian Oath / Fortress / Guardian Blessing / Ascendant Rune / Reaper's Blessing / Echoing AssaultはUnique（1個）。他は最大3 Stack。同じ補正は基礎値に対して加算します（Power Rune ×2は+10%）。AttackとAbility必要文字数は端数切り上げ・最低5文字、ミスGauge倍率は最低10%。DefenseもEffective Characterで基礎値へ倍率を適用して四捨五入し、既存の敵通常Attack / Heavy Attackから引きます。敵Specialの固定ダメージは従来どおりです。Max HP増加でDownを蘇生しません。
+
+Unbroken FocusはTyping Missを記録し、入力位置を維持したまま通常Missペナルティの前で早期終了します。Combo / Fighter状態 / 敵Gauge / Curse / Gauge Shieldは保持。Charge残時間は `buffResources.focusRechargeMs` で個別管理し、Combat Tickのみで減算、Battle開始時にFull Chargeです。Timeoutとは別処理です。UIはFOCUS残Charge数とPROTECTEDを既存行に表示します。
+
+直接攻撃は `resolveEnemyDamage()` の明示的なフラグでBuff追加Damageと区別します。Echoは通常Attackごとに1回、Reaperは生存・非Bossの実被弾対象ごとに判定。Coverがあれば即死判定も実際にかばったEnemyへ移り、Boss本体は判定自体を行いません。専用 `buffRngState` はEncounter seedから初期化し、敵AI / 出題 / Room RNGを進めません。Seal RhythmはGaugeのみ減少し、すでに予告済みのSpecialをキャンセルしません。
 
 探索中の `BUFFS` を開くと取得一覧・Stack合計効果を確認できます。戦闘中には描画しないため、Partyのゲージ領域を圧迫しません。条件付き効果は既存のCombatEventによるログ・対象の短いBuff表示・SE、回復は実回復量の緑発光に接続します。
 
@@ -158,7 +172,7 @@ Guardian Oath / Fortress / Guardian Blessing / Ascendant RuneはUnique（1個）
 - `src/data/buffs/buffDefinitions.ts`: 効果・条件・対象・数値のデータ。既存Effect型のBuffなら定義追加のみ。
 - `src/game/buffs/buffConfig.ts`: 抽選比率、3候補、500ms演出、最低値、候補枯渇時のGold。
 - `runBuffManager.ts`: 共通の追加・削除・取得可否判定、HPを保った戦闘への適用。Battle / Shop / Treasureで共用。
-- `buffModifiers.ts`: 基礎Characterを変更せず最終Attack / Max HP / Threshold / Ability / Comboを計算。戦闘、Party UI、回復対象選択、Rest、Shopで共用。
+- `buffModifiers.ts`: 基礎Characterを変更せず最終Attack / Max HP / Defense / Threshold / Ability / Comboを計算。戦闘、Party UI、回復対象選択、Rest、Shopで共用。
 - `buffEffectHandlers.ts`: Guard成功 / 実Heal / 正解Streakの同期ハンドラ。過去ログやReact再描画から再発動しない。新しい条件付き効果は型と専用ハンドラを追加。
 - `buffRewards.ts`, `buffDescriptions.ts`: シード付き重複なし抽選、Stack効果の表示。
 - `BuffReward.tsx`, `CurrentBuffs.tsx`, `styles/buffs.css`: 3択・取得演出・探索中の折りたたみ一覧。
@@ -167,7 +181,9 @@ Guardian Oath / Fortress / Guardian Blessing / Ascendant RuneはUnique（1個）
 
 `src/game/buffs/buffs.test.ts` では追加・Stack上限・Unique・抽選比率・枯渇・二重選択・最終Boss・Run終了・実ダメージ/回復/必要文字数・Guard/Combo/連続正解・SPECIAL軽減を検証します。既存の10F通しテストもBuff選択を含む経路へ更新しています。
 
-任意のPlaywright環境向けに `scripts/verify-buff-run.mjs` も用意しています。開発サーバー起動後、`APP_URL` と必要なら `PLAYWRIGHT_MODULE`（Playwrightのindex.mjsへの絶対パス）を指定して実行できます。3つのPCサイズで実キー入力→Buff選択→10Fクリア→次Runを検証します。今回のブラウザ検証では7回取得（Healing Prayer ×2を含む）、戦士の必要文字数90→83、最終BossのBuff省略、保存データにRun Buffが残らないことを確認しました。1366×768でもAbility Gauge下端は約725pxで、戦闘中の見切れはありません。バランスと難易度ごとの最適化は今後の課題です。
+任意のPlaywright環境向けに `scripts/verify-buff-run.mjs` も用意しています。開発サーバー起動後、`APP_URL` と必要なら `PLAYWRIGHT_MODULE`（Playwrightのindex.mjsへの絶対パス）を指定して実行できます。過去の通し検証用スクリプトなので、調整値の変更時は期待値も確認してください。
+
+Global / Legendary拡張は `globalLegendary.test.ts` で倍率・HP増加・100 Streak・Protected Miss・独立Recharge・即死免疫・AoE・報酬・Shopを検証します。`scripts/verify-legendary-buffs.mjs` は通常Dungeonの固定Seedから実入力でLegendary報酬を取得し、次BattleでProtected MissとCharge切れの通常Missを確認します。Shopは資金付きデバッグ条件で実コンポーネントと購入/Reroll処理を使用。1920×1080 / 1536×864 / 1366×768で報酬・Typing UIを確認し、全605テストとビルドが成功しています。
 
 ## Shop / Treasure
 
@@ -175,7 +191,7 @@ Guardian Oath / Fortress / Guardian Blessing / Ascendant RuneはUnique（1個）
 
 `shopConfig.ts` の設定から入室時に4商品（回復2＋Buff2）を抽選し、`run.shop` に固定します。回復プールはSmall Potion（60 Gold / 生存者1人30%）、Large Potion（100 Gold / 生存者1人60%）、Party Potion（120 Gold / 生存者全員20%）。単体商品は購入前に対象を選択し、Down・全快を対象から除外。全体回復もDownを蘇生しません。
 
-Buff価格はCommon 100 / Uncommon 140 / Rare 200 / Epic 280 Gold。抽選比率は45 / 35 / 17 / 3。共通Buff生成器で同一商品内の重複・取得済みUnique・最大Stackを除外します。取得可能なBuffが不足したときは未陳列の回復商品で補完し、それも不足した場合は4個未満になります。
+Buff価格はCommon 100 / Uncommon 140 / Rare 200 / Epic 280 / Legendary 400 Gold。抽選比率は44 / 35 / 17 / 3 / 1でRerollも共通です。共通Buff生成器で同一商品内の重複・取得済みUnique・最大Stackを除外します。取得可能なBuffが不足したときは未陳列の回復商品で補完し、それも不足した場合は4個未満になります。
 
 購入はGoldの支払い・効果適用・SOLD OUT化を1つの純粋な状態更新で処理します。売り切れは暗転、Gold不足は赤系価格と `Not enough Gold` 表示。購入してもShopには残り、複数商品を購入できます。Rerollは固定40 Goldで売り切れも含め全商品を再抽選。新しい陳列では再度同じ商品が出る可能性があります。Reroll時は商品IDの世代を更新し、旧商品の遅延クリックを拒否。350msのUI入力抑制も加えています。`LEAVE SHOP` は購入不要で直接次Floorへ進みます。
 
@@ -185,10 +201,10 @@ Buff価格はCommon 100 / Uncommon 140 / Rare 200 / Epic 280 Gold。抽選比率
 
 | 結果 | 確率 | 処理 |
 | --- | ---: | --- |
-| 無料Buff | 30% | 共通3択。Common / Uncommon / Rare / Epic = 45 / 35 / 17 / 3 |
+| 無料Buff | 30% | 共通3択。Common / Uncommon / Rare / Epic / Legendary = 44 / 35 / 17 / 3 / 1 |
 | 大量Gold | 25% | 150～250 Goldを加算し、確認後に次Floor |
 | Party Heal | 20% | 生存者の最大HP30%回復。実回復イベント・緑発光を再利用 |
-| Rare以上Buff | 15% | Rare / Epic = 85 / 15の3択。低レアは混ざらない |
+| Rare以上Buff | 15% | Rare / Epic / Legendary = 82 / 15 / 3の3択。低レアは混ざらない |
 | Trap Battle | 10% | 750msのTRAP警告後、通常相当の敵と既存Combatで戦闘 |
 
 設定・結果確率・Buff比率・Gold範囲・回復量・罠報酬は `treasureConfig.ts` に集約しています。罠の敵抽選は `enemyEncounterConfig.ts` で通常戦と共通管理します。Buff候補不足時は残りのみ表示、0候補なら60 Goldへ置換し、確認後に進みます（Rare宝箱でも低レアへは置き換えません）。

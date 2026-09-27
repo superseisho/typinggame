@@ -28,8 +28,8 @@ export const EVENT_DEFINITIONS: readonly EventDefinition[] = [
 ];
 export const ALTAR_DEFINITION: EventDefinition = {
   id: 'altar', title: 'Altar', description: '恩恵には代償が伴う。一度捧げたものは戻らない。', choices: [
-    { id: 'blood', label: 'Blood Offering', description: `COST: 生存者全員に最大HPの${A.bloodDamage * 100}%ダメージ（最低HP1）。REWARD: Rare / Epicのみから1つ選択。Epic比率${A.bloodWeights.epic}%。`, effects: [{ type: 'damage', ratio: A.bloodDamage, nonlethal: true }, { type: 'buff', weights: A.bloodWeights }] },
-    { id: 'gold', label: 'Gold Offering', description: `COST: ${A.goldCost} Gold。REWARD: Rare / Epicのみから1つ選択。Epic比率${A.goldWeights.epic}%。`, requirements: [{ type: 'gold', amount: A.goldCost }], effects: [{ type: 'gold', min: -A.goldCost, max: -A.goldCost }, { type: 'buff', weights: A.goldWeights }] },
+    { id: 'blood', label: 'Blood Offering', description: `COST: 生存者全員に最大HPの${A.bloodDamage * 100}%ダメージ（最低HP1）。REWARD: Rare以上から1つ選択。Epic ${A.bloodWeights.epic}% / Legendary ${A.bloodWeights.legendary}%。`, effects: [{ type: 'damage', ratio: A.bloodDamage, nonlethal: true }, { type: 'buff', weights: A.bloodWeights }] },
+    { id: 'gold', label: 'Gold Offering', description: `COST: ${A.goldCost} Gold。REWARD: Rare以上から1つ選択。Epic ${A.goldWeights.epic}% / Legendary ${A.goldWeights.legendary}%。`, requirements: [{ type: 'gold', amount: A.goldCost }], effects: [{ type: 'gold', min: -A.goldCost, max: -A.goldCost }, { type: 'buff', weights: A.goldWeights }] },
     { ...leave, label: 'LEAVE ALTAR' },
   ],
 };

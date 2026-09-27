@@ -30,6 +30,8 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
   });
 
   return {
+    buffRngState: 0x62756666,
+    lastMissProtected: false,
     sentenceDeck,
     typingCurseBonus: 0,
     typingCurseRemainingMs: 0,

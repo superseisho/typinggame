@@ -1,5 +1,5 @@
 import { appendEvent } from './combatEvents';
-import { getEffectiveCharacter, getBuffModifier, getComboMultiplier } from '../buffs/buffModifiers';
+import { getEffectiveCharacter, getBuffModifier, getComboMultiplier, getBuffEffectValue } from '../buffs/buffModifiers';
 import { handleBuffTrigger, getExtraHealing, consumeDamageShield } from '../buffs/buffEffectHandlers';
 import { BUFF_CONFIG } from '../buffs/buffConfig';
 import { CHARACTERS_BY_ID } from '../../data/characters';
@@ -55,7 +55,7 @@ function applyAreaAbilityDamage(state: CombatState, characterId: string, power: 
   return resolveEnemyDamage(state, {
     targetIds: state.enemies.filter(enemy => enemy.currentHp > 0).map(enemy => enemy.instanceId),
     power, kind: 'ally-ability-damage', label: `${character.name}の「${character.ability.name}」`,
-    actorId: character.id, abilityId: character.ability.id,
+    actorId: character.id, abilityId: character.ability.id, directCharacterDamage: true,
   });
 }
 
@@ -72,6 +72,8 @@ export function startCombat(state: CombatState, now = Date.now()): CombatState {
   if (state.status !== 'ready') return state;
   const drawn = drawSentence(state.sentenceDeck);
   state = { ...state, status: 'active', sentenceDeck: drawn.deck,
+    lastMissProtected: false,
+    buffResources: { ...state.buffResources, focusRechargeMs: Array(getBuffEffectValue(state.runBuffs, 'miss-protection')).fill(0) },
     typing: createTypingEngineState(TYPING_SENTENCES_BY_ID[drawn.sentenceId]) };
   for (let index = 0; index < state.enemies.length; index++) state = planEnemyAction(state, index);
   return appendEvent(
@@ -87,6 +89,14 @@ export function applyTypingMiss(
   _now = Date.now(),
 ): CombatState {
   if (state.status !== 'active') return state;
+  // Consume protection BEFORE every negative Miss effect. The typo remains a recorded Miss.
+  const charge = state.buffResources.focusRechargeMs.findIndex(ms => ms <= 0);
+  if (charge >= 0 && getBuffEffectValue(state.runBuffs, 'miss-protection') > 0) {
+    return appendEvent({ ...state, lastMissProtected: true,
+      typing: { ...state.typing, missCount: typing.missCount, lastInput: 'miss' },
+      buffResources: { ...state.buffResources, focusRechargeMs: state.buffResources.focusRechargeMs.map((ms, i) => i === charge ? BUFF_CONFIG.unbrokenFocusRechargeMs : ms) },
+    }, 'typing-miss', 'PROTECTED · Unbroken Focusがミスの戦闘ペナルティを防いだ。', { abilityId: 'unbroken-focus' });
+  }
   const gaugeGain = Math.max(0, (GAME_CONFIG.enemySpecialGaugeOnMiss + state.typingCurseBonus) * Math.max(BUFF_CONFIG.minMissGaugeMultiplier, 1 + getBuffModifier(state.runBuffs, 'missGauge', 'warrior')) - state.buffResources.gaugeShield);
   const endedComboUsers = state.party.filter((member) => {
     const character = CHARACTERS_BY_ID[member.definitionId];
@@ -96,6 +106,7 @@ export function applyTypingMiss(
   let nextState = appendEvent(
     {
       ...state,
+      lastMissProtected: false,
       typing,
       buffResources: { ...state.buffResources, gaugeShield: 0 },
       party: state.party.map((member) => {
@@ -162,6 +173,7 @@ export function applyCorrectTyping(
   if (state.status !== 'active') return state;
   let nextState: CombatState = {
     ...state,
+    lastMissProtected: false,
     typing,
     party: state.party.map((character) => character.currentHp <= 0
       ? character
@@ -274,7 +286,7 @@ export function applyCorrectTyping(
       buffResources: { ...nextState.buffResources, counters: { ...nextState.buffResources.counters, [character.id]: 0 } },
     };
     nextState = resolveEnemyDamage(nextState, { targetIds: [target.instanceId], power,
-      kind: 'ally-attack', label: `${character.name}の攻撃`, actorId: character.id, soundId: character.audio.attack });
+      kind: 'ally-attack', label: `${character.name}の攻撃`, actorId: character.id, soundId: character.audio.attack, directCharacterDamage: true });
     if (areEnemiesDefeated(nextState.enemies)) {
       return appendEvent(
         cleanupEnemyState({ ...nextState, targetEnemyId: null, status: 'victory', stats: { ...nextState.stats, endedAt: now } }),
@@ -348,6 +360,7 @@ export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()
   const typingCurseRemainingMs = Math.max(0, state.typingCurseRemainingMs - deltaMs);
   let nextState: CombatState = {
     ...state,
+    buffResources: { ...state.buffResources, focusRechargeMs: state.buffResources.focusRechargeMs.map(ms => Math.max(0, ms - deltaMs)) },
     typingCurseRemainingMs,
     typingCurseBonus: typingCurseRemainingMs > 0 ? state.typingCurseBonus : 0,
     enemies: state.enemies.map((enemy) => enemy.currentHp <= 0

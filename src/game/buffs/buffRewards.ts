@@ -1,5 +1,6 @@
 import { BUFF_DEFINITIONS } from '../../data/buffs/buffDefinitions';
 import type { BuffRarity, RunBuff } from '../../types/buffs';
+import { BUFF_RARITIES } from '../../types/buffs';
 import { randomStep } from '../dungeon/roomGenerator';
 import { BUFF_CONFIG } from './buffConfig';
 import { canAddBuff } from './runBuffManager';
@@ -11,7 +12,7 @@ export function generateBuffRewards(buffs: readonly RunBuff[], room: string, see
   const choices: string[] = [];
   const weights = options.weights ?? BUFF_CONFIG.rarityWeights[room === 'elite' || room === 'boss' ? 'elite' : 'battle'];
   while (choices.length < (options.count ?? BUFF_CONFIG.choices) && eligible.length) {
-    const rarities = (Object.keys(weights) as BuffRarity[]).filter(rarity => weights[rarity] > 0 && eligible.some(buff => buff.rarity === rarity));
+    const rarities = BUFF_RARITIES.filter(rarity => weights[rarity] > 0 && eligible.some(buff => buff.rarity === rarity));
     if (!rarities.length) break;
     let random = randomStep(seed); seed = random.seed;
     let roll = random.value * rarities.reduce((sum, rarity) => sum + weights[rarity], 0);

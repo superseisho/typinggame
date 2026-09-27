@@ -59,11 +59,11 @@ describe('combat engine', () => {
     };
     const typing = { ...injured.typing, currentCombo: 50, maxCombo: 50, correctCharacterCount: 50 };
     const healed = applyCorrectTyping(injured, typing, 2_000);
-    expect(healed.party[0].currentHp).toBe(CHARACTERS_BY_ID.warrior.stats.maxHp - 10);
+    expect(healed.party[0].currentHp).toBe(CHARACTERS_BY_ID.warrior.stats.maxHp);
     expect(healed.events.find((event) => event.kind === 'ally-heal')).toMatchObject({
       actorId: 'cleric',
       targetId: 'warrior',
-      amount: 30,
+      amount: 40,
       soundId: 'cleric_heal',
     });
     expect(healed.events.find((event) => (

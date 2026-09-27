@@ -144,11 +144,11 @@ describe('Event / Altar', () => {
     const result = choose({ ...poor, gold: 200 }, 'gold');
     expect(result.gold).toBe(50); expect(choose(result, 'gold')).toBe(result);
   });
-  it('Altar rewards only distinct eligible Rare / Epic, respecting max stacks and exhaustion', () => {
+  it('Altar rewards only distinct eligible Rare / Epic / Legendary, respecting max stacks and exhaustion', () => {
     for (let seed = 0; seed < 80; seed++) {
       const result = choose(room('altar', '', seed), 'blood');
       expect(new Set(result.buffOptions).size).toBe(3);
-      expect(result.buffOptions.every(id => ['rare', 'epic'].includes(BUFFS_BY_ID[id].rarity))).toBe(true);
+      expect(result.buffOptions.every(id => ['rare', 'epic', 'legendary'].includes(BUFFS_BY_ID[id].rarity))).toBe(true);
     }
     const initial = room('altar');
     const maxed = BUFF_DEFINITIONS.map(buff => ({ buffId: buff.id, stacks: buff.stackable ? buff.maxStacks! : 1 }));

@@ -3,6 +3,7 @@
 .rarity-uncommon { --buff-color: #8bbdaa; }
 .rarity-rare { --buff-color: #9abbe5; }
 .rarity-epic { --buff-color: #cb9de6; }
+.rarity-legendary { --buff-color: #e6b85d; }
 .buff-card { border-color: var(--buff-color); text-align: left; min-height: 238px; }
 .buff-card h2 { color: #efddae; }
 .buff-card .buff-categories { font-size: 11px; letter-spacing: .08em; color: var(--buff-color); }

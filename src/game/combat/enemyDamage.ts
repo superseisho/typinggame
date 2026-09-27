@@ -3,6 +3,8 @@ import type { CombatState } from '../../types/game';
 import type { SoundId } from '../../types/audio';
 import { appendEvent } from './combatEvents';
 import { ensureValidEnemyTarget } from './enemyTarget';
+import { getBuffEffectValue } from '../buffs/buffModifiers';
+import { randomStep } from '../../utils/random';
 
 export interface DamageRoute { readonly originalTargetId: string; readonly receiverId: string; readonly covered: boolean }
 
@@ -28,9 +30,19 @@ export function resolveEnemyDamage(state: CombatState, attack: {
   readonly targetIds: readonly string[]; readonly power: number;
   readonly kind: 'ally-attack' | 'ally-ability-damage'; readonly label: string;
   readonly actorId?: string; readonly abilityId?: string; readonly soundId?: SoundId;
+  /** Explicitly opt in only for a character's own normal attack or damage ability, never Buff procs. */
+  readonly directCharacterDamage?: boolean;
 }): CombatState {
-  const routes = snapshotEnemyDamageRoutes(state, attack.targetIds);
+  let targetIds = attack.targetIds;
+  const echoChance = attack.directCharacterDamage && attack.kind === 'ally-attack' ? getBuffEffectValue(state.runBuffs, 'normal-aoe') : 0;
+  if (echoChance > 0) {
+    const roll = randomStep(state.buffRngState);
+    state = { ...state, buffRngState: roll.seed };
+    if (roll.value < echoChance) targetIds = state.enemies.filter(e => e.currentHp > 0).map(e => e.instanceId);
+  }
+  const routes = snapshotEnemyDamageRoutes(state, targetIds);
   const consumed = new Map<string, number>();
+  const reaperChance = attack.directCharacterDamage ? getBuffEffectValue(state.runBuffs, 'instant-kill') : 0;
   let next = state;
   for (const route of routes) {
     const receiver = next.enemies.find(e => e.instanceId === route.receiverId)!;
@@ -41,10 +53,17 @@ export function resolveEnemyDamage(state: CombatState, attack: {
         actorId: receiver.instanceId, targetId: receiver.instanceId, originalTargetId: route.originalTargetId, skillId: 'skill_cover',
       });
     }
-    const damage = receiver.currentHp > 0 ? Math.max(1, Math.round(attack.power) - Math.round(definition.defense * receiver.defenseMultiplier)) : 0;
+    let instantKill = false;
+    // Cover redirects the entire hit (including on-hit procs) to the actual receiver.
+    if (receiver.currentHp > 0 && !definition.boss && reaperChance > 0) {
+      const roll = randomStep(next.buffRngState);
+      next = { ...next, buffRngState: roll.seed };
+      instantKill = roll.value < reaperChance;
+    }
+    const damage = instantKill ? receiver.currentHp : receiver.currentHp > 0 ? Math.max(1, Math.round(attack.power) - Math.round(definition.defense * receiver.defenseMultiplier)) : 0;
     const hp = Math.max(0, receiver.currentHp - damage);
     next = appendEvent({ ...next, enemies: next.enemies.map(e => e.instanceId === receiver.instanceId ? { ...e, currentHp: hp } : e) },
-      attack.kind, `${attack.label} · ${definition.name}へ ${damage} ダメージ。`, {
+      attack.kind, `${attack.label} · ${instantKill ? "Reaper's Blessing · 即死" : `${definition.name}へ ${damage} ダメージ。`}`, {
         actorId: attack.actorId, targetId: receiver.instanceId, originalTargetId: route.originalTargetId,
         amount: damage, actualDamage: receiver.currentHp - hp, targetHpAfter: hp, abilityId: attack.abilityId, soundId: attack.soundId,
       });

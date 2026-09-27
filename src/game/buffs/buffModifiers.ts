@@ -1,6 +1,6 @@
 import { CHARACTERS_BY_ID } from '../../data/characters';
 import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
-import type { BuffStat, RunBuff } from '../../types/buffs';
+import type { BuffEffect, BuffStat, RunBuff } from '../../types/buffs';
 import type { CharacterDefinition, CharacterId, CombatState } from '../../types/game';
 import { BUFF_CONFIG } from './buffConfig';
 
@@ -9,13 +9,20 @@ export function getBuffModifier(buffs: readonly RunBuff[], stat: BuffStat, targe
     sum + (effect.type === 'modifier' && effect.stat === stat && (effect.target === 'party' || effect.target === target) ? effect.value * buff.stacks : 0), 0), 0);
 }
 
+/** Shared numeric conditional effects, derived from data rather than Buff IDs. */
+export function getBuffEffectValue(buffs: readonly RunBuff[], type: BuffEffect['type']): number {
+  return buffs.reduce((sum, owned) => sum + (BUFFS_BY_ID[owned.buffId]?.effects ?? [])
+    .reduce((value, effect) => value + (effect.type === type ? effect.value * owned.stacks : 0), 0), 0);
+}
+
 /** Pure derived definition: base data, art and run buffs are never mutated. */
 export function getEffectiveCharacter(state: Pick<CombatState, 'runBuffs'>, id: CharacterId): CharacterDefinition {
   const base = CHARACTERS_BY_ID[id];
   const modifier = (stat: BuffStat) => 1 + getBuffModifier(state.runBuffs, stat, id);
   const trigger = base.ability.trigger;
   return { ...base,
-    stats: { ...base.stats, attack: Math.round(base.stats.attack * modifier('attack')), maxHp: Math.round(base.stats.maxHp * modifier('maxHp')) },
+    stats: { ...base.stats, attack: Math.round(base.stats.attack * modifier('attack')), maxHp: Math.round(base.stats.maxHp * modifier('maxHp')),
+      defense: Math.round(base.stats.defense * modifier('defense')) },
     attackThreshold: Math.max(BUFF_CONFIG.minAttackThreshold, Math.ceil(base.attackThreshold * modifier('attackThreshold'))),
     ability: { ...base.ability,
       trigger: trigger.type === 'correct-characters' ? { ...trigger, threshold: Math.max(BUFF_CONFIG.minAbilityThreshold, Math.ceil(trigger.threshold * modifier('abilityThreshold'))) } : trigger,

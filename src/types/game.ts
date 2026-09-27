@@ -232,6 +232,8 @@ export interface CombatEvent {
 }
 
 export interface CombatState {
+  readonly buffRngState: number;
+  readonly lastMissProtected: boolean;
   readonly sentenceDeck: import('./typing').TypingSentenceDeck;
   readonly typingCurseBonus: number;
   readonly typingCurseRemainingMs: number;

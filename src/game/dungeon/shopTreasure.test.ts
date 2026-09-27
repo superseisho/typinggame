@@ -46,7 +46,7 @@ describe('Shop', () => {
       expect(reduceDungeon(run, { type: 'tick', deltaMs: 50, now: 10 })).toBe(run);
     }
   });
-  it('can sell all four rarities; excludes Unique and capped buffs', () => {
+  it('can sell all five rarities; excludes Unique and capped buffs', () => {
     const rarities = new Set<string>();
     for (let seed = 0; seed < 500; seed++) {
       const run = createDungeonRun(Math.imul(seed, 2654435761), 'test');
@@ -56,7 +56,7 @@ describe('Shop', () => {
         rarities.add(BUFFS_BY_ID[item.buffId].rarity);
       }
     }
-    expect(rarities.size).toBe(4);
+    expect(rarities.size).toBe(5);
   });
   it.each(['small-potion', 'large-potion'])('%s requires a living wounded target and buys once', id => {
     const run = withProduct(id);
@@ -76,7 +76,7 @@ describe('Shop', () => {
     const run = withProduct('party-potion');
     const buffed = { ...run, combat: applyRunBuffs(run.combat, [{ buffId: 'vitality-rune', stacks: 1 }]) };
     const bought = reduceDungeon(buffed, { type: 'purchase', productId: 'test-stock' });
-    expect(bought.combat.party[0].currentHp).toBe(48 + Math.ceil(198 * .2));
+    expect(bought.combat.party[0].currentHp).toBe(39 + Math.ceil(189 * .2));
     expect(bought.combat.party[1].currentHp).toBe(0);
     expect(bought.combat.events.filter(event => event.kind === 'ally-heal')).toHaveLength(3);
   });
@@ -134,7 +134,7 @@ describe('Treasure', () => {
     const run = treasure(outcome);
     expect(run.runStatus).toBe('buff_reward'); expect(run.buffOptions).toHaveLength(3);
     expect(run.clearedRooms).toHaveLength(0);
-    if (outcome === 'rare_buff') for (const id of run.buffOptions) expect(['rare', 'epic']).toContain(BUFFS_BY_ID[id].rarity);
+    if (outcome === 'rare_buff') for (const id of run.buffOptions) expect(['rare', 'epic', 'legendary']).toContain(BUFFS_BY_ID[id].rarity);
     expect(reduceDungeon(run, { type: 'open-treasure' })).toBe(run);
     expect(reduceDungeon(run, { type: 'advance' })).toBe(run);
     const picked = reduceDungeon(run, { type: 'choose-buff', buffId: run.buffOptions[0] });
@@ -145,7 +145,7 @@ describe('Treasure', () => {
     expect(next.currentFloor).toBe(2); expect(next.treasure).toBeNull();
   });
   it('Rare Treasure never falls back to common tiers, even if all high tiers are capped', () => {
-    const capped = BUFF_DEFINITIONS.filter(buff => ['rare', 'epic'].includes(buff.rarity)).map(buff => ({ buffId: buff.id, stacks: buff.maxStacks }));
+    const capped = BUFF_DEFINITIONS.filter(buff => ['rare', 'epic', 'legendary'].includes(buff.rarity)).map(buff => ({ buffId: buff.id, stacks: buff.maxStacks }));
     expect(generateBuffRewards(capped, 'treasure', 2, { weights: TREASURE_CONFIG.rareBuffWeights }).choices).toEqual([]);
     const run = treasure('rare_buff', { ...room('treasure'), activeBuffs: capped });
     expect(run.runStatus).toBe('reward'); expect(run.gold).toBe(60); expect(run.buffOptions).toEqual([]);

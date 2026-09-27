@@ -4,10 +4,10 @@ export const EVENT_CONFIG = {
   campHeal: .20, campGold: [60, 120],
   chestGoldChance: 70, chestGold: [100, 180], chestDamage: .10,
   fountainHeal: .25, fountainGold: [50, 100],
-  buffWeights: { common: 50, uncommon: 32, rare: 15, epic: 3 },
+  buffWeights: { common: 49, uncommon: 32, rare: 15, epic: 3, legendary: 1 },
 } as const;
 export const ALTAR_CONFIG = {
   bloodDamage: .20, goldCost: 150,
-  bloodWeights: { common: 0, uncommon: 0, rare: 80, epic: 20 },
-  goldWeights: { common: 0, uncommon: 0, rare: 90, epic: 10 },
+  bloodWeights: { common: 0, uncommon: 0, rare: 75, epic: 20, legendary: 5 },
+  goldWeights: { common: 0, uncommon: 0, rare: 85, epic: 10, legendary: 5 },
 } as const;

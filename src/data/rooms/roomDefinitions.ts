@@ -12,6 +12,6 @@ export const ROOM_DEFINITIONS: readonly RoomDefinition[] = [
   { type: 'shop', name: 'Shop', icon: '⚖', description: 'Goldで回復や祝福を購入する。', dangerLevel: 0, reward: 'Recovery / Buff / Reroll', features: ['RECOVERY', 'BUFF', 'REROLL'], weight: ROOM_WEIGHTS.shop },
   { type: 'treasure', name: 'Treasure', icon: '◇', description: `無料の宝箱。${getTreasureTrapPercent()}%の確率で罠の戦闘。`, dangerLevel: 2, reward: 'Buff / Gold / Heal / Trap', features: ['FREE REWARD', 'RARE+ CHANCE', 'TRAP RISK'], weight: ROOM_WEIGHTS.treasure },
   { type: 'event', name: 'Event', icon: '?', description: '出会いや発見に、行動を選んで応える。', dangerLevel: 1, reward: 'Choices / Gold / HP / Buff', features: ['CHOICES', 'GOLD', 'HP', 'BUFF'], weight: ROOM_WEIGHTS.event },
-  { type: 'altar', name: 'Altar', icon: '♆', description: 'HPかGoldを捧げ、強い祝福を選ぶ。', dangerLevel: 3, reward: 'Sacrifice → Rare / Epic Buff', features: ['RISK', 'RARE+ BUFF'], weight: ROOM_WEIGHTS.altar },
+  { type: 'altar', name: 'Altar', icon: '♆', description: 'HPかGoldを捧げ、強い祝福を選ぶ。', dangerLevel: 3, reward: 'Sacrifice → Rare+ Buff', features: ['RISK', 'RARE+ BUFF'], weight: ROOM_WEIGHTS.altar },
 ];
 export const ROOMS_BY_TYPE = Object.fromEntries(ROOM_DEFINITIONS.map((room) => [room.type, room])) as Record<RoomType, RoomDefinition>;

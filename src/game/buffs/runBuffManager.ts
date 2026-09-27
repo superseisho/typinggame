@@ -1,7 +1,7 @@
 import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
 import type { RunBuff } from '../../types/buffs';
 import type { CombatState } from '../../types/game';
-import { getEffectiveCharacter } from './buffModifiers';
+import { getBuffEffectValue, getEffectiveCharacter } from './buffModifiers';
 
 export function canAddBuff(buffs: readonly RunBuff[], id: string): boolean {
   const definition = BUFFS_BY_ID[id];
@@ -19,7 +19,10 @@ export function removeBuff(buffs: readonly RunBuff[], id: string): readonly RunB
 }
 /** Shared acquisition/removal adapter for rewards, future shops and events. Down never revives. */
 export function applyRunBuffs(state: CombatState, runBuffs: readonly RunBuff[]): CombatState {
-  return { ...state, runBuffs, party: state.party.map(member => {
+  const charges = getBuffEffectValue(runBuffs, 'miss-protection');
+  return { ...state, runBuffs,
+    buffResources: { ...state.buffResources, focusRechargeMs: Array.from({ length: charges }, (_, i) => state.buffResources.focusRechargeMs[i] ?? 0) },
+    party: state.party.map(member => {
     const oldMax = getEffectiveCharacter(state, member.definitionId).stats.maxHp;
     const newMax = getEffectiveCharacter({ runBuffs }, member.definitionId).stats.maxHp;
     return { ...member, currentHp: member.currentHp <= 0 ? 0 : Math.max(1, Math.min(newMax, member.currentHp + newMax - oldMax)) };

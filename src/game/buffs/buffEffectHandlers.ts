@@ -1,4 +1,5 @@
 import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
+import { ENEMIES_BY_ID } from '../../data/enemies';
 import { resolveEnemyDamage } from '../combat/enemyDamage';
 import type { BuffDefinition, BuffEffect } from '../../types/buffs';
 import type { CharacterId, CombatState } from '../../types/game';
@@ -27,6 +28,19 @@ export function healFromBuff(state: CombatState, targetId: CharacterId, amount: 
 
 type Handler = (state: CombatState, effect: BuffEffect, stacks: number, trigger: BuffTrigger, buff: BuffDefinition) => CombatState;
 const handlers: Partial<Record<BuffEffect['type'], Handler>> = {
+  'streak-heal': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'streak-heal' || trigger.type !== 'perfect-streak' || trigger.streak <= 0 || trigger.streak % effect.threshold !== 0) return state;
+    let next = state;
+    for (const member of state.party) next = healFromBuff(next, member.definitionId, getEffectiveCharacter(next, member.definitionId).stats.maxHp * effect.value * stacks, buff);
+    return next;
+  },
+  'streak-seal': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'streak-seal' || trigger.type !== 'perfect-streak' || trigger.streak <= 0 || trigger.streak % effect.threshold !== 0) return state;
+    // An already announced Special is not cancelled; only its gauge is reduced.
+    return announce({ ...state, enemies: state.enemies.map(enemy => enemy.currentHp <= 0 ? enemy : {
+      ...enemy, specialGauge: Math.max(0, enemy.specialGauge - ENEMIES_BY_ID[enemy.definitionId].specialGaugeMax * effect.value * stacks),
+    }) }, buff);
+  },
   'guard-heal': (state, effect, stacks, trigger, buff) => effect.type === 'guard-heal' && trigger.type === 'guard' && effect.target === trigger.characterId
     ? healFromBuff(state, trigger.characterId, getEffectiveCharacter(state, trigger.characterId).stats.maxHp * effect.value * stacks, buff) : state,
   'guard-counter': (state, effect, stacks, trigger, buff) => {

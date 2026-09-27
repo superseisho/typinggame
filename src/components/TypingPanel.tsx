@@ -8,7 +8,7 @@ export function TypingPanel({ combat }: { readonly combat: CombatState }) {
   return (
     <section className={`typing-panel ${combat.typing.lastInput === 'miss' ? 'is-miss' : ''}`} aria-label="タイピングエリア">
       <div className="typing-panel__topline">
-        <span className="eyebrow">COMBAT SCRIPT</span>
+        <span className="eyebrow">COMBAT SCRIPT{combat.buffResources.focusRechargeMs.length > 0 && ` · FOCUS ${combat.buffResources.focusRechargeMs.filter(ms => ms <= 0).length}/${combat.buffResources.focusRechargeMs.length}`}</span>
         <span className={`typing-panel__hint ${combat.typingCurseRemainingMs > 0 ? 'typing-curse' : ''}`}>
           {combat.typingCurseRemainingMs > 0 ? `CURSED · Miss Gauge +${combat.typingCurseBonus} · ${(combat.typingCurseRemainingMs / 1000).toFixed(1)}s` : 'スペース入力不要 · 複数ローマ字対応'}
         </span>
@@ -25,7 +25,7 @@ export function TypingPanel({ combat }: { readonly combat: CombatState }) {
       </div>
       <div className="typing-stats">
         <span><small>CORRECT</small><strong>{combat.typing.correctCharacterCount}</strong></span>
-        <span><small>MISS</small><strong className="miss-value">{combat.typing.missCount}</strong></span>
+        <span><small>{combat.lastMissProtected ? 'PROTECTED' : 'MISS'}</small><strong className="miss-value">{combat.typing.missCount}</strong></span>
         <span><small>COMBO</small><strong>{combat.typing.currentCombo}</strong></span>
         <span><small>SENTENCES</small><strong>{combat.typing.completedSentences}</strong></span>
       </div>

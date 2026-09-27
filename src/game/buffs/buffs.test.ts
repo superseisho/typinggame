@@ -40,16 +40,16 @@ function victory(room: 'battle' | 'elite' | 'ambush' | 'boss' = 'battle', floor 
 }
 
 describe('run buff inventory and rewards', () => {
-  it('has 20 unique valid definitions and all rarity pools', () => {
-    expect(BUFF_DEFINITIONS).toHaveLength(20);
-    expect(new Set(BUFF_DEFINITIONS.map(buff => buff.id)).size).toBe(20);
-    expect(new Set(BUFF_DEFINITIONS.map(buff => buff.rarity)).size).toBe(4);
+  it('has 33 unique valid definitions and all five rarity pools', () => {
+    expect(BUFF_DEFINITIONS).toHaveLength(33);
+    expect(new Set(BUFF_DEFINITIONS.map(buff => buff.id)).size).toBe(33);
+    expect(new Set(BUFF_DEFINITIONS.map(buff => buff.rarity)).size).toBe(5);
   });
   it('adds additively, enforces unique and max stacks, removes via a common API', () => {
     let buffs: readonly RunBuff[] = [];
     for (let i = 0; i < 5; i++) buffs = addBuff(buffs, 'power-rune');
     expect(buffs).toEqual([{ buffId: 'power-rune', stacks: 3 }]);
-    expect(getBuffModifier(buffs, 'attack', 'warrior')).toBeCloseTo(.3);
+    expect(getBuffModifier(buffs, 'attack', 'warrior')).toBeCloseTo(.15);
     buffs = addBuff(buffs, 'guardian-oath');
     expect(addBuff(buffs, 'guardian-oath')).toBe(buffs);
     expect(addBuff(buffs, 'bad-id')).toBe(buffs);
@@ -67,12 +67,12 @@ describe('run buff inventory and rewards', () => {
     }
   });
   it('matches configured first-card rarity rates and boosts elite rare/epic rates', () => {
-    const counts = { battle: { common: 0, uncommon: 0, rare: 0, epic: 0 }, elite: { common: 0, uncommon: 0, rare: 0, epic: 0 } };
+    const counts = { battle: { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0 }, elite: { common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0 } };
     for (let i = 0; i < 10000; i++) for (const room of ['battle', 'elite'] as const) {
       const reward = generateBuffRewards([], room, Math.imul(i + 1, 2654435761) >>> 0);
       counts[room][BUFFS_BY_ID[reward.choices[0]].rarity]++;
     }
-    for (const room of ['battle', 'elite'] as const) for (const rarity of ['common', 'uncommon', 'rare', 'epic'] as const) {
+    for (const room of ['battle', 'elite'] as const) for (const rarity of ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const) {
       expect(Math.abs(counts[room][rarity] / 100 - BUFF_CONFIG.rarityWeights[room][rarity])).toBeLessThan(2);
     }
     expect(counts.elite.rare).toBeGreaterThan(counts.battle.rare);
@@ -89,7 +89,7 @@ describe('run buff inventory and rewards', () => {
     expect(won.clearedRooms[0].goldReward).toBe(won.goldEarned);
   });
   it('displays additive stack totals and keeps intermediate bosses eligible', () => {
-    expect(describeBuffTotals(BUFFS_BY_ID['power-rune'], 2)).toBe('Attack +20%');
+    expect(describeBuffTotals(BUFFS_BY_ID['power-rune'], 2)).toBe('Attack +10%');
     expect(describeBuffTotals(BUFFS_BY_ID['flow'], 3)).toContain('+15文字');
     expect(victory('boss', 5).runStatus).toBe('buff_reward');
   });
@@ -141,31 +141,31 @@ describe('derived combat stats and conditional effects', () => {
   it('Power Rune increases actual damage additively without touching base definitions', () => {
     const damage = (state: CombatState) => correct({ ...state, party: state.party.map((member, i) => ({ ...member, attackCharge: i ? 0 : 89 })) }, 1).events.find(event => event.kind === 'ally-attack')!.amount!;
     expect(damage(combat('power-rune'))).toBeGreaterThan(damage(combat()));
-    expect(getEffectiveCharacter(combat('power-rune', 'power-rune'), 'warrior').stats.attack).toBe(Math.round(31 * 1.2));
+    expect(getEffectiveCharacter(combat('power-rune', 'power-rune'), 'warrior').stats.attack).toBe(Math.round(31 * 1.1));
     expect(CHARACTERS_BY_ID.warrior.stats.attack).toBe(31);
     expect(getEffectiveCharacter(combat('arcane-power'), 'mage').stats.attack).toBe(Math.round(23 * 1.15));
     expect(getEffectiveCharacter(combat('focus'), 'martial-artist').stats.attack).toBeGreaterThan(CHARACTERS_BY_ID['martial-artist'].stats.attack);
   });
   it('Swift Fingers changes the real attack boundary and the UI gauge together', () => {
     const state = combat('swift-fingers');
-    expect(getEffectiveCharacter(state, 'warrior').attackThreshold).toBe(83);
-    const charged = { ...state, party: state.party.map((member, i) => ({ ...member, attackCharge: i ? 0 : 81 })) };
+    expect(getEffectiveCharacter(state, 'warrior').attackThreshold).toBe(86);
+    const charged = { ...state, party: state.party.map((member, i) => ({ ...member, attackCharge: i ? 0 : 84 })) };
     const before = correct(charged, 1);
     expect(before.events.some(event => event.kind === 'ally-attack' && event.actorId === 'warrior')).toBe(false);
     expect(correct(before, 2).events.some(event => event.kind === 'ally-attack' && event.actorId === 'warrior')).toBe(true);
     const html = renderToStaticMarkup(createElement(PartyPanel, { combat: state }));
-    expect(html).toContain('0 / 83');
+    expect(html).toContain('0 / 86');
     expect(getEffectiveCharacter({ runBuffs: [{ buffId: 'swift-fingers', stacks: 100 }] }, 'warrior').attackThreshold).toBe(BUFF_CONFIG.minAttackThreshold);
   });
   it('Vitality adds only max delta to living HP, carries HP across combat and uses buffed max for recovery/revive', () => {
     const original = combat();
     const wounded = { ...original, party: original.party.map((member, i) => ({ ...member, currentHp: i === 1 ? 0 : 80 })) };
     const boosted = applyRunBuffs(wounded, [{ buffId: 'vitality-rune', stacks: 1 }]);
-    expect(boosted.party[0].currentHp).toBe(98);
+    expect(boosted.party[0].currentHp).toBe(89);
     expect(boosted.party[1].currentHp).toBe(0);
-    expect(getEffectiveCharacter(boosted, 'warrior').stats.maxHp).toBe(198);
+    expect(getEffectiveCharacter(boosted, 'warrior').stats.maxHp).toBe(189);
     const healed = recoverParty(boosted, 1);
-    expect(healed.party[0].currentHp).toBe(198);
+    expect(healed.party[0].currentHp).toBe(189);
     expect(recoveryTargets(healed)).toEqual([]);
     expect(recoverParty(boosted, .3, 'mage', true).party[1].currentHp).toBe(Math.ceil(getEffectiveCharacter(boosted, 'mage').stats.maxHp * .3));
     expect(applyRunBuffs(boosted, []).party[0].currentHp).toBe(80);
@@ -174,8 +174,8 @@ describe('derived combat stats and conditional effects', () => {
     let state = combat('healing-prayer', 'sacred-healing', 'guardian-blessing');
     state = { ...state, party: state.party.map((member, i) => ({ ...member, currentHp: i === 0 ? 20 : member.currentHp, abilityCharge: member.definitionId === 'cleric' ? 49 : 0 })) };
     const healed = correct(state, 50);
-    expect(healed.events.find(event => event.kind === 'ally-heal')?.amount).toBe(45);
-    expect(healed.party[0].currentHp).toBe(65);
+    expect(healed.events.find(event => event.kind === 'ally-heal')?.amount).toBe(69);
+    expect(healed.party[0].currentHp).toBe(89);
     const blocked = consumeDamageShield(healed, 'warrior', 40);
     expect(blocked.damage).toBe(30);
     expect(consumeDamageShield(blocked.state, 'warrior', 40).damage).toBe(40);
