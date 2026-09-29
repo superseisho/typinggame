@@ -5,7 +5,7 @@ export const ADDITIONAL_SENTENCES = [
   { id: 'sentence_013', text: '朝の光が窓から差し込む', reading: 'あさ の ひかり が まど から さしこむ', difficulty: 1, category: 'town' },
   { id: 'sentence_014', text: '森の小道をゆっくり歩く', reading: 'もり の こみち を ゆっくり あるく', difficulty: 1, category: 'nature' },
   { id: 'sentence_015', text: '旅の荷物を馬に積もう', reading: 'たび の にもつ を うま に つもう', difficulty: 1, category: 'adventure' },
-  { id: 'sentence_016', text: '温かいスープで体を休める', reading: 'あたたかい すうぷ で からだ を やすめる', difficulty: 1, category: 'rest' },
+  { id: 'sentence_016', text: '温かいスープで体を休める', reading: 'あたたかい すーぷ で からだ を やすめる', difficulty: 1, category: 'rest' },
   { id: 'sentence_017', text: '小鳥の歌に耳を澄ませる', reading: 'ことり の うた に みみ を すませる', difficulty: 1, category: 'nature' },
   { id: 'sentence_018', text: '村の門で友を待っている', reading: 'むら の もん で とも を まっている', difficulty: 1, category: 'party' },
   { id: 'sentence_019', text: '地図を広げて道を確かめる', reading: 'ちず を ひろげて みち を たしかめる', difficulty: 1, category: 'exploration' },
