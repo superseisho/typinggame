@@ -12,6 +12,7 @@ export function describeBuffTotals(buff: BuffDefinition, stacks: number): string
     const value = effect.value * stacks;
     const percent = Math.round(value * 100);
     switch (effect.type) {
+      case 'correct-input-charge-multiplier': return `正解入力の基本Attack・Ability Charge ×${1 + (effect.value - 1) * stacks}（GUARDの文完成進行を含む）`;
       case 'modifier': return `${statNames[effect.stat]} ${percent >= 0 ? '+' : ''}${percent}%`;
       case 'guard-heal': return `Guard成功時、Max HPの${percent}%回復`;
       case 'guard-counter': return `Guard後、次のAttack +${percent}%`;

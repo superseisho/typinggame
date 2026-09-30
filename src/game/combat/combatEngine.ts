@@ -16,6 +16,7 @@ import { performEnemySkill, planEnemyAction } from './enemySkillEngine';
 import { drawSentence } from '../typing/sentenceDeck';
 import { createTypingEngineState } from '../typing/typingEngine';
 import { TYPING_SENTENCES_BY_ID } from '../../data/typingSentences';
+import { getCorrectInputChargeMultiplier } from '../buffs/buffModifiers';
 
 const ABILITY_STATUS_PREFIX = 'ability:';
 
@@ -171,14 +172,18 @@ export function applyCorrectTyping(
   now = Date.now(),
 ): CombatState {
   if (state.status !== 'active') return state;
+  const charge = getCorrectInputChargeMultiplier(state.runBuffs);
+  const completedPrompt = typing.completedSentences > state.typing.completedSentences;
   let nextState: CombatState = {
     ...state,
     lastMissProtected: false,
     typing,
-    party: state.party.map((character) => character.currentHp <= 0
-      ? character
-      : { ...character, attackCharge: character.attackCharge + 1,
-          abilityCharge: character.abilityCharge + (getEffectiveCharacter(state, character.definitionId).ability.trigger.type === 'correct-characters' ? 1 : 0) }),
+    party: state.party.map((character) => {
+      if (character.currentHp <= 0) return character;
+      const trigger = getEffectiveCharacter(state, character.definitionId).ability.trigger;
+      const abilityGain = trigger.type === 'correct-characters' || (completedPrompt && trigger.type === 'completed-prompts') ? charge : 0;
+      return { ...character, attackCharge: character.attackCharge + charge, abilityCharge: character.abilityCharge + abilityGain };
+    }),
   };
   nextState = appendEvent(nextState, 'typing-correct', '正解入力', {}, false);
   nextState = handleBuffTrigger(nextState, { type: 'perfect-streak', streak: typing.currentCombo });
@@ -189,8 +194,9 @@ export function applyCorrectTyping(
     const character = getEffectiveCharacter(nextState, combatant.definitionId);
     const trigger = character.ability.trigger;
     if (trigger.type === 'completed-prompts') {
-      const justCompletedPrompt = typing.completedSentences > state.typing.completedSentences;
-      if (justCompletedPrompt && typing.completedSentences % trigger.threshold === 0) {
+      if (completedPrompt && combatant.abilityCharge >= trigger.threshold) {
+        nextState = { ...nextState, party: nextState.party.map(member => member.definitionId === character.id
+          ? { ...member, abilityCharge: member.abilityCharge % trigger.threshold } : member) };
         nextState = triggerAllyAbility(nextState, character.id, true);
       }
       continue;

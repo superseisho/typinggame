@@ -81,8 +81,10 @@ describe('combat engine', () => {
 
   it('activates guard after three prompts and consumes it to block the next attack', () => {
     const started = startCombat(createCombatState(['crypt-slime']), 1_000);
-    const typing = { ...started.typing, completedSentences: 3 };
-    const guarded = applyCorrectTyping(started, typing, 1_001);
+    const first = applyCorrectTyping(started, { ...started.typing, completedSentences: 1 }, 1_001);
+    const second = applyCorrectTyping(first, { ...first.typing, completedSentences: 2 }, 1_002);
+    expect(second.party[0].statuses).not.toContain('ability:guard');
+    const guarded = applyCorrectTyping(second, { ...second.typing, completedSentences: 3 }, 1_003);
     expect(guarded.party[0].statuses).toContain('ability:guard');
     expect(getCharacterVisualState(CHARACTERS_BY_ID.warrior, guarded.party[0])).toBe('guard_active');
     expect(guarded.events.find((event) => event.kind === 'ally-ability-triggered')).toMatchObject({

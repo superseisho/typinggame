@@ -78,7 +78,7 @@ describe('shared enemy target', () => {
 
   it('Heal, Guard and enemy attacks are independent of enemy selection', () => {
     const base = battle();
-    const injured = { ...base, party: base.party.map(p => ({ ...p, currentHp: p.currentHp - 40, abilityCharge: p.definitionId === 'cleric' ? 49 : 0 })) };
+    const injured = { ...base, party: base.party.map(p => ({ ...p, currentHp: p.currentHp - 40, abilityCharge: p.definitionId === 'cleric' ? 49 : p.definitionId === 'warrior' ? 2 : 0 })) };
     const selected = selectEnemyTarget(injured, injured.enemies[1].instanceId);
     const typing = { ...base.typing, currentCombo: 50, completedSentences: 3 };
     const a = applyCorrectTyping(injured, typing, 2);

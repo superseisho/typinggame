@@ -40,9 +40,9 @@ function victory(room: 'battle' | 'elite' | 'ambush' | 'boss' = 'battle', floor 
 }
 
 describe('run buff inventory and rewards', () => {
-  it('has 33 unique valid definitions and all five rarity pools', () => {
-    expect(BUFF_DEFINITIONS).toHaveLength(33);
-    expect(new Set(BUFF_DEFINITIONS.map(buff => buff.id)).size).toBe(33);
+  it('has 34 unique valid definitions and all five rarity pools', () => {
+    expect(BUFF_DEFINITIONS).toHaveLength(34);
+    expect(new Set(BUFF_DEFINITIONS.map(buff => buff.id)).size).toBe(34);
     expect(new Set(BUFF_DEFINITIONS.map(buff => buff.rarity)).size).toBe(5);
   });
   it('adds additively, enforces unique and max stacks, removes via a common API', () => {

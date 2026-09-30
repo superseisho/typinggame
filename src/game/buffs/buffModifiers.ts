@@ -15,6 +15,13 @@ export function getBuffEffectValue(buffs: readonly RunBuff[], type: BuffEffect['
     .reduce((value, effect) => value + (effect.type === type ? effect.value * owned.stacks : 0), 0), 0);
 }
 
+/** Multiplier for basic correct-input charge only; never stats, streaks or Buff charge grants. */
+export function getCorrectInputChargeMultiplier(buffs: readonly RunBuff[]): number {
+  // Add bonuses above x1, so future x1.25 / x1.5 effects compose predictably.
+  return Math.max(0, 1 + buffs.reduce((sum, owned) => sum + (BUFFS_BY_ID[owned.buffId]?.effects ?? []).reduce((bonus, effect) =>
+    bonus + (effect.type === 'correct-input-charge-multiplier' ? (effect.value - 1) * owned.stacks : 0), 0), 0));
+}
+
 /** Pure derived definition: base data, art and run buffs are never mutated. */
 export function getEffectiveCharacter(state: Pick<CombatState, 'runBuffs'>, id: CharacterId): CharacterDefinition {
   const base = CHARACTERS_BY_ID[id];

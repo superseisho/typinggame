@@ -158,6 +158,7 @@ export interface CharacterCombatState {
   readonly definitionId: CharacterId;
   readonly currentHp: number;
   readonly attackCharge: number;
+  /** Battle-local correct-character or completed-prompt charge; never typing statistics. */
   readonly abilityCharge: number;
   readonly statuses: readonly string[];
 }

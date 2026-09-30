@@ -58,7 +58,7 @@ describe('accumulated character ability charge', () => {
   it('PartyPanel preserves Mage/Cleric gauge values while Fighter resets and Knight Guard persists', () => {
     const base = battle(20,35);
     const state = { ...base, typing: { ...base.typing, currentCombo: 40, completedSentences: 2 },
-      party: base.party.map(p => ({ ...p, statuses: p.definitionId === 'warrior' ? ['ability:guard'] : p.definitionId === 'martial-artist' ? ['ability:flow-combo'] : [] })) };
+      party: base.party.map(p => ({ ...p, abilityCharge: p.definitionId === 'warrior' ? 2 : p.abilityCharge, statuses: p.definitionId === 'warrior' ? ['ability:guard'] : p.definitionId === 'martial-artist' ? ['ability:flow-combo'] : [] })) };
     const missed = miss(state);
     for (const combat of [state,missed]) {
       const html = renderToStaticMarkup(createElement(PartyPanel,{ combat }));

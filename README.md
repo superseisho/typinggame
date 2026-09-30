@@ -124,7 +124,7 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 
 各カードで取得可能なレアリティを重み付き抽選し、そのプールから1種類を選びます。選択済み候補・取得済みUnique・最大Stackは除外。空になったレアリティの重みは残りへ再配分するため、2・3枚目や取得状況に応じて実際の確率は変わります。候補が2個以下なら残りのみ表示し、0個なら追加60 Goldと通常の「次の階へ」を表示します。
 
-### Run Buff（33種類）
+### Run Buff（34種類）
 
 | 対象 | 名前 | 効果（1 Stack） |
 | --- | --- | --- |
@@ -157,8 +157,9 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 | タイピング・Legendary | Unbroken Focus | Stackごとに1 Charge、ミスの戦闘ペナルティを防ぐ。消費から30秒で個別回復 |
 | 全員・Legendary | Reaper's Blessing | 直接攻撃が対象ごとに5%で即死。Boss本体・Buff追加攻撃は除外 |
 | 全員・Legendary | Echoing Assault | 通常Attackごとに30%で全体攻撃。Abilityは除外 |
+| 全員・Legendary | Overdrive | 正解入力の基本Attack / Ability ChargeとGUARDの文完成進行が2倍。最大1 Stack |
 
-Guardian Oath / Fortress / Guardian Blessing / Ascendant Rune / Reaper's Blessing / Echoing AssaultはUnique（1個）。他は最大3 Stack。同じ補正は基礎値に対して加算します（Power Rune ×2は+10%）。AttackとAbility必要文字数は端数切り上げ・最低5文字、ミスGauge倍率は最低10%。DefenseもEffective Characterで基礎値へ倍率を適用して四捨五入し、既存の敵通常Attack / Heavy Attackから引きます。敵Specialの固定ダメージは従来どおりです。Max HP増加でDownを蘇生しません。
+Guardian Oath / Fortress / Guardian Blessing / Ascendant Rune / Reaper's Blessing / Echoing Assault / OverdriveはUnique（1個）。他は最大3 Stack。同じ補正は基礎値に対して加算します（Power Rune ×2は+10%）。AttackとAbility必要文字数は端数切り上げ・最低5文字、ミスGauge倍率は最低10%。DefenseもEffective Characterで基礎値へ倍率を適用して四捨五入し、既存の敵通常Attack / Heavy Attackから引きます。敵Specialの固定ダメージは従来どおりです。Max HP増加でDownを蘇生しません。
 
 Unbroken FocusはTyping Missを記録し、入力位置を維持したまま通常Missペナルティの前で早期終了します。Combo / Fighter状態 / 敵Gauge / Curse / Gauge Shieldは保持。Charge残時間は `buffResources.focusRechargeMs` で個別管理し、Combat Tickのみで減算、Battle開始時にFull Chargeです。Timeoutとは別処理です。UIはFOCUS残Charge数とPROTECTEDを既存行に表示します。
 
@@ -258,6 +259,10 @@ NEXT予告対応: `plannedEnemyAction.test.ts` に初期計画、予定4パタ�
 
 ## Character Abilityの蓄積
 
-Mage / Clericは `correct-characters` Triggerと各個体の既存 `abilityCharge` を使用。生存中の正解1文字で+1、Missでは維持し、実効Threshold以上で発動・0リセットします。Mageは30文字（Mana Surgeで24）、Clericは50文字。全快時のHealも発動分のChargeを消費しますが、実回復なしのHeal Eventは発生させません。PartyPanelも同じChargeを表示し、次戦闘へは持ち越しません。
+Mage / Clericは `correct-characters` Triggerと各個体の既存 `abilityCharge` を使用。生存中の正解1文字で基本+1（Overdriveで+2）、Missでは維持し、実効Threshold以上で発動・0リセットします。Mageは30 Charge（Mana Surgeで24）、Clericは50 Charge。全快時のHealも発動分のChargeを消費しますが、実回復なしのHeal Eventは発生させません。PartyPanelも同じChargeを表示し、次戦闘へは持ち越しません。
+
+Overdriveは `correct-input-charge-multiplier` Effectの値2を `getCorrectInputChargeMultiplier()` から参照します。将来の倍率は1を超える分を加算して合成できます。Knightも戦闘用 `abilityCharge` に文完成ごとに通常+1 / Overdrive +2を加算し、3以上でGUARDを1回付与して余剰を保持します（Overdriveでは1文目2/3、2文目発動後1/3）。通常Attackも既存どおり閾値を引いて余剰を保持。Flowの追加Chargeは倍率対象外です。
+
+実入力数・完成文数・Combo・Fighterの20/40/80判定・50/100文字Streak・WPM/Accuracyは増幅しません。通常Miss / Protected MissはCharge +0。Overdriveは既存Legendaryの全報酬・Shop抽選へ自動参加し、価格400 Goldと取得済み除外を共用します。`overdrive.test.ts` の14テストを含め全619テスト・ビルド成功。
 
 KnightのCompleted Prompt方式、FighterのCombo方式、Flow / Perfect Rhythmの `perfect-streak` は従来どおりです。Character用ChargeとTypingの連続正解数は独立しており、MissによるFighter解除・敵SPECIAL増加は維持します。`abilityCharge.test.ts` にMiss保持、発動・消費、Down、UI描画、Mana Surge、Streak Buff、階層遷移の回帰テストを追加しました。

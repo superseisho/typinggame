@@ -13,11 +13,7 @@ function hpSeverity(ratio: number) {
 
 function abilityView(character: CharacterDefinition, combat: CombatState) {
   const trigger = character.ability.trigger;
-  if (trigger.type === 'completed-prompts') {
-    const value = combat.typing.completedSentences % trigger.threshold;
-    return { value, max: trigger.threshold, text: `${value} / ${trigger.threshold}` };
-  }
-  if (trigger.type === 'correct-characters') {
+  if (trigger.type === 'completed-prompts' || trigger.type === 'correct-characters') {
     const value = combat.party.find(member => member.definitionId === character.id)?.abilityCharge ?? 0;
     return { value, max: trigger.threshold, text: `${value} / ${trigger.threshold}` };
   }

@@ -6,6 +6,7 @@ const define = (id: string, name: string, rarity: BuffRarity, categories: BuffCa
   ({ id, name, rarity, categories, description, effects, stackable: maxStacks > 1, maxStacks });
 
 export const BUFF_DEFINITIONS: readonly BuffDefinition[] = [
+  define('overdrive', 'Overdrive', 'legendary', ['Global', 'Typing'], '正解入力の基本Attack・Ability Chargeが2倍。GUARDの文完成進行も2倍。Combo・Streak・成績・Buff追加Chargeは変化しない。', [{ type: 'correct-input-charge-multiplier', value: 2 }], 1),
   define('power-rune', 'Power Rune', 'common', ['Global'], '味方全員のAttack +5%。', [modifier('attack', .05)]),
   define('vitality-rune', 'Vitality Rune', 'common', ['Global', 'Defensive'], '全員の最大HP +5%。生存者は増加分だけ現在HPも回復。', [modifier('maxHp', .05)]),
   define('swift-fingers', 'Swift Fingers', 'uncommon', ['Global', 'Typing'], '全員のAttack必要文字数 −5%（端数切り上げ・最低5文字）。', [modifier('attackThreshold', -.05)]),

@@ -10,7 +10,7 @@ export type BuffEffect =
   | { readonly type: 'modifier'; readonly stat: BuffStat; readonly target: BuffTarget; readonly value: number }
   | { readonly type: 'guard-heal' | 'guard-counter' | 'guard-gauge-shield' | 'heal-extra' | 'heal-shield'; readonly target: CharacterId; readonly value: number }
   | { readonly type: 'streak-charge' | 'streak-damage' | 'streak-heal' | 'streak-seal'; readonly threshold: number; readonly value: number }
-  | { readonly type: 'miss-protection' | 'instant-kill' | 'normal-aoe'; readonly value: number };
+  | { readonly type: 'miss-protection' | 'instant-kill' | 'normal-aoe' | 'correct-input-charge-multiplier'; readonly value: number };
 export interface BuffDefinition {
   readonly id: string;
   readonly name: string;
