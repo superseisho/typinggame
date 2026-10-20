@@ -5,8 +5,8 @@ export const BUFF_CONFIG = {
   minAttackThreshold: 5, minAbilityThreshold: 5, minMissGaugeMultiplier: 0.1,
   unbrokenFocusRechargeMs: 30000,
   rarityWeights: {
-    battle: { common: 54, uncommon: 30, rare: 13, epic: 2, legendary: 1 },
-    elite: { common: 18, uncommon: 40, rare: 30, epic: 10, legendary: 2 },
+    battle: { common: 40, uncommon: 30, rare: 19, epic: 8, legendary: 3 },
+    elite: { common: 14, uncommon: 35, rare: 26, epic: 19, legendary: 6 },
   } satisfies Record<string, Record<BuffRarity, number>>,
 } as const;
 export const emptyBuffResources = (): BuffCombatResources => ({ counters: {}, shields: {}, gaugeShield: 0, focusRechargeMs: [] });
