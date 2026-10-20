@@ -3,7 +3,8 @@ import { indexById } from '../utils/indexById';
 import { TRANSIENT_ABILITY_VISUAL_MS } from './gameConfig';
 
 function createArtSet(characterFolder: string, abilityFileName: string): CharacterArtSet {
-  const path = (fileName: string) => `/images/characters/${characterFolder}/${fileName}.png`;
+  const path = (fileName: string) =>
+  `${import.meta.env.BASE_URL}images/characters/${characterFolder}/${fileName}.png`;
   return {
     normal: path('normal'),
     lowHp: path('low-hp'),
