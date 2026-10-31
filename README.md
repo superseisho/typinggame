@@ -124,7 +124,7 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 
 各カードで取得可能なレアリティを重み付き抽選し、そのプールから1種類を選びます。選択済み候補・取得済みUnique・最大Stackは除外。空になったレアリティの重みは残りへ再配分するため、2・3枚目や取得状況に応じて実際の確率は変わります。候補が2個以下なら残りのみ表示し、0個なら追加60 Goldと通常の「次の階へ」を表示します。
 
-### Run Buff（34種類）
+### Run Buff（42種類）
 
 | 対象 | 名前 | 効果（1 Stack） |
 | --- | --- | --- |
@@ -158,8 +158,30 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 | 全員・Legendary | Reaper's Blessing | 直接攻撃が対象ごとに5%で即死。Boss本体・Buff追加攻撃は除外 |
 | 全員・Legendary | Echoing Assault | 通常Attackごとに30%で全体攻撃。Abilityは除外 |
 | 全員・Legendary | Overdrive | 正解入力の基本Attack / Ability ChargeとGUARDの文完成進行が2倍。最大1 Stack |
+| Knight・Common | Shield Wall | GUARD成功時、Party Defense +30% / 20秒。Unique |
+| Knight・Uncommon | Guardian's Grace | GUARD成功時、生存Partyを各Effective Max HPの5% × Stack回復 |
+| Knight・Rare | Shield Momentum | GUARD成功時、生存PartyのAttack Gauge +現在Thresholdの10% × Stack（切り上げ） |
+| Knight・Epic | Retribution | GUARD成功時、実AttackerへKnight Effective Attackの300%で反撃。Unique |
+| Knight・Epic | Rallying Aegis | GUARD成功時、Party Attack +30% / 20秒。Unique |
+| Knight・Epic | Relentless Advance | GUARD成功ごとに、そのBattle中のParty Attack Threshold −10。Unique |
+| Knight・Legendary | Twin Aegis | GUARD発動時のCapacityが2に。再発動は加算せず補充。Unique |
+| Knight・Legendary | Perfect Bastion | GUARD必要完成文数 −1、最低1文。Unique |
 
-Guardian Oath / Fortress / Guardian Blessing / Ascendant Rune / Reaper's Blessing / Echoing Assault / OverdriveはUnique（1個）。他は最大3 Stack。同じ補正は基礎値に対して加算します（Power Rune ×2は+10%）。AttackとAbility必要文字数は端数切り上げ・最低5文字、ミスGauge倍率は最低10%。DefenseもEffective Characterで基礎値へ倍率を適用して四捨五入し、既存の敵通常Attack / Heavy Attackから引きます。敵Specialの固定ダメージは従来どおりです。Max HP増加でDownを蘇生しません。
+Guardian Oath / Fortress / Guardian Blessing / Ascendant Rune / Reaper's Blessing / Echoing Assault / Overdrive、および上表でUniqueと記したKnight Buffは最大1個。他は最大3 Stack。同じ補正は基礎値に対して加算します（Power Rune ×2は+10%）。AttackとAbility必要文字数は端数切り上げ・最低5文字、ミスGauge倍率は最低10%。DefenseもEffective Characterで基礎値へ倍率を適用して四捨五入し、既存の敵通常Attack / Heavy Attackから引きます。敵Specialの固定ダメージは従来どおりです。Max HP増加でDownを蘇生しません。
+
+### GUARD成功でPartyを支えるKnight Build
+
+GUARD Ability発動は `guardCharges` を通常1、Twin Aegis所持時2へ補充します。`ability:guard` とPortraitはChargeの残数へ同期し、各通常Attack / Heavy Attackを防ぐたびに1消費して `guard` Triggerを発火。Triggerには実攻撃元の `attackerEnemyInstanceId` を渡します。Specialは従来どおりGUARDを消費せず、KnightがDownすると残ChargeとStatusを解除します。
+
+一時Attack / Defenseは `buffResources.timedPartyModifiers` の倍率・残りmsをSource of Truthにし、Combat Tickで期限管理します。Static Runeと加算し、再GUARDは時間更新のみです。時間は `BUFF_CONFIG.guardAttackDurationMs` / `guardDefenseDurationMs` で調整できます。UIは既存Party見出し行に残り時間、Ability欄にGUARD ×2 / ×1を表示します。
+
+Relentless Advanceは `attackThresholdReduction` にGuard成功ごと10を累積し、割合補正→切り上げ→Flat減少→最低5の順で適用。AbilityやStreakは変えません。GUARDの一時・Flat補正を先に適用し、その後に同時効果を処理するので、取得順でMomentum量やCounter威力が変わりません。MomentumはOverdriveを掛けず、`resolveReadyAllyAttacks()` でTypingと同じ通常Attack処理を即時利用します。
+
+Retributionは実Attackerを狙い、既存のDefense / Cover / Defeat / Auto Retarget処理を通します。Buff追加Damageとして扱い、Echoing Assault・Reaper・Guardian OathのNormal Attack消費を発生させません。選択中Targetは維持し、撃破で必要な場合のみ既存Auto Retargetします。CounterまたはMomentumの通常Attackで勝利すると、同じTick内でVictoryへ移り、後続Enemyは行動しません。
+
+Perfect BastionはTarget付き `completed-prompt-threshold-reduction` EffectでEffective Triggerを3→2へ変更します。Overdriveとの併用なら1文で発動、Twin Aegisもあれば2 Attack防御。Guard Charges・一時補正・累積Flat減少は戦闘終了/次Battleで0に戻ります。Run Buff本体は探索終了まで保持します。新Buffは全既存報酬とShopのRarity/価格/取得上限を共用します。
+
+`knightBuffs.test.ts` に22テストを追加し、既存3Knight Buff・Normal/Heavy Attack・Cover・Special・Victory・Legendary Synergyなどを検証。全641テストとビルド成功。`scripts/verify-knight-buffs.mjs` は全Buffを付与する明示的デバッグ条件で、実入力→GUARD×2→2回Heavy Attack防御→Party Heal/一時補正/Momentum/Counter/Flat短縮を1920×1080、1536×864、1366×768で確認します。通常Runでの全Buff同時取得率やバランス調整は検証対象外です。
 
 Unbroken FocusはTyping Missを記録し、入力位置を維持したまま通常Missペナルティの前で早期終了します。Combo / Fighter状態 / 敵Gauge / Curse / Gauge Shieldは保持。Charge残時間は `buffResources.focusRechargeMs` で個別管理し、Combat Tickのみで減算、Battle開始時にFull Chargeです。Timeoutとは別処理です。UIはFOCUS残Charge数とPROTECTEDを既存行に表示します。
 

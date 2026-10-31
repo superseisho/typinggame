@@ -24,12 +24,15 @@ function abilityView(character: CharacterDefinition, combat: CombatState) {
 
 export function PartyPanel({ combat }: { readonly combat: CombatState }) {
   const livingCount = combat.party.filter((member) => member.currentHp > 0).length;
+  const temporary = Object.entries(combat.buffResources.timedPartyModifiers)
+    .filter(([, effect]) => effect.remainingMs > 0)
+    .map(([stat, effect]) => `${stat === 'attack' ? 'ATK' : 'DEF'} +${Math.round(effect.value * 100)}% ${(effect.remainingMs / 1000).toFixed(1)}s`).join(' · ');
 
   return (
     <section className="party-panel" aria-label="パーティーステータス">
       <header className="battle-zone-heading">
         <div><span className="eyebrow">PARTY AREA</span><strong>{livingCount} / {combat.party.length} ACTIVE</strong></div>
-        <span>SHARED INPUT · INDEPENDENT GAUGES</span>
+        <span aria-live="off">{temporary || 'SHARED INPUT · INDEPENDENT GAUGES'}</span>
       </header>
       <div className="party-grid">
         {combat.party.map((member) => {
@@ -60,7 +63,7 @@ export function PartyPanel({ combat }: { readonly combat: CombatState }) {
                 <ProgressBar value={member.attackCharge} max={character.attackThreshold} tone="attack" compact label={`${character.name}の攻撃ゲージ`} />
               </div>
               <div className="ability-state">
-                <div><span>{character.ability.name}</span><strong>{knockedOut ? 'STOP' : ability.text}</strong></div>
+                <div><span>{character.ability.name}{member.guardCharges > 0 ? ` ×${member.guardCharges}` : ''}</span><strong>{knockedOut ? 'STOP' : ability.text}</strong></div>
                 <ProgressBar value={knockedOut ? 0 : ability.value} max={ability.max} tone="ability" compact label={`${character.name}のAbility状態`} />
               </div>
               <StatusChips statuses={member.statuses} />

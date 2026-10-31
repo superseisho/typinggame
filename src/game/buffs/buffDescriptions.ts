@@ -12,6 +12,13 @@ export function describeBuffTotals(buff: BuffDefinition, stacks: number): string
     const value = effect.value * stacks;
     const percent = Math.round(value * 100);
     switch (effect.type) {
+      case 'guard-timed-party-modifier': return `GUARD成功時、Party ${statNames[effect.stat]} +${percent}% / ${effect.durationMs / 1000}秒（再発動で更新）`;
+      case 'guard-party-heal': return `GUARD成功時、生存Partyを各Max HPの${percent}%回復`;
+      case 'guard-party-attack-charge': return `GUARD成功時、生存PartyのAttack Gauge +現在必要文字数の${percent}%（切り上げ）`;
+      case 'guard-retaliation': return `GUARD成功時、AttackerへAttack ${percent}%反撃`;
+      case 'guard-battle-threshold-reduction': return `GUARD成功ごとに戦闘中のParty Attack必要文字数 −${value}（最低5）`;
+      case 'guard-extra-charge': return `GUARD最大回数 +${value}（発動時に補充）`;
+      case 'completed-prompt-threshold-reduction': return `Ability必要文章数 −${value}（最低1）`;
       case 'correct-input-charge-multiplier': return `正解入力の基本Attack・Ability Charge ×${1 + (effect.value - 1) * stacks}（GUARDの文完成進行を含む）`;
       case 'modifier': return `${statNames[effect.stat]} ${percent >= 0 ? '+' : ''}${percent}%`;
       case 'guard-heal': return `Guard成功時、Max HPの${percent}%回復`;

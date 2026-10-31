@@ -40,9 +40,9 @@ function victory(room: 'battle' | 'elite' | 'ambush' | 'boss' = 'battle', floor 
 }
 
 describe('run buff inventory and rewards', () => {
-  it('has 34 unique valid definitions and all five rarity pools', () => {
-    expect(BUFF_DEFINITIONS).toHaveLength(34);
-    expect(new Set(BUFF_DEFINITIONS.map(buff => buff.id)).size).toBe(34);
+  it('has 42 unique valid definitions and all five rarity pools', () => {
+    expect(BUFF_DEFINITIONS).toHaveLength(42);
+    expect(new Set(BUFF_DEFINITIONS.map(buff => buff.id)).size).toBe(42);
     expect(new Set(BUFF_DEFINITIONS.map(buff => buff.rarity)).size).toBe(5);
   });
   it('adds additively, enforces unique and max stacks, removes via a common API', () => {
@@ -184,7 +184,7 @@ describe('derived combat stats and conditional effects', () => {
   });
   it('guard buffs activate on consumption, heal actual HP and consume the next counter once', () => {
     let state = combat('reinforced-shield', 'guardian-oath', 'fortress');
-    state = { ...state, party: state.party.map((member, i) => i === 0 ? { ...member, currentHp: 100, statuses: ['ability:guard'] } : member), enemies: state.enemies.map(enemy => ({ ...enemy, actionRemainingMs: 0 })) };
+    state = { ...state, party: state.party.map((member, i) => i === 0 ? { ...member, guardCharges: 1, currentHp: 100, statuses: ['ability:guard'] } : member), enemies: state.enemies.map(enemy => ({ ...enemy, actionRemainingMs: 0 })) };
     const guarded = tickCombat(state, 1, 1);
     expect(guarded.party[0].statuses).not.toContain('ability:guard');
     expect(guarded.party[0].currentHp).toBe(109);

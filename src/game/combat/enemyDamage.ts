@@ -5,6 +5,7 @@ import { appendEvent } from './combatEvents';
 import { ensureValidEnemyTarget } from './enemyTarget';
 import { getBuffEffectValue } from '../buffs/buffModifiers';
 import { randomStep } from '../../utils/random';
+import { syncGuardState } from './guardState';
 
 export interface DamageRoute { readonly originalTargetId: string; readonly receiverId: string; readonly covered: boolean }
 
@@ -19,10 +20,10 @@ export function snapshotEnemyDamageRoutes(state: CombatState, targetIds: readonl
 
 export function cleanupEnemyState(state: CombatState): CombatState {
   const ended = state.status === 'victory' || state.status === 'defeat';
-  return { ...state, enemies: state.enemies.map(e => ended || e.currentHp <= 0
+  return syncGuardState({ ...state, enemies: state.enemies.map(e => ended || e.currentHp <= 0
     ? { ...e, nextActionSkillId: null, cover: null, actionDurationMs: 0, pendingSpecial: null, statuses: [], specialGauge: 0, actionRemainingMs: 0,
         attackMultiplier: 1, defenseMultiplier: 1, actionTimeMultiplier: 1, nextAttackEmpowerMultiplier: 1 }
-    : e.cover && e.cover.remainingHits <= 0 ? { ...e, cover: null } : e) };
+    : e.cover && e.cover.remainingHits <= 0 ? { ...e, cover: null } : e) });
 }
 
 /** Synchronous attack transaction: snapshot -> individual hits -> cover/death cleanup. */

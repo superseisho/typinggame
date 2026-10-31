@@ -1,4 +1,5 @@
 import { getEffectiveCharacter } from '../buffs/buffModifiers';
+import { syncGuardState } from './guardState';
 import { consumeDamageShield } from '../buffs/buffEffectHandlers';
 import { CHARACTERS_BY_ID } from '../../data/characters';
 import { ENEMIES_BY_ID } from '../../data/enemies';
@@ -233,5 +234,5 @@ export function executeEnemyAbility(
     nextState = resolution.state;
     events.push(...resolution.events);
   }
-  return { state: nextState, events };
+  return { state: syncGuardState(nextState), events };
 }

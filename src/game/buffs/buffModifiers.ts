@@ -23,20 +23,29 @@ export function getCorrectInputChargeMultiplier(buffs: readonly RunBuff[]): numb
 }
 
 /** Pure derived definition: base data, art and run buffs are never mutated. */
-export function getEffectiveCharacter(state: Pick<CombatState, 'runBuffs'>, id: CharacterId): CharacterDefinition {
+export function getEffectiveCharacter(state: Pick<CombatState, 'runBuffs'> & Partial<Pick<CombatState, 'buffResources'>>, id: CharacterId): CharacterDefinition {
   const base = CHARACTERS_BY_ID[id];
-  const modifier = (stat: BuffStat) => 1 + getBuffModifier(state.runBuffs, stat, id);
+  const modifier = (stat: BuffStat) => {
+    const temporary = stat === 'attack' || stat === 'defense' ? state.buffResources?.timedPartyModifiers[stat] : undefined;
+    return 1 + getBuffModifier(state.runBuffs, stat, id) + (temporary && temporary.remainingMs > 0 ? temporary.value : 0);
+  };
   const trigger = base.ability.trigger;
   return { ...base,
     stats: { ...base.stats, attack: Math.round(base.stats.attack * modifier('attack')), maxHp: Math.round(base.stats.maxHp * modifier('maxHp')),
       defense: Math.round(base.stats.defense * modifier('defense')) },
-    attackThreshold: Math.max(BUFF_CONFIG.minAttackThreshold, Math.ceil(base.attackThreshold * modifier('attackThreshold'))),
+    attackThreshold: Math.max(BUFF_CONFIG.minAttackThreshold, Math.ceil(base.attackThreshold * modifier('attackThreshold')) - (state.buffResources?.attackThresholdReduction ?? 0)),
     ability: { ...base.ability,
-      trigger: trigger.type === 'correct-characters' ? { ...trigger, threshold: Math.max(BUFF_CONFIG.minAbilityThreshold, Math.ceil(trigger.threshold * modifier('abilityThreshold'))) } : trigger,
+      trigger: trigger.type === 'correct-characters' ? { ...trigger, threshold: Math.max(BUFF_CONFIG.minAbilityThreshold, Math.ceil(trigger.threshold * modifier('abilityThreshold'))) }
+        : trigger.type === 'completed-prompts' ? { ...trigger, threshold: Math.max(1, trigger.threshold - getTargetedBuffValue(state.runBuffs, 'completed-prompt-threshold-reduction', id)) } : trigger,
       effects: base.ability.effects.map(effect => effect.type === 'damage-all-enemies' ? { ...effect, power: Math.round(effect.power * modifier('abilityDamage')) }
         : effect.type === 'heal-lowest-ally' ? { ...effect, power: Math.round(effect.power * modifier('healPower')) } : effect),
     },
   };
+}
+
+export function getTargetedBuffValue(buffs: readonly RunBuff[], type: 'guard-extra-charge' | 'completed-prompt-threshold-reduction', id: CharacterId): number {
+  return buffs.reduce((sum, owned) => sum + (BUFFS_BY_ID[owned.buffId]?.effects ?? []).reduce((value, effect) =>
+    value + (effect.type === type && effect.target === id ? effect.value * owned.stacks : 0), 0), 0);
 }
 
 export function getComboMultiplier(state: CombatState, id: CharacterId): number {

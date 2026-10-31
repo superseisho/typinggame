@@ -73,7 +73,7 @@ describe('new tactical Enemy actions', () => {
   it.each(['enemy_executioner','enemy_executioner_elite'])('%s Guard blocks Empowered Heavy Attack and consumes its charge', id => {
     const base = battle(id);
     const state = { ...empowerEnemies(base,[base.enemies[0].instanceId],1.3),
-      party: base.party.map((p,i) => i ? p : { ...p,statuses:['ability:guard'] }) };
+      party: base.party.map((p,i) => i ? p : { ...p,guardCharges:1,statuses:['ability:guard'] }) };
     const next = execute(state,0,'skill_heavy_attack');
     expect(next.party[0].currentHp).toBe(state.party[0].currentHp);
     expect(next.party[0].statuses).not.toContain('ability:guard');

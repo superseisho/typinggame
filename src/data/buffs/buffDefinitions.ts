@@ -6,6 +6,14 @@ const define = (id: string, name: string, rarity: BuffRarity, categories: BuffCa
   ({ id, name, rarity, categories, description, effects, stackable: maxStacks > 1, maxStacks });
 
 export const BUFF_DEFINITIONS: readonly BuffDefinition[] = [
+  define('shield-wall', 'Shield Wall', 'common', ['Knight', 'Defensive'], `GUARD成功時、味方全員のDefenseを${BUFF_CONFIG.guardDefenseDurationMs / 1000}秒間+30%。再発動で時間更新。`, [{ type: 'guard-timed-party-modifier', stat: 'defense', value: .3, durationMs: BUFF_CONFIG.guardDefenseDurationMs }], 1),
+  define('guardians-grace', "Guardian's Grace", 'uncommon', ['Knight', 'Defensive'], 'GUARD成功時、生存する味方全員を各最大HPの5%回復。', [{ type: 'guard-party-heal', value: .05 }]),
+  define('shield-momentum', 'Shield Momentum', 'rare', ['Knight', 'Utility'], 'GUARD成功時、生存する味方全員のAttack Gaugeを現在の必要文字数の10%分進める（切り上げ）。', [{ type: 'guard-party-attack-charge', value: .1 }]),
+  define('retribution', 'Retribution', 'epic', ['Knight', 'Offensive'], 'GUARD成功時、攻撃してきた敵へKnightのAttack 300%の反撃。敵Defense・Coverを適用。', [{ type: 'guard-retaliation', value: 3 }], 1),
+  define('rallying-aegis', 'Rallying Aegis', 'epic', ['Knight', 'Offensive'], `GUARD成功時、味方全員のAttackを${BUFF_CONFIG.guardAttackDurationMs / 1000}秒間+30%。再発動で時間更新。`, [{ type: 'guard-timed-party-modifier', stat: 'attack', value: .3, durationMs: BUFF_CONFIG.guardAttackDurationMs }], 1),
+  define('relentless-advance', 'Relentless Advance', 'epic', ['Knight', 'Typing', 'Offensive'], 'GUARD成功ごとに、その戦闘中は全員の通常Attack必要文字数−10。最低5文字。', [{ type: 'guard-battle-threshold-reduction', value: 10 }], 1),
+  define('twin-aegis', 'Twin Aegis', 'legendary', ['Knight', 'Defensive'], 'GUARD1回の発動で敵Attackを2回防ぐ。再発動時は2回へ補充。', [{ type: 'guard-extra-charge', target: 'warrior', value: 1 }], 1),
+  define('perfect-bastion', 'Perfect Bastion', 'legendary', ['Knight', 'Typing', 'Defensive'], 'GUARDに必要な完成文章数−1。最低1文章。', [{ type: 'completed-prompt-threshold-reduction', target: 'warrior', value: 1 }], 1),
   define('overdrive', 'Overdrive', 'legendary', ['Global', 'Typing'], '正解入力の基本Attack・Ability Chargeが2倍。GUARDの文完成進行も2倍。Combo・Streak・成績・Buff追加Chargeは変化しない。', [{ type: 'correct-input-charge-multiplier', value: 2 }], 1),
   define('power-rune', 'Power Rune', 'common', ['Global'], '味方全員のAttack +5%。', [modifier('attack', .05)]),
   define('vitality-rune', 'Vitality Rune', 'common', ['Global', 'Defensive'], '全員の最大HP +5%。生存者は増加分だけ現在HPも回復。', [modifier('maxHp', .05)]),

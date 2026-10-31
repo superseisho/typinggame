@@ -7,7 +7,7 @@ import { appendEvent } from '../combat/combatEvents';
 import { getEffectiveCharacter } from './buffModifiers';
 
 export type BuffTrigger =
-  | { type: 'guard'; characterId: CharacterId }
+  | { type: 'guard'; characterId: CharacterId; attackerEnemyInstanceId: string }
   | { type: 'heal'; characterId: CharacterId; targetId: CharacterId }
   | { type: 'perfect-streak'; streak: number };
 
@@ -28,6 +28,35 @@ export function healFromBuff(state: CombatState, targetId: CharacterId, amount: 
 
 type Handler = (state: CombatState, effect: BuffEffect, stacks: number, trigger: BuffTrigger, buff: BuffDefinition) => CombatState;
 const handlers: Partial<Record<BuffEffect['type'], Handler>> = {
+  'guard-timed-party-modifier': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'guard-timed-party-modifier' || trigger.type !== 'guard') return state;
+    return announce({ ...state, buffResources: { ...state.buffResources, timedPartyModifiers: {
+      ...state.buffResources.timedPartyModifiers, [effect.stat]: { value: effect.value * stacks, remainingMs: effect.durationMs },
+    } } }, buff);
+  },
+  'guard-battle-threshold-reduction': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'guard-battle-threshold-reduction' || trigger.type !== 'guard') return state;
+    return announce({ ...state, buffResources: { ...state.buffResources,
+      attackThresholdReduction: state.buffResources.attackThresholdReduction + effect.value * stacks } }, buff);
+  },
+  'guard-party-heal': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'guard-party-heal' || trigger.type !== 'guard') return state;
+    let next = state;
+    for (const member of state.party) next = healFromBuff(next, member.definitionId, getEffectiveCharacter(next, member.definitionId).stats.maxHp * effect.value * stacks, buff);
+    return next;
+  },
+  'guard-party-attack-charge': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'guard-party-attack-charge' || trigger.type !== 'guard') return state;
+    return announce({ ...state, party: state.party.map(member => member.currentHp <= 0 ? member : {
+      ...member, attackCharge: member.attackCharge + Math.ceil(getEffectiveCharacter(state, member.definitionId).attackThreshold * effect.value * stacks),
+    }) }, buff);
+  },
+  'guard-retaliation': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'guard-retaliation' || trigger.type !== 'guard') return state;
+    return resolveEnemyDamage(state, { targetIds: [trigger.attackerEnemyInstanceId],
+      power: getEffectiveCharacter(state, trigger.characterId).stats.attack * effect.value * stacks,
+      kind: 'ally-ability-damage', label: buff.name, actorId: trigger.characterId, abilityId: buff.id });
+  },
   'streak-heal': (state, effect, stacks, trigger, buff) => {
     if (effect.type !== 'streak-heal' || trigger.type !== 'perfect-streak' || trigger.streak <= 0 || trigger.streak % effect.threshold !== 0) return state;
     let next = state;
@@ -69,11 +98,15 @@ const handlers: Partial<Record<BuffEffect['type'], Handler>> = {
 /** Synchronously consume one game trigger, not historical UI events or render updates. */
 export function handleBuffTrigger(state: CombatState, trigger: BuffTrigger): CombatState {
   let next = state;
-  for (const owned of state.runBuffs) {
+  const effects = state.runBuffs.flatMap(owned => {
     const buff = BUFFS_BY_ID[owned.buffId];
-    if (!buff) continue;
-    for (const effect of buff.effects) next = handlers[effect.type]?.(next, effect, owned.stacks, trigger, buff) ?? next;
-  }
+    return buff ? buff.effects.map(effect => ({ buff, effect, stacks: owned.stacks })) : [];
+  });
+  // Recalculate party stats first, then resolve the rest. Acquisition order must not change
+  // Momentum's threshold or Retribution's power during the same successful guard.
+  const priority = (effect: BuffEffect) => effect.type === 'guard-timed-party-modifier' || effect.type === 'guard-battle-threshold-reduction' ? 0 : 1;
+  if (trigger.type === 'guard') effects.sort((a, b) => priority(a.effect) - priority(b.effect));
+  for (const { buff, effect, stacks } of effects) next = handlers[effect.type]?.(next, effect, stacks, trigger, buff) ?? next;
   return next;
 }
 

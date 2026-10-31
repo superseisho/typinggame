@@ -24,7 +24,7 @@ export function applyRunBuffs(state: CombatState, runBuffs: readonly RunBuff[]):
     buffResources: { ...state.buffResources, focusRechargeMs: Array.from({ length: charges }, (_, i) => state.buffResources.focusRechargeMs[i] ?? 0) },
     party: state.party.map(member => {
     const oldMax = getEffectiveCharacter(state, member.definitionId).stats.maxHp;
-    const newMax = getEffectiveCharacter({ runBuffs }, member.definitionId).stats.maxHp;
+    const newMax = getEffectiveCharacter({ ...state, runBuffs }, member.definitionId).stats.maxHp;
     return { ...member, currentHp: member.currentHp <= 0 ? 0 : Math.max(1, Math.min(newMax, member.currentHp + newMax - oldMax)) };
   }) };
 }

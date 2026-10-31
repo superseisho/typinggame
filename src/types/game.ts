@@ -155,6 +155,7 @@ export interface EnemyDefinition {
 }
 
 export interface CharacterCombatState {
+  readonly guardCharges: number;
   readonly definitionId: CharacterId;
   readonly currentHp: number;
   readonly attackCharge: number;

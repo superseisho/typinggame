@@ -1,7 +1,7 @@
 import { appendEvent } from './combatEvents';
 import { getEffectiveCharacter, getBuffModifier, getComboMultiplier, getBuffEffectValue } from '../buffs/buffModifiers';
 import { handleBuffTrigger, getExtraHealing, consumeDamageShield } from '../buffs/buffEffectHandlers';
-import { BUFF_CONFIG } from '../buffs/buffConfig';
+import { BUFF_CONFIG, emptyBuffResources } from '../buffs/buffConfig';
 import { CHARACTERS_BY_ID } from '../../data/characters';
 import { ENEMIES_BY_ID } from '../../data/enemies';
 import { GAME_CONFIG } from '../../data/gameConfig';
@@ -16,7 +16,8 @@ import { performEnemySkill, planEnemyAction } from './enemySkillEngine';
 import { drawSentence } from '../typing/sentenceDeck';
 import { createTypingEngineState } from '../typing/typingEngine';
 import { TYPING_SENTENCES_BY_ID } from '../../data/typingSentences';
-import { getCorrectInputChargeMultiplier } from '../buffs/buffModifiers';
+import { getCorrectInputChargeMultiplier, getTargetedBuffValue } from '../buffs/buffModifiers';
+import { syncGuardState } from './guardState';
 
 const ABILITY_STATUS_PREFIX = 'ability:';
 
@@ -35,9 +36,13 @@ function setAbilityStatus(state: CombatState, characterId: string, abilityId: st
 
 function triggerAllyAbility(state: CombatState, characterId: string, applyPersistentStatus: boolean): CombatState {
   const character = CHARACTERS_BY_ID[characterId as keyof typeof CHARACTERS_BY_ID];
-  const withStatus = applyPersistentStatus
+  let withStatus = applyPersistentStatus
     ? setAbilityStatus(state, character.id, character.ability.id, true)
     : state;
+  if (character.ability.effects.some(effect => effect.type === 'guard-next-hit')) {
+    withStatus = syncGuardState({ ...withStatus, party: withStatus.party.map(member => member.definitionId === character.id
+      ? { ...member, guardCharges: 1 + getTargetedBuffValue(state.runBuffs, 'guard-extra-charge', character.id) } : member) });
+  }
   const isHeal = character.ability.effects.some((effect) => effect.type === 'heal-lowest-ally');
   return appendEvent(
     withStatus,
@@ -74,7 +79,8 @@ export function startCombat(state: CombatState, now = Date.now()): CombatState {
   const drawn = drawSentence(state.sentenceDeck);
   state = { ...state, status: 'active', sentenceDeck: drawn.deck,
     lastMissProtected: false,
-    buffResources: { ...state.buffResources, focusRechargeMs: Array(getBuffEffectValue(state.runBuffs, 'miss-protection')).fill(0) },
+    buffResources: { ...emptyBuffResources(), focusRechargeMs: Array(getBuffEffectValue(state.runBuffs, 'miss-protection')).fill(0) },
+    party: state.party.map(member => ({ ...member, guardCharges: 0, statuses: member.statuses.filter(status => status !== 'ability:guard') })),
     typing: createTypingEngineState(TYPING_SENTENCES_BY_ID[drawn.sentenceId]) };
   for (let index = 0; index < state.enemies.length; index++) state = planEnemyAction(state, index);
   return appendEvent(
@@ -271,6 +277,14 @@ export function applyCorrectTyping(
     }
   }
 
+  return resolveReadyAllyAttacks(nextState, now);
+}
+
+/** One normal attack per ready living ally; shared by typing and successful-guard effects. */
+export function resolveReadyAllyAttacks(state: CombatState, now = Date.now()): CombatState {
+  if (state.status !== 'active') return state;
+  let nextState = finishIfVictorious(state, now);
+  if (nextState.status !== 'active') return nextState;
   for (let partyIndex = 0; partyIndex < nextState.party.length; partyIndex += 1) {
     const combatant = nextState.party[partyIndex];
     const character = getEffectiveCharacter(nextState, combatant.definitionId);
@@ -304,6 +318,12 @@ export function applyCorrectTyping(
   return ensureValidEnemyTarget(nextState);
 }
 
+function finishIfVictorious(state: CombatState, now: number): CombatState {
+  if (state.status !== 'active' || !areEnemiesDefeated(state.enemies)) return state;
+  return appendEvent(cleanupEnemyState({ ...state, targetEnemyId: null, status: 'victory', stats: { ...state.stats, endedAt: now } }),
+    'victory', '敵部隊を殲滅した。');
+}
+
 function performEnemyAttack(state: CombatState, enemyIndex: number, now: number, powerMultiplier = 1): CombatState {
   const actor = state.enemies[enemyIndex];
   if (!actor || actor.currentHp <= 0) return state;
@@ -313,7 +333,7 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number,
   if (livingParty.length === 0) return finishIfDefeated(state, now);
 
   const guardedIndex = state.party.findIndex((member) => (
-    member.currentHp > 0 && member.statuses.includes(`${ABILITY_STATUS_PREFIX}guard`)
+    member.currentHp > 0 && member.guardCharges > 0
   ));
   const targetIndex = guardedIndex >= 0
     ? guardedIndex
@@ -333,7 +353,8 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number,
     party: state.party.map((member, index) => index === targetIndex ? {
       ...member,
       currentHp: targetHp,
-      statuses: guarded
+      guardCharges: guarded ? Math.max(0, member.guardCharges - 1) : member.guardCharges,
+      statuses: guarded && member.guardCharges <= 1
         ? member.statuses.filter((status) => status !== `${ABILITY_STATUS_PREFIX}guard`)
         : member.statuses,
     } : member),
@@ -354,11 +375,14 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number,
         `${enemyDefinition.name}の攻撃！ ${targetDefinition.name}は ${damage} ダメージ。`,
         { actorId: actor.instanceId, targetId: target.definitionId, amount: target.currentHp - targetHp, targetHpAfter: targetHp },
       );
-  if (guarded) nextState = handleBuffTrigger(nextState, { type: 'guard', characterId: target.definitionId });
+  if (guarded) {
+    nextState = handleBuffTrigger(nextState, { type: 'guard', characterId: target.definitionId, attackerEnemyInstanceId: actor.instanceId });
+    nextState = resolveReadyAllyAttacks(nextState, now);
+  }
   if (targetHp === 0) {
     nextState = appendEvent(nextState, 'ally-defeated', `${targetDefinition.name}は戦闘不能になった。`, { targetId: target.definitionId });
   }
-  return finishIfDefeated(nextState, now);
+  return finishIfDefeated(syncGuardState(nextState), now);
 }
 
 export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()): CombatState {
@@ -366,7 +390,10 @@ export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()
   const typingCurseRemainingMs = Math.max(0, state.typingCurseRemainingMs - deltaMs);
   let nextState: CombatState = {
     ...state,
-    buffResources: { ...state.buffResources, focusRechargeMs: state.buffResources.focusRechargeMs.map(ms => Math.max(0, ms - deltaMs)) },
+    buffResources: { ...state.buffResources, focusRechargeMs: state.buffResources.focusRechargeMs.map(ms => Math.max(0, ms - deltaMs)),
+      timedPartyModifiers: Object.fromEntries(Object.entries(state.buffResources.timedPartyModifiers)
+        .filter(([, modifier]) => modifier.remainingMs > deltaMs)
+        .map(([stat, modifier]) => [stat, { ...modifier, remainingMs: modifier.remainingMs - deltaMs }])) },
     typingCurseRemainingMs,
     typingCurseBonus: typingCurseRemainingMs > 0 ? state.typingCurseBonus : 0,
     enemies: state.enemies.map((enemy) => enemy.currentHp <= 0
@@ -399,7 +426,7 @@ export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()
   for (let index = 0; index < nextState.enemies.length; index += 1) {
     if (nextState.enemies[index].currentHp > 0 && nextState.enemies[index].actionRemainingMs <= 0) {
       nextState = performEnemySkill(nextState, index, now, performEnemyAttack);
-      if (nextState.status === 'defeat') break;
+      if (nextState.status !== 'active') break;
     }
   }
   return ensureValidEnemyTarget(nextState);
