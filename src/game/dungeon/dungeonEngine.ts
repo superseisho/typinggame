@@ -37,7 +37,8 @@ function prepareBattle(run: DungeonRunState, room: BattleRoom, announce: boolean
   const encounter = room === 'boss'
     ? { enemyIds: BOSS_ENCOUNTERS[run.enemyTier], seed: run.rngState }
     : generateEnemyEncounter(run.rngState, trap ? 'treasure_trap' : room, run.enemyTier);
-  const combat = { ...freshCombat(run.combat, encounter.enemyIds), skillRngState: encounter.seed, buffRngState: (encounter.seed ^ 0x62756666) >>> 0 };
+  const combat = { ...freshCombat(run.combat, encounter.enemyIds), skillRngState: encounter.seed, buffRngState: (encounter.seed ^ 0x62756666) >>> 0,
+    targetRngState: (encounter.seed ^ 0x74617267) >>> 0 };
   return { ...run, rngState: encounter.seed, currentRoom: trap ? 'treasure' : room, combatSource: trap ? 'treasure_trap' : 'room', roomOptions: [], currentCombatMs: 0,
     runStatus: announce ? 'announcement' : 'battle', combat: announce ? combat : startCombat(combat, now) };
 }

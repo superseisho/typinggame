@@ -27,7 +27,8 @@ export function getEffectiveCharacter(state: Pick<CombatState, 'runBuffs'> & Par
   const base = CHARACTERS_BY_ID[id];
   const modifier = (stat: BuffStat) => {
     const temporary = stat === 'attack' || stat === 'defense' ? state.buffResources?.timedPartyModifiers[stat] : undefined;
-    return 1 + getBuffModifier(state.runBuffs, stat, id) + (temporary && temporary.remainingMs > 0 ? temporary.value : 0);
+    return 1 + getBuffModifier(state.runBuffs, stat, id) + (temporary && temporary.remainingMs > 0 ? temporary.value : 0)
+      + (stat === 'attack' ? state.buffResources?.abilityAttackGrowth[id] ?? 0 : 0);
   };
   const trigger = base.ability.trigger;
   return { ...base,
@@ -43,7 +44,7 @@ export function getEffectiveCharacter(state: Pick<CombatState, 'runBuffs'> & Par
   };
 }
 
-export function getTargetedBuffValue(buffs: readonly RunBuff[], type: 'guard-extra-charge' | 'completed-prompt-threshold-reduction', id: CharacterId): number {
+export function getTargetedBuffValue(buffs: readonly RunBuff[], type: 'guard-extra-charge' | 'completed-prompt-threshold-reduction' | 'target-weight-modifier', id: CharacterId): number {
   return buffs.reduce((sum, owned) => sum + (BUFFS_BY_ID[owned.buffId]?.effects ?? []).reduce((value, effect) =>
     value + (effect.type === type && effect.target === id ? effect.value * owned.stacks : 0), 0), 0);
 }

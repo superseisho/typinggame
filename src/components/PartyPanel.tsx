@@ -66,7 +66,11 @@ export function PartyPanel({ combat }: { readonly combat: CombatState }) {
                 <div><span>{character.ability.name}{member.guardCharges > 0 ? ` ×${member.guardCharges}` : ''}</span><strong>{knockedOut ? 'STOP' : ability.text}</strong></div>
                 <ProgressBar value={knockedOut ? 0 : ability.value} max={ability.max} tone="ability" compact label={`${character.name}のAbility状態`} />
               </div>
-              <StatusChips statuses={member.statuses} />
+              <StatusChips statuses={[
+                ...(combat.buffResources.nextNormalAoe[member.definitionId] ? ['buff:BARRAGE READY'] : []),
+                ...((combat.buffResources.abilityAttackGrowth[member.definitionId] ?? 0) > 0 ? [`buff:ARCANA +${Math.round(combat.buffResources.abilityAttackGrowth[member.definitionId]! * 100)}%`] : []),
+                ...member.statuses,
+              ]} />
             </article>
           );
         })}

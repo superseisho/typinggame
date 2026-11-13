@@ -12,6 +12,11 @@ export function describeBuffTotals(buff: BuffDefinition, stacks: number): string
     const value = effect.value * stacks;
     const percent = Math.round(value * 100);
     switch (effect.type) {
+      case 'target-weight-modifier': return `ランダム攻撃の対象重み ${Math.round((1 + value) * 100)}%`;
+      case 'ability-action-delay': return `Ability命中でACTION +${value / 1000}秒（未消化上限${BUFF_CONFIG.maxPendingFrostDelayMs / 1000}秒）`;
+      case 'ability-damage-over-time': return `Ability命中で${effect.durationMs / 1000}秒炎上・${effect.intervalMs / 1000}秒ごとに発動時Attackの${percent}%（Defense無視）`;
+      case 'ability-next-normal-aoe': return 'Ability解決後、次の通常Attack1回だけ全体攻撃';
+      case 'ability-battle-attack-growth': return `Ability解決ごとに戦闘中Attack +${percent}%（加算）`;
       case 'guard-timed-party-modifier': return `GUARD成功時、Party ${statNames[effect.stat]} +${percent}% / ${effect.durationMs / 1000}秒（再発動で更新）`;
       case 'guard-party-heal': return `GUARD成功時、生存Partyを各Max HPの${percent}%回復`;
       case 'guard-party-attack-charge': return `GUARD成功時、生存PartyのAttack Gauge +現在必要文字数の${percent}%（切り上げ）`;

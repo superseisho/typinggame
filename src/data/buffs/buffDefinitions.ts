@@ -6,6 +6,11 @@ const define = (id: string, name: string, rarity: BuffRarity, categories: BuffCa
   ({ id, name, rarity, categories, description, effects, stackable: maxStacks > 1, maxStacks });
 
 export const BUFF_DEFINITIONS: readonly BuffDefinition[] = [
+  define('arcane-veil', 'Arcane Veil', 'common', ['Mage', 'Defensive'], 'ランダム単体攻撃でMageが狙われる抽選重み−20% / Stack。', [{ type: 'target-weight-modifier', target: 'mage', value: -.2 }]),
+  define('frostbind', 'Frostbind', 'rare', ['Mage', 'Utility'], 'Mage Ability命中で敵の次ACTIONを2秒 / Stack遅延。未消化遅延は最大10秒。', [{ type: 'ability-action-delay', target: 'mage', value: 2000 }], 2),
+  define('arcane-burn', 'Arcane Burn', 'epic', ['Mage', 'Offensive'], 'Mage Ability命中で5秒炎上。毎秒、発動時Mage Attackの10% / Stackの防御無視Damage。', [{ type: 'ability-damage-over-time', target: 'mage', value: .1, durationMs: BUFF_CONFIG.arcaneBurnDurationMs, intervalMs: BUFF_CONFIG.arcaneBurnIntervalMs }], 2),
+  define('arcane-barrage', 'Arcane Barrage', 'legendary', ['Mage', 'Offensive'], 'Mage Ability発動後、次のMage通常Attack1回だけ全体攻撃。READYは重複しない。', [{ type: 'ability-next-normal-aoe', target: 'mage', value: 1 }], 1),
+  define('infinite-arcana', 'Infinite Arcana', 'legendary', ['Mage', 'Offensive'], 'Mage Ability解決後、その戦闘中のMage Attack +30% / Stack。発動ごとに加算。', [{ type: 'ability-battle-attack-growth', target: 'mage', value: .3 }]),
   define('shield-wall', 'Shield Wall', 'common', ['Knight', 'Defensive'], `GUARD成功時、味方全員のDefenseを${BUFF_CONFIG.guardDefenseDurationMs / 1000}秒間+30%。再発動で時間更新。`, [{ type: 'guard-timed-party-modifier', stat: 'defense', value: .3, durationMs: BUFF_CONFIG.guardDefenseDurationMs }], 1),
   define('guardians-grace', "Guardian's Grace", 'uncommon', ['Knight', 'Defensive'], 'GUARD成功時、生存する味方全員を各最大HPの5%回復。', [{ type: 'guard-party-heal', value: .05 }]),
   define('shield-momentum', 'Shield Momentum', 'rare', ['Knight', 'Utility'], 'GUARD成功時、生存する味方全員のAttack Gaugeを現在の必要文字数の10%分進める（切り上げ）。', [{ type: 'guard-party-attack-charge', value: .1 }]),

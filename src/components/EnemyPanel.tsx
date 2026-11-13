@@ -120,10 +120,13 @@ export function EnemyPanel({ combat, floorLabel = 'COMBAT TRAINING', onSelectEne
                 <small>NEXT</small>
                 <strong>{knockedOut ? '—' : ENEMY_SKILLS[enemyState.nextActionSkillId ?? '']?.name ?? '—'}</strong>
                 {enemyState.cover && enemyState.cover.remainingHits > 0 ? <span className="enemy-cover-counter">Shield ×{enemyState.cover.remainingHits}</span> : null}
+                {enemyState.pendingFrostDelayMs > 0 ? <span className="enemy-cover-counter">FROST +{(enemyState.pendingFrostDelayMs / 1000).toFixed(1)}s</span> : null}
               </div>
-              <StatusChips statuses={enemyState.nextAttackEmpowerMultiplier > 1
-                ? [`buff:EMPOWER ×${enemyState.nextAttackEmpowerMultiplier.toFixed(2)}`, ...enemyState.statuses]
-                : enemyState.statuses} />
+              <StatusChips statuses={[
+                ...(enemyState.burn ? [`debuff:BURN ${(enemyState.burn.remainingMs / 1000).toFixed(1)}s`] : []),
+                ...(enemyState.nextAttackEmpowerMultiplier > 1 ? [`buff:EMPOWER ×${enemyState.nextAttackEmpowerMultiplier.toFixed(2)}`] : []),
+                ...enemyState.statuses,
+              ]} />
             </article>
           );
         })}

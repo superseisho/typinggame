@@ -5,11 +5,14 @@ import type { BuffDefinition, BuffEffect } from '../../types/buffs';
 import type { CharacterId, CombatState } from '../../types/game';
 import { appendEvent } from '../combat/combatEvents';
 import { getEffectiveCharacter } from './buffModifiers';
+import { BUFF_CONFIG } from './buffConfig';
 
 export type BuffTrigger =
   | { type: 'guard'; characterId: CharacterId; attackerEnemyInstanceId: string }
   | { type: 'heal'; characterId: CharacterId; targetId: CharacterId }
-  | { type: 'perfect-streak'; streak: number };
+  | { type: 'perfect-streak'; streak: number }
+  | { type: 'ability-hit'; characterId: CharacterId; targetIds: readonly string[]; attackSnapshot: number }
+  | { type: 'ability-resolved'; characterId: CharacterId };
 
 function announce(state: CombatState, buff: BuffDefinition, targetId?: string): CombatState {
   return appendEvent(state, 'ally-buff', `${buff.name.toUpperCase()}!`, { targetId, abilityId: buff.id, soundId: buff.soundId, effectType: 'buff' });
@@ -28,6 +31,37 @@ export function healFromBuff(state: CombatState, targetId: CharacterId, amount: 
 
 type Handler = (state: CombatState, effect: BuffEffect, stacks: number, trigger: BuffTrigger, buff: BuffDefinition) => CombatState;
 const handlers: Partial<Record<BuffEffect['type'], Handler>> = {
+  'ability-action-delay': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'ability-action-delay' || trigger.type !== 'ability-hit' || trigger.characterId !== effect.target) return state;
+    let next = state;
+    for (const id of trigger.targetIds) {
+      const enemy = next.enemies.find(e => e.instanceId === id && e.currentHp > 0);
+      if (!enemy) continue;
+      const delay = Math.max(0, Math.min(effect.value * stacks, BUFF_CONFIG.maxPendingFrostDelayMs - enemy.pendingFrostDelayMs));
+      if (!delay) continue;
+      next = announce({ ...next, enemies: next.enemies.map(e => e.instanceId === id ? { ...e,
+        pendingFrostDelayMs: e.pendingFrostDelayMs + delay, actionRemainingMs: e.actionRemainingMs + delay, actionDurationMs: e.actionDurationMs + delay,
+      } : e) }, buff, id);
+    }
+    return next;
+  },
+  'ability-damage-over-time': (state, effect, stacks, trigger) => {
+    if (effect.type !== 'ability-damage-over-time' || trigger.type !== 'ability-hit' || trigger.characterId !== effect.target) return state;
+    return { ...state, enemies: state.enemies.map(e => e.currentHp > 0 && trigger.targetIds.includes(e.instanceId) ? { ...e,
+      burn: { remainingMs: effect.durationMs, untilTickMs: effect.intervalMs, intervalMs: effect.intervalMs,
+        damage: Math.max(1, Math.round(trigger.attackSnapshot * effect.value * stacks)), actorId: trigger.characterId },
+    } : e) };
+  },
+  'ability-next-normal-aoe': (state, effect, _stacks, trigger) => {
+    if (effect.type !== 'ability-next-normal-aoe' || trigger.type !== 'ability-resolved' || trigger.characterId !== effect.target) return state;
+    return { ...state, buffResources: { ...state.buffResources, nextNormalAoe: { ...state.buffResources.nextNormalAoe, [effect.target]: true } } };
+  },
+  'ability-battle-attack-growth': (state, effect, stacks, trigger) => {
+    if (effect.type !== 'ability-battle-attack-growth' || trigger.type !== 'ability-resolved' || trigger.characterId !== effect.target) return state;
+    const growth = (state.buffResources.abilityAttackGrowth[effect.target] ?? 0) + effect.value * stacks;
+    return { ...state, buffResources: { ...state.buffResources, abilityAttackGrowth: { ...state.buffResources.abilityAttackGrowth,
+      [effect.target]: Number.isFinite(growth) ? growth : Number.MAX_SAFE_INTEGER } } };
+  },
   'guard-timed-party-modifier': (state, effect, stacks, trigger, buff) => {
     if (effect.type !== 'guard-timed-party-modifier' || trigger.type !== 'guard') return state;
     return announce({ ...state, buffResources: { ...state.buffResources, timedPartyModifiers: {

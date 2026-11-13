@@ -165,6 +165,8 @@ export interface CharacterCombatState {
 }
 
 export interface EnemyCombatState {
+  readonly pendingFrostDelayMs: number;
+  readonly burn: { readonly remainingMs: number; readonly untilTickMs: number; readonly intervalMs: number; readonly damage: number; readonly actorId: CharacterId } | null;
   readonly nextAttackEmpowerMultiplier: number;
   readonly nextActionSkillId: string | null;
   readonly actionDurationMs: number;
@@ -234,6 +236,7 @@ export interface CombatEvent {
 }
 
 export interface CombatState {
+  readonly targetRngState: number;
   readonly buffRngState: number;
   readonly lastMissProtected: boolean;
   readonly sentenceDeck: import('./typing').TypingSentenceDeck;

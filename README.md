@@ -124,7 +124,7 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 
 各カードで取得可能なレアリティを重み付き抽選し、そのプールから1種類を選びます。選択済み候補・取得済みUnique・最大Stackは除外。空になったレアリティの重みは残りへ再配分するため、2・3枚目や取得状況に応じて実際の確率は変わります。候補が2個以下なら残りのみ表示し、0個なら追加60 Goldと通常の「次の階へ」を表示します。
 
-### Run Buff（42種類）
+### Run Buff（47種類）
 
 | 対象 | 名前 | 効果（1 Stack） |
 | --- | --- | --- |
@@ -138,6 +138,11 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 | 魔法使い | Arcane Power | 通常Attack +15% |
 | 魔法使い | Wide Magic | 全体攻撃Ability威力 +25% |
 | 魔法使い | Mana Surge | Ability必要正解文字数 −20% |
+| Mage・Common | Arcane Veil | ランダム単体攻撃の対象重み −20% / Stack、最大3 |
+| Mage・Rare | Frostbind | Ability実命中先のACTION +2秒 / Stack、最大2。未消化遅延上限10秒 |
+| Mage・Epic | Arcane Burn | Ability実命中先を5秒炎上。毎秒、発動時Attackの10% / Stack。最大2 |
+| Mage・Legendary | Arcane Barrage | Ability後の次のMage通常Attack1回だけ確定AoE。Unique |
+| Mage・Legendary | Infinite Arcana | Ability解決後に戦闘中Attack +30% / Stackを累積。最大3 |
 | 僧侶 | Healing Prayer | Heal基本回復量 +20% |
 | 僧侶 | Sacred Healing | Healに対象Max HPの5%を追加 |
 | 僧侶 | Guardian Blessing | 実際にHealされた味方の次の被ダメージ −25%・通常攻撃/SPECIAL共通 |
@@ -167,7 +172,25 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 | Knight・Legendary | Twin Aegis | GUARD発動時のCapacityが2に。再発動は加算せず補充。Unique |
 | Knight・Legendary | Perfect Bastion | GUARD必要完成文数 −1、最低1文。Unique |
 
-Guardian Oath / Fortress / Guardian Blessing / Ascendant Rune / Reaper's Blessing / Echoing Assault / Overdrive、および上表でUniqueと記したKnight Buffは最大1個。他は最大3 Stack。同じ補正は基礎値に対して加算します（Power Rune ×2は+10%）。AttackとAbility必要文字数は端数切り上げ・最低5文字、ミスGauge倍率は最低10%。DefenseもEffective Characterで基礎値へ倍率を適用して四捨五入し、既存の敵通常Attack / Heavy Attackから引きます。敵Specialの固定ダメージは従来どおりです。Max HP増加でDownを蘇生しません。
+Guardian Oath / Fortress / Guardian Blessing / Ascendant Rune / Reaper's Blessing / Echoing Assault / Overdrive、および上表でUniqueと記したBuffは最大1個。Frostbind / Arcane Burnは最大2、他は最大3 Stack。同じ補正は基礎値に対して加算します（Power Rune ×2は+10%）。AttackとAbility必要文字数は端数切り上げ・最低5文字、ミスGauge倍率は最低10%。DefenseもEffective Characterで基礎値へ倍率を適用して四捨五入し、既存の敵通常Attack / Heavy Attackから引きます。敵Specialの固定ダメージは従来どおりです。Max HP増加でDownを蘇生しません。
+
+### Mage Abilityの命中・解決と5種の新Buff
+
+通常Enemy Attack / Heavy AttackのParty対象は、生存者へのSeed付き重み付きランダムです。Arcane VeilのMage重みは1 / .8 / .6 / .4。GUARD誘導を先に判定し、最低HPを狙うSpecial・全体攻撃には重みを使いません。`targetRngState` はEncounter seedから独立に初期化し、文章・敵Skill・Legendary ProcのRNGを進めません。通常攻撃の従来の順番狙いからの変更は、この拡張で採用した仕様です。
+
+Abilityは発動前のEffective Attackを保存し、既存の直接Damage / Cover / Reaperを解決します。`resolveEnemyDamageWithHits()` の実被弾Instance IDを重複除去して `ability-hit` Triggerへ渡し、生存者だけへFrostbindとBurnを適用します。Coverで被弾しなかった敵には付与しません。その後の `ability-resolved` TriggerでBarrage READYとArcana加算を行い、最後に通常Attack / Victoryを確定します。過去のUI Event履歴から命中を推測しません。
+
+ARCANE BURSTの従来の固定基本威力24とWide Magicは維持します。Infinite Arcanaによる成長は次回以降のAbility威力にも反映し、保存Attackと「Arcana成長分を除いたEffective Attack」の比率を既存Ability威力へ掛けます。これによりArcane Powerは従来の通常Attack +15%のまま、Arcanaは他Attack補正と加算で合成できます。今回の発動で加算する分は、そのAbilityや同時付与Burnのスナップショットへ遡及しません。
+
+Frostbindは現在の `actionRemainingMs` と `actionDurationMs` の両方に追加し、NEXT Skill / 基本Binding / Specialを維持します。`pendingFrostDelayMs` は追加遅延を先に消化する残量としてTickごとに減算し、Configの `maxPendingFrostDelayMs`（10000）まで再付与可能。次Cycleで0へ戻します。
+
+Burnは各Enemyに1状態だけ保持します。付与時Attackを丸めたDamageと5秒残時間・次Tick残時間を保存し、再付与はスナップショットと両Timerを更新。Combat Tickで期限内の全Tickを処理し、2200msなら2回、5000msなら5回です。Defenseと追加Cover転送を使わず、すでに炎上している実対象へDamageを与えます。既存のHP更新・Defeat・Auto Retargetを共用し、追加ProcやAbility Chargeは発生しません。最後の敵が倒れたTickでVictoryへ進みます。持続時間・間隔は `BUFF_CONFIG.arcaneBurnDurationMs` / `arcaneBurnIntervalMs` で調整できます。
+
+Barrage READYは `buffResources.nextNormalAoe`、Arcanaの累積倍率は `abilityAttackGrowth` にCharacter単位で保持。Barrageは次の生存Mage通常Attackが実行されたとき1回だけ消費し、確定AoE中はEchoを抽選しません。Reaperは各非Bossの実被弾先で従来どおり判定します。Mage DownではREADYを保持し、戦闘終了時はREADY / Arcana / Frost / Burnを解除。次Battleはすべて初期値で、Run Buff所持状態だけを継続します。
+
+UIはEnemyのNEXT行にFROST遅延、既存Status ChipsにBURN、MageのStatus ChipsにBARRAGE READY / ARCANA +%を表示します。新しい報酬経路や価格表は作らず、既存Battle / Elite / Treasure / Rare Treasure / Altar / Event / ShopのRarity制限・Stack上限を共用します。
+
+`mageBuffs.test.ts` に24テストを追加し、全665テスト・ビルド成功。`scripts/verify-mage-buffs.mjs` は新5Buffと旧3Buffを付与したデバッグ条件で実入力からAbilityを2回発動し、遅延・可変deltaでのBurn・再付与・Barrage消費・加算成長を確認します。1920×1080 / 1536×864 / 1366×768でTyping / Party表示範囲とStatus Chipのはみ出しを検証しています。
 
 ### GUARD成功でPartyを支えるKnight Build
 

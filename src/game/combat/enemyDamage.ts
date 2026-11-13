@@ -21,29 +21,42 @@ export function snapshotEnemyDamageRoutes(state: CombatState, targetIds: readonl
 export function cleanupEnemyState(state: CombatState): CombatState {
   const ended = state.status === 'victory' || state.status === 'defeat';
   return syncGuardState({ ...state, enemies: state.enemies.map(e => ended || e.currentHp <= 0
-    ? { ...e, nextActionSkillId: null, cover: null, actionDurationMs: 0, pendingSpecial: null, statuses: [], specialGauge: 0, actionRemainingMs: 0,
+    ? { ...e, pendingFrostDelayMs: 0, burn: null, nextActionSkillId: null, cover: null, actionDurationMs: 0, pendingSpecial: null, statuses: [], specialGauge: 0, actionRemainingMs: 0,
         attackMultiplier: 1, defenseMultiplier: 1, actionTimeMultiplier: 1, nextAttackEmpowerMultiplier: 1 }
     : e.cover && e.cover.remainingHits <= 0 ? { ...e, cover: null } : e) });
 }
 
 /** Synchronous attack transaction: snapshot -> individual hits -> cover/death cleanup. */
-export function resolveEnemyDamage(state: CombatState, attack: {
+export interface AllyDamage {
   readonly targetIds: readonly string[]; readonly power: number;
   readonly kind: 'ally-attack' | 'ally-ability-damage'; readonly label: string;
   readonly actorId?: string; readonly abilityId?: string; readonly soundId?: SoundId;
   /** Explicitly opt in only for a character's own normal attack or damage ability, never Buff procs. */
   readonly directCharacterDamage?: boolean;
-}): CombatState {
+  readonly guaranteedAoe?: boolean;
+  readonly damageType?: 'direct' | 'dot';
+}
+
+export function resolveEnemyDamage(state: CombatState, attack: AllyDamage): CombatState {
+  return resolveEnemyDamageWithHits(state, attack).state;
+}
+
+/** Actual receivers, not UI events or intended targets, are the source for on-hit effects. */
+export function resolveEnemyDamageWithHits(state: CombatState, attack: AllyDamage): { state: CombatState; hitTargetIds: readonly string[] } {
+  const hitTargetIds = new Set<string>();
   let targetIds = attack.targetIds;
-  const echoChance = attack.directCharacterDamage && attack.kind === 'ally-attack' ? getBuffEffectValue(state.runBuffs, 'normal-aoe') : 0;
+  const direct = attack.directCharacterDamage && attack.damageType !== 'dot';
+  const echoChance = direct && attack.kind === 'ally-attack' && !attack.guaranteedAoe ? getBuffEffectValue(state.runBuffs, 'normal-aoe') : 0;
   if (echoChance > 0) {
     const roll = randomStep(state.buffRngState);
     state = { ...state, buffRngState: roll.seed };
     if (roll.value < echoChance) targetIds = state.enemies.filter(e => e.currentHp > 0).map(e => e.instanceId);
   }
-  const routes = snapshotEnemyDamageRoutes(state, targetIds);
+  const routes = attack.damageType === 'dot'
+    ? targetIds.filter(id => state.enemies.some(e => e.instanceId === id && e.currentHp > 0)).map(id => ({ originalTargetId: id, receiverId: id, covered: false }))
+    : snapshotEnemyDamageRoutes(state, targetIds);
   const consumed = new Map<string, number>();
-  const reaperChance = attack.directCharacterDamage ? getBuffEffectValue(state.runBuffs, 'instant-kill') : 0;
+  const reaperChance = direct ? getBuffEffectValue(state.runBuffs, 'instant-kill') : 0;
   let next = state;
   for (const route of routes) {
     const receiver = next.enemies.find(e => e.instanceId === route.receiverId)!;
@@ -61,7 +74,8 @@ export function resolveEnemyDamage(state: CombatState, attack: {
       next = { ...next, buffRngState: roll.seed };
       instantKill = roll.value < reaperChance;
     }
-    const damage = instantKill ? receiver.currentHp : receiver.currentHp > 0 ? Math.max(1, Math.round(attack.power) - Math.round(definition.defense * receiver.defenseMultiplier)) : 0;
+    const damage = instantKill ? receiver.currentHp : receiver.currentHp > 0 ? Math.max(1, Math.round(attack.power) - (attack.damageType === 'dot' ? 0 : Math.round(definition.defense * receiver.defenseMultiplier))) : 0;
+    if (receiver.currentHp > 0 && damage > 0) hitTargetIds.add(receiver.instanceId);
     const hp = Math.max(0, receiver.currentHp - damage);
     next = appendEvent({ ...next, enemies: next.enemies.map(e => e.instanceId === receiver.instanceId ? { ...e, currentHp: hp } : e) },
       attack.kind, `${attack.label} · ${instantKill ? "Reaper's Blessing · 即死" : `${definition.name}へ ${damage} ダメージ。`}`, {
@@ -77,5 +91,5 @@ export function resolveEnemyDamage(state: CombatState, attack: {
       next = appendEvent(next, 'enemy-defeated', `${ENEMIES_BY_ID[enemy.definitionId].name}を撃破した。`, { targetId: enemy.instanceId });
     }
   }
-  return ensureValidEnemyTarget(cleanupEnemyState(next));
+  return { state: ensureValidEnemyTarget(cleanupEnemyState(next)), hitTargetIds: [...hitTargetIds] };
 }

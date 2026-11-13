@@ -41,7 +41,7 @@ export function planEnemyAction(state: CombatState, actorIndex: number): CombatS
   const binding = ENEMIES_BY_ID[actor.definitionId].skills.find(s => s.skillId === selection.skill?.id);
   const duration = binding ? Math.max(1, Math.round(binding.actionTimeMs * actor.actionTimeMultiplier)) : 0;
   return { ...selection.state, enemies: selection.state.enemies.map((e, index) => index === actorIndex
-    ? { ...e, nextActionSkillId: selection.skill?.id ?? null, actionDurationMs: duration, actionRemainingMs: duration } : e) };
+    ? { ...e, nextActionSkillId: selection.skill?.id ?? null, actionDurationMs: duration, actionRemainingMs: duration, pendingFrostDelayMs: 0 } : e) };
 }
 
 /** A stale plan falls back deterministically; execution never draws a new skill. */

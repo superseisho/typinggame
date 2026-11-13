@@ -9,9 +9,10 @@ import type { CombatState } from '../../types/game';
 import type { TypingEngineState } from '../../types/typing';
 import { areEnemiesDefeated, isPartyDefeated } from './combatSelectors';
 import { chooseEnemyAbility, executeEnemyAbility } from './enemyAbilityEngine';
-import { selectLowestPartyHpIndex } from './targeting';
+import { selectLowestPartyHpIndex, selectRandomPartyTarget } from './targeting';
 import { ensureValidEnemyTarget, resolveCurrentEnemyTarget } from './enemyTarget';
-import { cleanupEnemyState, resolveEnemyDamage } from './enemyDamage';
+import { cleanupEnemyState, resolveEnemyDamage, resolveEnemyDamageWithHits } from './enemyDamage';
+import { tickEnemyBurns } from './damageOverTime';
 import { performEnemySkill, planEnemyAction } from './enemySkillEngine';
 import { drawSentence } from '../typing/sentenceDeck';
 import { createTypingEngineState } from '../typing/typingEngine';
@@ -56,13 +57,14 @@ function triggerAllyAbility(state: CombatState, characterId: string, applyPersis
   );
 }
 
-function applyAreaAbilityDamage(state: CombatState, characterId: string, power: number): CombatState {
+function applyAreaAbilityDamage(state: CombatState, characterId: string, power: number, attackSnapshot: number): CombatState {
   const character = CHARACTERS_BY_ID[characterId as keyof typeof CHARACTERS_BY_ID];
-  return resolveEnemyDamage(state, {
+  const damage = resolveEnemyDamageWithHits(state, {
     targetIds: state.enemies.filter(enemy => enemy.currentHp > 0).map(enemy => enemy.instanceId),
     power, kind: 'ally-ability-damage', label: `${character.name}の「${character.ability.name}」`,
     actorId: character.id, abilityId: character.ability.id, directCharacterDamage: true,
   });
+  return handleBuffTrigger(damage.state, { type: 'ability-hit', characterId: character.id, targetIds: damage.hitTargetIds, attackSnapshot });
 }
 
 function finishIfDefeated(state: CombatState, now: number): CombatState {
@@ -218,11 +220,17 @@ export function applyCorrectTyping(
         character.id,
         character.ability.visual.persistence === 'persistent',
       );
+      const attackSnapshot = character.stats.attack;
+      // Preserve the existing flat base Ability and Wide Magic. Only battle growth scales
+      // it by the same ratio that it adds to Effective Attack, alongside static Attack buffs.
+      const withoutGrowth = getEffectiveCharacter({ ...nextState, buffResources: { ...nextState.buffResources,
+        abilityAttackGrowth: { ...nextState.buffResources.abilityAttackGrowth, [character.id]: 0 } } }, character.id).stats.attack;
       for (const effect of character.ability.effects) {
         if (effect.type === 'damage-all-enemies') {
-          nextState = applyAreaAbilityDamage(nextState, character.id, effect.power);
+          nextState = applyAreaAbilityDamage(nextState, character.id, effect.power * attackSnapshot / Math.max(1, withoutGrowth), attackSnapshot);
         }
       }
+      nextState = handleBuffTrigger(nextState, { type: 'ability-resolved', characterId: character.id });
       continue;
     }
     if (trigger.thresholds.some((threshold) => threshold === typing.currentCombo)) {
@@ -295,6 +303,7 @@ export function resolveReadyAllyAttacks(state: CombatState, now = Date.now()): C
     const comboMultiplier = getComboMultiplier(nextState, character.id);
     const counterBonus = nextState.buffResources.counters[character.id] ?? 0;
     const power = Math.round(character.stats.attack * comboMultiplier * (1 + counterBonus));
+    const guaranteedAoe = nextState.buffResources.nextNormalAoe[character.id] ?? false;
     nextState = {
       ...nextState,
       party: nextState.party.map((member, index) => index === partyIndex
@@ -303,10 +312,11 @@ export function resolveReadyAllyAttacks(state: CombatState, now = Date.now()): C
             attackCharge: member.attackCharge - character.attackThreshold,
           }
         : member),
-      buffResources: { ...nextState.buffResources, counters: { ...nextState.buffResources.counters, [character.id]: 0 } },
+      buffResources: { ...nextState.buffResources, counters: { ...nextState.buffResources.counters, [character.id]: 0 },
+        nextNormalAoe: { ...nextState.buffResources.nextNormalAoe, [character.id]: false } },
     };
-    nextState = resolveEnemyDamage(nextState, { targetIds: [target.instanceId], power,
-      kind: 'ally-attack', label: `${character.name}の攻撃`, actorId: character.id, soundId: character.audio.attack, directCharacterDamage: true });
+    nextState = resolveEnemyDamage(nextState, { targetIds: guaranteedAoe ? nextState.enemies.filter(e => e.currentHp > 0).map(e => e.instanceId) : [target.instanceId], power,
+      kind: 'ally-attack', label: `${character.name}の攻撃`, actorId: character.id, soundId: character.audio.attack, directCharacterDamage: true, guaranteedAoe });
     if (areEnemiesDefeated(nextState.enemies)) {
       return appendEvent(
         cleanupEnemyState({ ...nextState, targetEnemyId: null, status: 'victory', stats: { ...nextState.stats, endedAt: now } }),
@@ -335,9 +345,9 @@ function performEnemyAttack(state: CombatState, enemyIndex: number, now: number,
   const guardedIndex = state.party.findIndex((member) => (
     member.currentHp > 0 && member.guardCharges > 0
   ));
-  const targetIndex = guardedIndex >= 0
-    ? guardedIndex
-    : livingParty[state.partyTargetCursor % livingParty.length].index;
+  const selection = guardedIndex >= 0 ? { state, index: guardedIndex } : selectRandomPartyTarget(state);
+  state = selection.state;
+  const targetIndex = selection.index!;
   const target = state.party[targetIndex];
   const targetDefinition = getEffectiveCharacter(state, target.definitionId);
   const enemyDefinition = ENEMIES_BY_ID[actor.definitionId];
@@ -401,11 +411,15 @@ export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()
       : {
           ...enemy,
           actionRemainingMs: enemy.actionRemainingMs - deltaMs,
+          pendingFrostDelayMs: Math.max(0, enemy.pendingFrostDelayMs - deltaMs),
           pendingSpecial: enemy.pendingSpecial
             ? { ...enemy.pendingSpecial, remainingMs: enemy.pendingSpecial.remainingMs - deltaMs }
             : null,
         }),
   };
+
+  nextState = finishIfVictorious(tickEnemyBurns(nextState, deltaMs), now);
+  if (nextState.status !== 'active') return nextState;
 
   for (let index = 0; index < nextState.enemies.length; index += 1) {
     const actor = nextState.enemies[index];

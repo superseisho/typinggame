@@ -11,6 +11,8 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
     const enemy = ENEMIES_BY_ID[enemyId];
     if (!enemy) throw new Error(`Unknown enemy: ${enemyId}`);
     return {
+      pendingFrostDelayMs: 0,
+      burn: null,
       nextAttackEmpowerMultiplier: 1,
       actionDurationMs: 0,
       nextActionSkillId: null,
@@ -30,6 +32,7 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
   });
 
   return {
+    targetRngState: 0,
     buffRngState: 0x62756666,
     lastMissProtected: false,
     sentenceDeck,
