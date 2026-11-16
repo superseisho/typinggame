@@ -6,6 +6,13 @@ const define = (id: string, name: string, rarity: BuffRarity, categories: BuffCa
   ({ id, name, rarity, categories, description, effects, stackable: maxStacks > 1, maxStacks });
 
 export const BUFF_DEFINITIONS: readonly BuffDefinition[] = [
+  define('sacred-veil', 'Sacred Veil', 'common', ['Cleric', 'Defensive'], 'ランダム単体攻撃でClericが狙われる抽選重み−20% / Stack。', [{ type: 'target-weight-modifier', target: 'cleric', value: -.2 }]),
+  define('divine-momentum', 'Divine Momentum', 'uncommon', ['Cleric', 'Utility'], 'ClericのHeal対象の通常Attack Gauge +10文字 / Stack。Full HPでも発動。', [{ type: 'heal-attack-charge', target: 'cleric', value: 10 }]),
+  define('sacred-protection', 'Sacred Protection', 'rare', ['Cleric', 'Defensive'], `ClericのHeal対象のDefense +30% / Stackを${BUFF_CONFIG.healDefenseDurationMs / 1000}秒付与。再付与で時間更新。`, [{ type: 'heal-timed-modifier', target: 'cleric', stat: 'defense', value: .3, durationMs: BUFF_CONFIG.healDefenseDurationMs }]),
+  define('divine-inspiration', 'Divine Inspiration', 'epic', ['Cleric', 'Offensive'], `ClericのHeal対象のAttack +30% / Stackを${BUFF_CONFIG.healAttackDurationMs / 1000}秒付与。再付与で時間更新。`, [{ type: 'heal-timed-modifier', target: 'cleric', stat: 'attack', value: .3, durationMs: BUFF_CONFIG.healAttackDurationMs }]),
+  define('mass-healing', 'Mass Healing', 'legendary', ['Cleric', 'Defensive'], 'ClericのHeal AbilityがParty全体対象になる。', [{ type: 'heal-all-targets', target: 'cleric', value: 1 }], 1),
+  define('resurrection', 'Resurrection', 'legendary', ['Cleric', 'Defensive'], 'ClericのHealがDownした味方を復活させる。単体HealはParty順でDown者を優先。', [{ type: 'heal-revive', target: 'cleric', value: 1 }], 1),
+  define('twin-miracle', 'Twin Miracle', 'legendary', ['Cleric', 'Utility'], 'ClericのHeal Ability1回で、同じ対象へHeal効果を2回適用。', [{ type: 'heal-repeat', target: 'cleric', value: 2 }], 1),
   define('arcane-veil', 'Arcane Veil', 'common', ['Mage', 'Defensive'], 'ランダム単体攻撃でMageが狙われる抽選重み−20% / Stack。', [{ type: 'target-weight-modifier', target: 'mage', value: -.2 }]),
   define('frostbind', 'Frostbind', 'rare', ['Mage', 'Utility'], 'Mage Ability命中で敵の次ACTIONを2秒 / Stack遅延。未消化遅延は最大10秒。', [{ type: 'ability-action-delay', target: 'mage', value: 2000 }], 2),
   define('arcane-burn', 'Arcane Burn', 'epic', ['Mage', 'Offensive'], 'Mage Ability命中で5秒炎上。毎秒、発動時Mage Attackの10% / Stackの防御無視Damage。', [{ type: 'ability-damage-over-time', target: 'mage', value: .1, durationMs: BUFF_CONFIG.arcaneBurnDurationMs, intervalMs: BUFF_CONFIG.arcaneBurnIntervalMs }], 2),

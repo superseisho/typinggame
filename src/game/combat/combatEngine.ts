@@ -1,6 +1,7 @@
 import { appendEvent } from './combatEvents';
 import { getEffectiveCharacter, getBuffModifier, getComboMultiplier, getBuffEffectValue } from '../buffs/buffModifiers';
-import { handleBuffTrigger, getExtraHealing, consumeDamageShield } from '../buffs/buffEffectHandlers';
+import { handleBuffTrigger, consumeDamageShield } from '../buffs/buffEffectHandlers';
+import { resolveHealingAbility } from './healingAbility';
 import { BUFF_CONFIG, emptyBuffResources } from '../buffs/buffConfig';
 import { CHARACTERS_BY_ID } from '../../data/characters';
 import { ENEMIES_BY_ID } from '../../data/enemies';
@@ -9,7 +10,7 @@ import type { CombatState } from '../../types/game';
 import type { TypingEngineState } from '../../types/typing';
 import { areEnemiesDefeated, isPartyDefeated } from './combatSelectors';
 import { chooseEnemyAbility, executeEnemyAbility } from './enemyAbilityEngine';
-import { selectLowestPartyHpIndex, selectRandomPartyTarget } from './targeting';
+import { selectRandomPartyTarget } from './targeting';
 import { ensureValidEnemyTarget, resolveCurrentEnemyTarget } from './enemyTarget';
 import { cleanupEnemyState, resolveEnemyDamage, resolveEnemyDamageWithHits } from './enemyDamage';
 import { tickEnemyBurns } from './damageOverTime';
@@ -230,7 +231,9 @@ export function applyCorrectTyping(
           nextState = applyAreaAbilityDamage(nextState, character.id, effect.power * attackSnapshot / Math.max(1, withoutGrowth), attackSnapshot);
         }
       }
-      nextState = handleBuffTrigger(nextState, { type: 'ability-resolved', characterId: character.id });
+      if (!character.ability.effects.some(effect => effect.type === 'heal-lowest-ally')) {
+        nextState = handleBuffTrigger(nextState, { type: 'ability-resolved', characterId: character.id });
+      }
       continue;
     }
     if (trigger.thresholds.some((threshold) => threshold === typing.currentCombo)) {
@@ -255,34 +258,12 @@ export function applyCorrectTyping(
     const character = getEffectiveCharacter(nextState, combatant.definitionId);
     const trigger = character.ability.trigger;
     if (trigger.type !== 'correct-characters' || !chargedAbilities.has(character.id)) continue;
+    if (!character.ability.effects.some(effect => effect.type === 'heal-lowest-ally')) continue;
     for (const effect of character.ability.effects) {
       if (effect.type !== 'heal-lowest-ally') continue;
-      const targetIndex = selectLowestPartyHpIndex(nextState);
-      if (targetIndex === null) continue;
-      const target = nextState.party[targetIndex];
-      const targetDefinition = getEffectiveCharacter(nextState, target.definitionId);
-      const amount = Math.min(effect.power + getExtraHealing(nextState, character.id, target.definitionId), targetDefinition.stats.maxHp - target.currentHp);
-      if (amount <= 0) continue;
-      nextState = {
-        ...nextState,
-        party: nextState.party.map((member, index) => index === targetIndex
-          ? { ...member, currentHp: member.currentHp + amount }
-          : member),
-      };
-      nextState = appendEvent(
-        nextState,
-        'ally-heal',
-        `${character.name}の「${character.ability.name}」！ ${targetDefinition.name}のHPが ${amount} 回復した。`,
-        {
-          actorId: character.id,
-          targetId: target.definitionId,
-          amount,
-          abilityId: character.ability.id,
-          soundId: character.ability.soundId,
-        },
-      );
-      nextState = handleBuffTrigger(nextState, { type: 'heal', characterId: character.id, targetId: target.definitionId });
+      nextState = resolveHealingAbility(nextState, character.id, effect.power);
     }
+    nextState = handleBuffTrigger(nextState, { type: 'ability-resolved', characterId: character.id });
   }
 
   return resolveReadyAllyAttacks(nextState, now);
@@ -401,6 +382,8 @@ export function tickCombat(state: CombatState, deltaMs: number, now = Date.now()
   let nextState: CombatState = {
     ...state,
     buffResources: { ...state.buffResources, focusRechargeMs: state.buffResources.focusRechargeMs.map(ms => Math.max(0, ms - deltaMs)),
+      timedCharacterModifiers: state.buffResources.timedCharacterModifiers.filter(effect => effect.remainingMs > deltaMs)
+        .map(effect => ({ ...effect, remainingMs: effect.remainingMs - deltaMs })),
       timedPartyModifiers: Object.fromEntries(Object.entries(state.buffResources.timedPartyModifiers)
         .filter(([, modifier]) => modifier.remainingMs > deltaMs)
         .map(([stat, modifier]) => [stat, { ...modifier, remainingMs: modifier.remainingMs - deltaMs }])) },

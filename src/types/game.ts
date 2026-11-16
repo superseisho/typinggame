@@ -219,6 +219,8 @@ export type CombatEventKind =
   | 'defeat';
 
 export interface CombatEvent {
+  readonly healPulse?: number;
+  readonly wasRevived?: boolean;
   readonly skillId?: string;
   readonly originalTargetId?: string;
   readonly actualDamage?: number;

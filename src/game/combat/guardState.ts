@@ -4,7 +4,7 @@ import type { CombatState } from '../../types/game';
 export function syncGuardState(state: CombatState): CombatState {
   const ended = state.status === 'victory' || state.status === 'defeat';
   return { ...state,
-    buffResources: ended ? { ...state.buffResources, timedPartyModifiers: {}, attackThresholdReduction: 0, nextNormalAoe: {}, abilityAttackGrowth: {} } : state.buffResources,
+    buffResources: ended ? { ...state.buffResources, timedPartyModifiers: {}, timedCharacterModifiers: [], attackThresholdReduction: 0, nextNormalAoe: {}, abilityAttackGrowth: {} } : state.buffResources,
     party: state.party.map(member => {
       const guardCharges = ended || member.currentHp <= 0 ? 0 : member.guardCharges;
       const statuses = member.statuses.filter(status => status !== 'ability:guard');

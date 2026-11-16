@@ -40,6 +40,10 @@ export function PartyPanel({ combat }: { readonly combat: CombatState }) {
           const hpRatio = member.currentHp / character.stats.maxHp;
           const knockedOut = member.currentHp <= 0;
           const ability = abilityView(character, combat);
+          const personalLabel = (stat: 'attack' | 'defense') => {
+            const active = combat.buffResources.timedCharacterModifiers.filter(effect => effect.characterId === member.definitionId && effect.stat === stat && effect.remainingMs > 0);
+            return active.length ? ` · ${stat === 'attack' ? 'ATK' : 'DEF'} +${Math.round(active.reduce((sum, effect) => sum + effect.value, 0) * 100)}% ${(Math.min(...active.map(effect => effect.remainingMs)) / 1000).toFixed(1)}s` : '';
+          };
           return (
             <article
               className={`character-card hp-${hpSeverity(hpRatio)} ${knockedOut ? 'is-knocked-out' : ''}`}
@@ -55,11 +59,11 @@ export function PartyPanel({ combat }: { readonly combat: CombatState }) {
               </div>
 
               <div className="primary-gauge">
-                <div className="gauge-label"><span>HP</span><strong>{Math.round(hpRatio * 100)}%</strong></div>
+                <div className="gauge-label"><span>HP{personalLabel('defense')}</span><strong>{Math.round(hpRatio * 100)}%</strong></div>
                 <ProgressBar value={member.currentHp} max={character.stats.maxHp} tone="health" severity={hpSeverity(hpRatio)} label={`${character.name}のHP`} />
               </div>
               <div className="character-card__stat">
-                <div className="gauge-label"><span>ATTACK</span><strong>{member.attackCharge} / {character.attackThreshold}</strong></div>
+                <div className="gauge-label"><span>ATTACK{personalLabel('attack')}</span><strong>{member.attackCharge} / {character.attackThreshold}</strong></div>
                 <ProgressBar value={member.attackCharge} max={character.attackThreshold} tone="attack" compact label={`${character.name}の攻撃ゲージ`} />
               </div>
               <div className="ability-state">

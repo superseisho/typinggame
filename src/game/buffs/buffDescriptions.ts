@@ -12,6 +12,11 @@ export function describeBuffTotals(buff: BuffDefinition, stacks: number): string
     const value = effect.value * stacks;
     const percent = Math.round(value * 100);
     switch (effect.type) {
+      case 'heal-attack-charge': return `Heal対象のAttack Gauge +${value}文字 / Pulse`;
+      case 'heal-timed-modifier': return `Heal対象の${statNames[effect.stat]} +${percent}% / ${effect.durationMs / 1000}秒（再付与で更新）`;
+      case 'heal-all-targets': return 'Heal AbilityがParty全体対象';
+      case 'heal-revive': return 'HealでDown者を復活。単体ではDown者をParty順で優先';
+      case 'heal-repeat': return `1 Abilityで固定対象へ${value}回Heal`;
       case 'target-weight-modifier': return `ランダム攻撃の対象重み ${Math.round((1 + value) * 100)}%`;
       case 'ability-action-delay': return `Ability命中でACTION +${value / 1000}秒（未消化上限${BUFF_CONFIG.maxPendingFrostDelayMs / 1000}秒）`;
       case 'ability-damage-over-time': return `Ability命中で${effect.durationMs / 1000}秒炎上・${effect.intervalMs / 1000}秒ごとに発動時Attackの${percent}%（Defense無視）`;

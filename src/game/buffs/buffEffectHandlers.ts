@@ -6,10 +6,12 @@ import type { CharacterId, CombatState } from '../../types/game';
 import { appendEvent } from '../combat/combatEvents';
 import { getEffectiveCharacter } from './buffModifiers';
 import { BUFF_CONFIG } from './buffConfig';
+import { recoverPartyMember } from '../combat/partyRecovery';
 
 export type BuffTrigger =
   | { type: 'guard'; characterId: CharacterId; attackerEnemyInstanceId: string }
   | { type: 'heal'; characterId: CharacterId; targetId: CharacterId }
+  | { type: 'heal-target'; characterId: CharacterId; targetId: CharacterId; actualHeal: number; wasRevived: boolean; pulse: number }
   | { type: 'perfect-streak'; streak: number }
   | { type: 'ability-hit'; characterId: CharacterId; targetIds: readonly string[]; attackSnapshot: number }
   | { type: 'ability-resolved'; characterId: CharacterId };
@@ -20,17 +22,29 @@ function announce(state: CombatState, buff: BuffDefinition, targetId?: string): 
 
 /** Actual healing only: existing audio / green flash consume this same event. */
 export function healFromBuff(state: CombatState, targetId: CharacterId, amount: number, buff: BuffDefinition): CombatState {
-  const member = state.party.find(member => member.definitionId === targetId);
-  if (!member || member.currentHp <= 0) return state;
-  const maxHp = getEffectiveCharacter(state, targetId).stats.maxHp;
-  const actual = Math.min(Math.round(amount), maxHp - member.currentHp);
+  const result = recoverPartyMember(state, targetId, Math.round(amount));
+  const actual = result.actualHeal;
   if (actual <= 0) return state;
-  return appendEvent({ ...state, party: state.party.map(member => member.definitionId === targetId ? { ...member, currentHp: member.currentHp + actual } : member) },
+  return appendEvent(result.state,
     'ally-heal', `${buff.name} · HP +${actual}`, { targetId, amount: actual, abilityId: buff.id });
 }
 
 type Handler = (state: CombatState, effect: BuffEffect, stacks: number, trigger: BuffTrigger, buff: BuffDefinition) => CombatState;
 const handlers: Partial<Record<BuffEffect['type'], Handler>> = {
+  'heal-attack-charge': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'heal-attack-charge' || trigger.type !== 'heal-target' || trigger.characterId !== effect.target) return state;
+    if (!state.party.some(member => member.definitionId === trigger.targetId && member.currentHp > 0)) return state;
+    return announce({ ...state, party: state.party.map(member => member.definitionId === trigger.targetId
+      ? { ...member, attackCharge: member.attackCharge + effect.value * stacks } : member) }, buff, trigger.targetId);
+  },
+  'heal-timed-modifier': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'heal-timed-modifier' || trigger.type !== 'heal-target' || trigger.characterId !== effect.target) return state;
+    if (!state.party.some(member => member.definitionId === trigger.targetId && member.currentHp > 0)) return state;
+    return { ...state, buffResources: { ...state.buffResources, timedCharacterModifiers: [
+      ...state.buffResources.timedCharacterModifiers.filter(entry => !(entry.sourceId === buff.id && entry.characterId === trigger.targetId && entry.stat === effect.stat)),
+      { sourceId: buff.id, characterId: trigger.targetId, stat: effect.stat, value: effect.value * stacks, remainingMs: effect.durationMs },
+    ] } };
+  },
   'ability-action-delay': (state, effect, stacks, trigger, buff) => {
     if (effect.type !== 'ability-action-delay' || trigger.type !== 'ability-hit' || trigger.characterId !== effect.target) return state;
     let next = state;

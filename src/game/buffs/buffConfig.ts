@@ -9,9 +9,11 @@ export const BUFF_CONFIG = {
   maxPendingFrostDelayMs: 10000,
   arcaneBurnDurationMs: 5000,
   arcaneBurnIntervalMs: 1000,
+  healDefenseDurationMs: 20000,
+  healAttackDurationMs: 20000,
   rarityWeights: {
     battle: { common: 40, uncommon: 30, rare: 19, epic: 8, legendary: 3 },
     elite: { common: 14, uncommon: 35, rare: 26, epic: 19, legendary: 6 },
   } satisfies Record<string, Record<BuffRarity, number>>,
 } as const;
-export const emptyBuffResources = (): BuffCombatResources => ({ counters: {}, shields: {}, gaugeShield: 0, focusRechargeMs: [], timedPartyModifiers: {}, attackThresholdReduction: 0, nextNormalAoe: {}, abilityAttackGrowth: {} });
+export const emptyBuffResources = (): BuffCombatResources => ({ counters: {}, shields: {}, gaugeShield: 0, focusRechargeMs: [], timedPartyModifiers: {}, timedCharacterModifiers: [], attackThresholdReduction: 0, nextNormalAoe: {}, abilityAttackGrowth: {} });

@@ -124,7 +124,7 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 
 各カードで取得可能なレアリティを重み付き抽選し、そのプールから1種類を選びます。選択済み候補・取得済みUnique・最大Stackは除外。空になったレアリティの重みは残りへ再配分するため、2・3枚目や取得状況に応じて実際の確率は変わります。候補が2個以下なら残りのみ表示し、0個なら追加60 Goldと通常の「次の階へ」を表示します。
 
-### Run Buff（47種類）
+### Run Buff（54種類）
 
 | 対象 | 名前 | 効果（1 Stack） |
 | --- | --- | --- |
@@ -146,6 +146,13 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 | 僧侶 | Healing Prayer | Heal基本回復量 +20% |
 | 僧侶 | Sacred Healing | Healに対象Max HPの5%を追加 |
 | 僧侶 | Guardian Blessing | 実際にHealされた味方の次の被ダメージ −25%・通常攻撃/SPECIAL共通 |
+| Cleric・Common | Sacred Veil | ランダム単体攻撃の対象重み −20% / Stack、最大3 |
+| Cleric・Uncommon | Divine Momentum | Heal対象の通常Attack Gauge +10文字 / Stack / Pulse、最大3 |
+| Cleric・Rare | Sacred Protection | Heal対象のDefense +30% / Stack、20秒。最大3 |
+| Cleric・Epic | Divine Inspiration | Heal対象のAttack +30% / Stack、20秒。最大3 |
+| Cleric・Legendary | Mass Healing | Heal AbilityをParty全体へ適用。Unique |
+| Cleric・Legendary | Resurrection | HealでDown者を復活。単体はDown者をParty順で優先。Unique |
+| Cleric・Legendary | Twin Miracle | 1回のAbilityで固定対象へHealを2Pulse適用。Unique |
 | 武闘家 | Focus | Attack +15% |
 | 武闘家 | Endless Combo | Comboの上乗せ分を25%強化（×1.25なら×1.3125） |
 | 武闘家 | Perfect Form | Combo中のAttack倍率をさらに20%強化、ミスで解除 |
@@ -173,6 +180,24 @@ Battle / Elite / Ambush勝利後は `buff_reward` に移行し、選ぶまで階
 | Knight・Legendary | Perfect Bastion | GUARD必要完成文数 −1、最低1文。Unique |
 
 Guardian Oath / Fortress / Guardian Blessing / Ascendant Rune / Reaper's Blessing / Echoing Assault / Overdrive、および上表でUniqueと記したBuffは最大1個。Frostbind / Arcane Burnは最大2、他は最大3 Stack。同じ補正は基礎値に対して加算します（Power Rune ×2は+10%）。AttackとAbility必要文字数は端数切り上げ・最低5文字、ミスGauge倍率は最低10%。DefenseもEffective Characterで基礎値へ倍率を適用して四捨五入し、既存の敵通常Attack / Heavy Attackから引きます。敵Specialの固定ダメージは従来どおりです。Max HP増加でDownを蘇生しません。
+
+### ClericのHeal対象・Pulse・復活
+
+Cleric専用Buffは既存3種と新7種の合計10種です。Sacred VeilはArcane Veilと同じ `target-weight-modifier` をClericへ適用し、GUARD・最低HP狙いSpecial・全体攻撃を変えません。
+
+`combat/healingAbility.ts` はAbility開始時に対象を固定します。通常は最低HP割合の生存者、Resurrection所持時は最初のDown者を優先し、Mass Healingなら生存者全員（Resurrection併用でDown者も全員）です。Twin Miracleはこの同じ対象集合へ2回Pulseを実行し、2回目に対象を選び直しません。Ability Charge消費・Cast Event・`ability-resolved` Triggerは1回だけです。
+
+各PulseではHealing Prayerで補正済みのHeal基本量に、対象のEffective Max HPから求めたSacred Healing追加分を足し、対象ごとに通常の回復量を適用します。`partyRecovery.ts` のHP/Revive処理はRest・Buff回復とも共用し、過回復を防ぎ、復活時は最低HP1・最大Effective Max HPへClamp。現在BattleのAttack / Ability Gaugeを保持し、消失したGuardは復元しません。
+
+実回復があったときだけ `ally-heal` Eventと従来の `heal` Triggerを発火し、Guardian Blessingを付与します。これとは別の `heal-target` Trigger（actualHeal / wasRevived / pulse付き）がDivine Momentum・Protection・Inspirationを処理するため、Full HPでも対象支援は発動します。復活できないDown者は対象外です。Rest / Potion / Guard / Streak HealがこのHeal Ability用支援を連鎖させることはありません。
+
+MomentumはPulseごとに固定10文字 × Stackを加算し、Overdriveを掛けません。全Pulse解決後に共通の `resolveReadyAllyAttacks()` を1回呼び、既存どおり各生存者のReadyな通常Attackを1回解決して余剰Gaugeを保持します。Twin Miracleで2Stackなら対象へ合計40文字です。
+
+個別Attack / Defense強化は `buffResources.timedCharacterModifiers` にsource Buff / Character / stat / value / remainingMsを保存し、同じ対象・効果の再付与は上書き更新のみ。Party全体のShield Wall / Rallying AegisやStatic Rune、Arcane Power / Focus / Infinite Arcanaと加算で合成します。Combat Tickで20秒を管理し、Battle終了・新Battleで解除します。持続時間は `BUFF_CONFIG.healDefenseDurationMs` / `healAttackDurationMs`、倍率・Charge量・Pulse数はBuff Definitionから調整できます。
+
+Mass Healing + Resurrection + Twin Miracleは、1 Abilityで全員を固定対象にし、1Pulse目でDown全員を復活、2Pulse目で全員を追加回復します。対象支援は各Pulseで発動し、時間制倍率やGuardian Blessingの障壁を二重に積みません。UIはHP/Attack Gauge行へ対象のDefense/Attack補正と残時間を表示し、回復数値を縦に分けて2Pulse・REVIVEが読めるようにします。
+
+全7種は既存の報酬・Shopへ自動参加し、Rarity制限・価格・Stack上限は共通です。`clericBuffs.test.ts` に24テストを追加し、全689テストとビルド成功。`scripts/verify-cleric-buffs.mjs` は明示的デバッグ条件の実入力で、単体の対象固定、3人蘇生と全体2Pulse（8 Heal Event）、個別Timer解除を1920×1080 / 1536×864 / 1366×768で確認します。
 
 ### Mage Abilityの命中・解決と5種の新Buff
 

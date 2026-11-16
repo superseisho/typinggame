@@ -5,6 +5,7 @@ interface Feedback {
   readonly id: number;
   readonly kind: 'damage' | 'heal' | 'buff' | 'debuff' | 'down';
   readonly text: string;
+  readonly healPulse?: number;
 }
 
 function toFeedback(event: CombatEvent, targetId: string): Feedback | null {
@@ -13,7 +14,7 @@ function toFeedback(event: CombatEvent, targetId: string): Feedback | null {
     return { id: event.id, kind: 'damage', text: `-${event.amount ?? 0}` };
   }
   if (event.kind === 'ally-heal' || event.kind === 'enemy-heal') {
-    return { id: event.id, kind: 'heal', text: `+${event.amount ?? 0}` };
+    return { id: event.id, kind: 'heal', text: `${event.wasRevived ? 'REVIVE ' : ''}+${event.amount ?? 0}`, healPulse: event.healPulse };
   }
   if (event.kind === 'ally-buff' || event.kind === 'enemy-buff') {
     return { id: event.id, kind: 'buff', text: 'BUFF UP' };
@@ -52,9 +53,13 @@ export function CombatFeedback({
   // Only a new feedback event restarts its lifetime, not typing/timer renders.
   }, [latestId, targetId]);
 
-  return <>{feedback.map((item, index) => (
+  // Twin/Mass Heal can produce several buffs alongside two heal amounts in one render.
+  // Keep the two amounts legible and show only one generic BUFF UP cue for that burst.
+  const stacked = feedback.some(item => item.healPulse !== undefined);
+  const visible = stacked ? feedback.filter((item, index) => item.kind !== 'buff' || !feedback.slice(0, index).some(previous => previous.kind === 'buff')) : feedback;
+  return <>{visible.map((item, index) => (
     <span className={`combat-feedback combat-feedback--${item.kind}`} key={item.id}
-      style={{ right: `${13 + index * 35}px`, animationDelay: `${index * 35}ms` }}>
+      style={{ right: `${stacked ? 13 : 13 + index * 35}px`, top: stacked ? `${38 + index * 22}px` : undefined, animationDelay: `${index * 35}ms` }}>
       {item.text}
     </span>
   ))}</>;
