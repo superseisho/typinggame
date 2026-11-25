@@ -10,6 +10,7 @@ interface Feedback {
 
 function toFeedback(event: CombatEvent, targetId: string): Feedback | null {
   if (event.targetId !== targetId) return null;
+  if (event.comboStageAfter !== undefined) return { id: event.id, kind: 'debuff', text: 'COMBO DOWN' };
   if (event.kind === 'ally-attack' || event.kind === 'ally-ability-damage' || event.kind === 'ally-damaged') {
     return { id: event.id, kind: 'damage', text: `-${event.amount ?? 0}` };
   }

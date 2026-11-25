@@ -336,3 +336,25 @@ Overdriveは `correct-input-charge-multiplier` Effectの値2を `getCorrectInput
 実入力数・完成文数・Combo・Fighterの20/40/80判定・50/100文字Streak・WPM/Accuracyは増幅しません。通常Miss / Protected MissはCharge +0。Overdriveは既存Legendaryの全報酬・Shop抽選へ自動参加し、価格400 Goldと取得済み除外を共用します。`overdrive.test.ts` の14テストを含め全619テスト・ビルド成功。
 
 KnightのCompleted Prompt方式、FighterのCombo方式、Flow / Perfect Rhythmの `perfect-streak` は従来どおりです。Character用ChargeとTypingの連続正解数は独立しており、MissによるFighter解除・敵SPECIAL増加は維持します。`abilityCharge.test.ts` にMiss保持、発動・消費、Down、UI描画、Mana Surge、Streak Buff、階層遷移の回帰テストを追加しました。
+
+### Fighter Buff拡張
+
+Fighter専用は既存3種類を維持して計8種類、全Buffは59種類です。追加した5種類は既存の報酬・Treasure・Altar・Event・Shop抽選、Rarity価格、最大Stack除外を共用します。
+
+| Buff ID | Rarity / 最大Stack | 効果 |
+| --- | --- | --- |
+| `leg-sweep` | Rare / 3 | 通常Attackの各Hitで、実際の命中先のACTIONを2秒/Stack遅延 |
+| `combo-acceleration` | Epic / 2 | FighterのAttack Thresholdを現在Stage×10文字/Stack減少、最低5 |
+| `relentless-fists` | Legendary / 2 | Stage 3以上で通常Attackが2/3連撃 |
+| `limit-break` | Legendary / 3 | 最大Stageを1/Stack拡張。Stage 4=120文字/×1.75、5=160/×2.00、6=200/×2.25 |
+| `combo-resilience` | Legendary / 1 | 通常MissでFighterを下位Stageの開始文字数へ戻す |
+
+Stage表は既存Character定義と `src/data/fighterComboStages.ts` から構成し、`getComboView()` を倍率・Threshold・連撃・PartyPanelで共用します。追加StageにもEndless Combo / Perfect Formを同じ計算式で適用。Attack ThresholdはPercentage補正の切り上げ→既存Battle Flat補正→Stage由来Flat補正→最低5の順です。
+
+Fighterの `comboCorrectCount` は初期値nullで実入力Streakに追従し、Resilience発動後は独立した文字数を保持します。通常Missでは全体の `typing.currentCombo` は0へ戻り、Flow / Perfect Rhythm / Vital Rhythm / Seal Rhythmは実際のStreakを再構築します。Unbroken Focusの保護判定を先に行い、保護中はFighterも全体Streakも維持。保護なしではResilienceがStageを1段階下げ、敵SPECIAL増加・Curse等の通常Penaltyは維持します。Overdriveは独立Combo文字数も増幅しません。
+
+通常AttackはGaugeを1回消費して連撃を順に解決し、各Hitで既存Cover・Defense・Death・Auto Retargetを通します。Echoing Assaultはアクションごとに1抽選、Reaper's Blessingは各Hit/対象ごと（Boss除外）。最終撃破で残りHitを中止します。Leg SweepとFrostbindは共通の `delayEnemyAction()` を使い、Frostbindだけ未消化10秒上限を持ちます。Leg Sweepは上限なしで加算でき、NEXT/Specialは変更しません。
+
+戦闘終了でFighter進行・敵Delayを解除し、次BattleはCombo 0から開始します。PartyPanelは `S6/6`・倍率・`3 HIT` と実効Attack Thresholdを表示し、Resilienceでは `COMBO DOWN` を表示します。
+
+検証: `fighterBuffs.test.ts` に35テスト追加、全724テスト・TypeScript/Viteビルド成功。`scripts/verify-fighter-buffs.mjs` のChromium Debug戦闘で、200文字の実入力、Stage 6、3連撃/18秒遅延、Unbroken Focus優先、連続MissでStage 5→4→3→2を確認。1920×1080 / 1536×864 / 1366×768でTyping/Partyの画面内表示とGaugeラベル、ブラウザエラーなしを確認しました。

@@ -1,4 +1,5 @@
 import { getEffectiveCharacter, getComboMultiplier } from '../game/buffs/buffModifiers';
+import { getComboView, getNormalAttackHitCount } from '../game/combat/fighterCombo';
 import type { CharacterDefinition, CombatState } from '../types/game';
 import { CharacterStateArt } from './CharacterStateArt';
 import { CombatFeedback } from './CombatFeedback';
@@ -17,9 +18,10 @@ function abilityView(character: CharacterDefinition, combat: CombatState) {
     const value = combat.party.find(member => member.definitionId === character.id)?.abilityCharge ?? 0;
     return { value, max: trigger.threshold, text: `${value} / ${trigger.threshold}` };
   }
-  const combo = combat.typing.currentCombo;
+  const combo = getComboView(combat, character.id);
   const multiplier = getComboMultiplier(combat, character.id);
-  return { value: Math.min(combo, trigger.thresholds.at(-1) ?? 80), max: trigger.thresholds.at(-1) ?? 80, text: `×${multiplier.toFixed(multiplier === 1 ? 1 : 2)}` };
+  return { value: Math.min(combo.count, combo.stages.at(-1)?.threshold ?? 80), max: combo.stages.at(-1)?.threshold ?? 80,
+    text: `S${combo.stage}/${combo.maxStage} · ×${multiplier.toFixed(multiplier === 1 ? 1 : 2)}` };
 }
 
 export function PartyPanel({ combat }: { readonly combat: CombatState }) {
@@ -40,6 +42,7 @@ export function PartyPanel({ combat }: { readonly combat: CombatState }) {
           const hpRatio = member.currentHp / character.stats.maxHp;
           const knockedOut = member.currentHp <= 0;
           const ability = abilityView(character, combat);
+          const hitCount = getNormalAttackHitCount(combat, member.definitionId);
           const personalLabel = (stat: 'attack' | 'defense') => {
             const active = combat.buffResources.timedCharacterModifiers.filter(effect => effect.characterId === member.definitionId && effect.stat === stat && effect.remainingMs > 0);
             return active.length ? ` · ${stat === 'attack' ? 'ATK' : 'DEF'} +${Math.round(active.reduce((sum, effect) => sum + effect.value, 0) * 100)}% ${(Math.min(...active.map(effect => effect.remainingMs)) / 1000).toFixed(1)}s` : '';
@@ -67,7 +70,7 @@ export function PartyPanel({ combat }: { readonly combat: CombatState }) {
                 <ProgressBar value={member.attackCharge} max={character.attackThreshold} tone="attack" compact label={`${character.name}の攻撃ゲージ`} />
               </div>
               <div className="ability-state">
-                <div><span>{character.ability.name}{member.guardCharges > 0 ? ` ×${member.guardCharges}` : ''}</span><strong>{knockedOut ? 'STOP' : ability.text}</strong></div>
+                <div><span>{character.ability.name}{member.guardCharges > 0 ? ` ×${member.guardCharges}` : ''}{hitCount > 1 ? ` · ${hitCount} HIT` : ''}</span><strong>{knockedOut ? 'STOP' : ability.text}</strong></div>
                 <ProgressBar value={knockedOut ? 0 : ability.value} max={ability.max} tone="ability" compact label={`${character.name}のAbility状態`} />
               </div>
               <StatusChips statuses={[

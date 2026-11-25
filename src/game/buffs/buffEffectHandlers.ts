@@ -7,6 +7,7 @@ import { appendEvent } from '../combat/combatEvents';
 import { getEffectiveCharacter } from './buffModifiers';
 import { BUFF_CONFIG } from './buffConfig';
 import { recoverPartyMember } from '../combat/partyRecovery';
+import { delayEnemyAction } from '../combat/actionDelay';
 
 export type BuffTrigger =
   | { type: 'guard'; characterId: CharacterId; attackerEnemyInstanceId: string }
@@ -14,6 +15,7 @@ export type BuffTrigger =
   | { type: 'heal-target'; characterId: CharacterId; targetId: CharacterId; actualHeal: number; wasRevived: boolean; pulse: number }
   | { type: 'perfect-streak'; streak: number }
   | { type: 'ability-hit'; characterId: CharacterId; targetIds: readonly string[]; attackSnapshot: number }
+  | { type: 'normal-attack-hit'; characterId: CharacterId; targetIds: readonly string[] }
   | { type: 'ability-resolved'; characterId: CharacterId };
 
 function announce(state: CombatState, buff: BuffDefinition, targetId?: string): CombatState {
@@ -31,6 +33,15 @@ export function healFromBuff(state: CombatState, targetId: CharacterId, amount: 
 
 type Handler = (state: CombatState, effect: BuffEffect, stacks: number, trigger: BuffTrigger, buff: BuffDefinition) => CombatState;
 const handlers: Partial<Record<BuffEffect['type'], Handler>> = {
+  'normal-attack-action-delay': (state, effect, stacks, trigger, buff) => {
+    if (effect.type !== 'normal-attack-action-delay' || trigger.type !== 'normal-attack-hit' || effect.target !== trigger.characterId) return state;
+    let next = state;
+    for (const id of trigger.targetIds) {
+      const delayed = delayEnemyAction(next, id, effect.value * stacks);
+      if (delayed !== next) next = announce(delayed, buff, id);
+    }
+    return next;
+  },
   'heal-attack-charge': (state, effect, stacks, trigger, buff) => {
     if (effect.type !== 'heal-attack-charge' || trigger.type !== 'heal-target' || trigger.characterId !== effect.target) return state;
     if (!state.party.some(member => member.definitionId === trigger.targetId && member.currentHp > 0)) return state;
@@ -49,13 +60,8 @@ const handlers: Partial<Record<BuffEffect['type'], Handler>> = {
     if (effect.type !== 'ability-action-delay' || trigger.type !== 'ability-hit' || trigger.characterId !== effect.target) return state;
     let next = state;
     for (const id of trigger.targetIds) {
-      const enemy = next.enemies.find(e => e.instanceId === id && e.currentHp > 0);
-      if (!enemy) continue;
-      const delay = Math.max(0, Math.min(effect.value * stacks, BUFF_CONFIG.maxPendingFrostDelayMs - enemy.pendingFrostDelayMs));
-      if (!delay) continue;
-      next = announce({ ...next, enemies: next.enemies.map(e => e.instanceId === id ? { ...e,
-        pendingFrostDelayMs: e.pendingFrostDelayMs + delay, actionRemainingMs: e.actionRemainingMs + delay, actionDurationMs: e.actionDurationMs + delay,
-      } : e) }, buff, id);
+      const delayed = delayEnemyAction(next, id, effect.value * stacks, BUFF_CONFIG.maxPendingFrostDelayMs);
+      if (delayed !== next) next = announce(delayed, buff, id);
     }
     return next;
   },

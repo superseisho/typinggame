@@ -12,7 +12,8 @@ import { areEnemiesDefeated, isPartyDefeated } from './combatSelectors';
 import { chooseEnemyAbility, executeEnemyAbility } from './enemyAbilityEngine';
 import { selectRandomPartyTarget } from './targeting';
 import { ensureValidEnemyTarget, resolveCurrentEnemyTarget } from './enemyTarget';
-import { cleanupEnemyState, resolveEnemyDamage, resolveEnemyDamageWithHits } from './enemyDamage';
+import { cleanupEnemyState, resolveEnemyDamageWithHits, resolveNormalAttackMode } from './enemyDamage';
+import { getComboView, getNormalAttackHitCount } from './fighterCombo';
 import { tickEnemyBurns } from './damageOverTime';
 import { performEnemySkill, planEnemyAction } from './enemySkillEngine';
 import { drawSentence } from '../typing/sentenceDeck';
@@ -83,7 +84,8 @@ export function startCombat(state: CombatState, now = Date.now()): CombatState {
   state = { ...state, status: 'active', sentenceDeck: drawn.deck,
     lastMissProtected: false,
     buffResources: { ...emptyBuffResources(), focusRechargeMs: Array(getBuffEffectValue(state.runBuffs, 'miss-protection')).fill(0) },
-    party: state.party.map(member => ({ ...member, guardCharges: 0, statuses: member.statuses.filter(status => status !== 'ability:guard') })),
+    party: state.party.map(member => ({ ...member, comboCorrectCount: null, guardCharges: 0,
+      statuses: member.statuses.filter(status => status !== 'ability:guard' && !(CHARACTERS_BY_ID[member.definitionId].ability.visual.kind === 'combo' && status === `${ABILITY_STATUS_PREFIX}${CHARACTERS_BY_ID[member.definitionId].ability.id}`)) })),
     typing: createTypingEngineState(TYPING_SENTENCES_BY_ID[drawn.sentenceId]) };
   for (let index = 0; index < state.enemies.length; index++) state = planEnemyAction(state, index);
   return appendEvent(
@@ -108,24 +110,33 @@ export function applyTypingMiss(
     }, 'typing-miss', 'PROTECTED · Unbroken Focusがミスの戦闘ペナルティを防いだ。', { abilityId: 'unbroken-focus' });
   }
   const gaugeGain = Math.max(0, (GAME_CONFIG.enemySpecialGaugeOnMiss + state.typingCurseBonus) * Math.max(BUFF_CONFIG.minMissGaugeMultiplier, 1 + getBuffModifier(state.runBuffs, 'missGauge', 'warrior')) - state.buffResources.gaugeShield);
+  const comboAfterMiss = (member: CombatState['party'][number]) => {
+    const lost = getTargetedBuffValue(state.runBuffs, 'combo-miss-stage-loss', member.definitionId);
+    if (lost <= 0) return null;
+    const combo = getComboView(state, member.definitionId);
+    const stage = Math.max(0, combo.stage - lost);
+    return stage > 0 ? combo.stages[stage - 1].threshold : 0;
+  };
   const endedComboUsers = state.party.filter((member) => {
     const character = CHARACTERS_BY_ID[member.definitionId];
     return character.ability.visual.kind === 'combo'
-      && member.statuses.includes(`${ABILITY_STATUS_PREFIX}${character.ability.id}`);
+      && member.statuses.includes(`${ABILITY_STATUS_PREFIX}${character.ability.id}`)
+      && (comboAfterMiss(member) ?? 0) === 0;
   });
   let nextState = appendEvent(
     {
       ...state,
       lastMissProtected: false,
-      typing,
+      typing: { ...typing, currentCombo: 0 },
       buffResources: { ...state.buffResources, gaugeShield: 0 },
       party: state.party.map((member) => {
         const character = CHARACTERS_BY_ID[member.definitionId];
         return character.ability.visual.kind !== 'combo' ? member : {
           ...member,
-          statuses: member.statuses.filter(
-            (status) => status !== `${ABILITY_STATUS_PREFIX}${character.ability.id}`,
-          ),
+          comboCorrectCount: comboAfterMiss(member),
+          statuses: (comboAfterMiss(member) ?? 0) > 0
+            ? [...member.statuses.filter(s => s !== `${ABILITY_STATUS_PREFIX}${character.ability.id}`), `${ABILITY_STATUS_PREFIX}${character.ability.id}`]
+            : member.statuses.filter(s => s !== `${ABILITY_STATUS_PREFIX}${character.ability.id}`),
         };
       }),
       enemies: state.enemies.map((enemy) => enemy.currentHp <= 0 ? enemy : {
@@ -139,6 +150,14 @@ export function applyTypingMiss(
     'typing-miss',
     '入力ミス — 敵の特殊ゲージが上昇した。',
   );
+
+  for (const member of state.party) {
+    if (getTargetedBuffValue(state.runBuffs, 'combo-miss-stage-loss', member.definitionId) <= 0 || getComboView(state, member.definitionId).stage <= 0) continue;
+    const after = getComboView(nextState, member.definitionId);
+    nextState = appendEvent(nextState, 'ally-debuff', `COMBO DOWN · STAGE ${after.stage}`, {
+      targetId: member.definitionId, abilityId: CHARACTERS_BY_ID[member.definitionId].ability.id, comboStageAfter: after.stage,
+    });
+  }
 
   for (const member of endedComboUsers) {
     const character = CHARACTERS_BY_ID[member.definitionId];
@@ -188,10 +207,11 @@ export function applyCorrectTyping(
     lastMissProtected: false,
     typing,
     party: state.party.map((character) => {
-      if (character.currentHp <= 0) return character;
+      const comboCorrectCount = character.comboCorrectCount === null ? null : character.comboCorrectCount + 1;
+      if (character.currentHp <= 0) return { ...character, comboCorrectCount };
       const trigger = getEffectiveCharacter(state, character.definitionId).ability.trigger;
       const abilityGain = trigger.type === 'correct-characters' || (completedPrompt && trigger.type === 'completed-prompts') ? charge : 0;
-      return { ...character, attackCharge: character.attackCharge + charge, abilityCharge: character.abilityCharge + abilityGain };
+      return { ...character, comboCorrectCount, attackCharge: character.attackCharge + charge, abilityCharge: character.abilityCharge + abilityGain };
     }),
   };
   nextState = appendEvent(nextState, 'typing-correct', '正解入力', {}, false);
@@ -236,7 +256,8 @@ export function applyCorrectTyping(
       }
       continue;
     }
-    if (trigger.thresholds.some((threshold) => threshold === typing.currentCombo)) {
+    const combo = getComboView(nextState, character.id);
+    if (combo.stages.some(stage => stage.threshold === combo.count)) {
       nextState = triggerAllyAbility(
         nextState,
         character.id,
@@ -281,10 +302,9 @@ export function resolveReadyAllyAttacks(state: CombatState, now = Date.now()): C
     nextState = ensureValidEnemyTarget(nextState);
     const target = resolveCurrentEnemyTarget(nextState);
     if (!target) break;
-    const comboMultiplier = getComboMultiplier(nextState, character.id);
     const counterBonus = nextState.buffResources.counters[character.id] ?? 0;
-    const power = Math.round(character.stats.attack * comboMultiplier * (1 + counterBonus));
     const guaranteedAoe = nextState.buffResources.nextNormalAoe[character.id] ?? false;
+    const hitCount = getNormalAttackHitCount(nextState, character.id);
     nextState = {
       ...nextState,
       party: nextState.party.map((member, index) => index === partyIndex
@@ -296,14 +316,19 @@ export function resolveReadyAllyAttacks(state: CombatState, now = Date.now()): C
       buffResources: { ...nextState.buffResources, counters: { ...nextState.buffResources.counters, [character.id]: 0 },
         nextNormalAoe: { ...nextState.buffResources.nextNormalAoe, [character.id]: false } },
     };
-    nextState = resolveEnemyDamage(nextState, { targetIds: guaranteedAoe ? nextState.enemies.filter(e => e.currentHp > 0).map(e => e.instanceId) : [target.instanceId], power,
-      kind: 'ally-attack', label: `${character.name}の攻撃`, actorId: character.id, soundId: character.audio.attack, directCharacterDamage: true, guaranteedAoe });
-    if (areEnemiesDefeated(nextState.enemies)) {
-      return appendEvent(
-        cleanupEnemyState({ ...nextState, targetEnemyId: null, status: 'victory', stats: { ...nextState.stats, endedAt: now } }),
-        'victory',
-        '敵部隊を殲滅した。',
-      );
+    const mode = resolveNormalAttackMode(nextState, guaranteedAoe);
+    nextState = mode.state;
+    for (let hit = 1; hit <= hitCount; hit++) {
+      const current = resolveCurrentEnemyTarget(nextState);
+      if (!current) break;
+      const attacker = getEffectiveCharacter(nextState, character.id);
+      const power = Math.round(attacker.stats.attack * getComboMultiplier(nextState, character.id) * (1 + counterBonus));
+      const damage = resolveEnemyDamageWithHits(nextState, { targetIds: mode.aoe ? nextState.enemies.filter(e => e.currentHp > 0).map(e => e.instanceId) : [current.instanceId], power,
+        kind: 'ally-attack', label: `${character.name}の攻撃`, actorId: character.id, soundId: character.audio.attack, directCharacterDamage: true,
+        echoResolved: true, hitIndex: hit, hitCount });
+      nextState = handleBuffTrigger(damage.state, { type: 'normal-attack-hit', characterId: character.id, targetIds: damage.hitReceiverIds });
+      nextState = finishIfVictorious(nextState, now);
+      if (nextState.status !== 'active') return nextState;
     }
   }
   return ensureValidEnemyTarget(nextState);

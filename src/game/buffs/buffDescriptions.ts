@@ -12,6 +12,11 @@ export function describeBuffTotals(buff: BuffDefinition, stacks: number): string
     const value = effect.value * stacks;
     const percent = Math.round(value * 100);
     switch (effect.type) {
+      case 'normal-attack-action-delay': return `通常Attackの各命中でACTION +${value / 1000}秒`;
+      case 'combo-stage-threshold-reduction': return `Combo StageごとにAttack必要文字数 −${value}（最低5）`;
+      case 'combo-stage-multihit': return `Stage ${effect.activationStage}以上で通常Attack ${1 + value} Hits`;
+      case 'max-combo-stage-increase': return `最大Combo Stage +${value}`;
+      case 'combo-miss-stage-loss': return `保護されないMissでFLOW Stage −${value}、下位Stage開始へ戻る`;
       case 'heal-attack-charge': return `Heal対象のAttack Gauge +${value}文字 / Pulse`;
       case 'heal-timed-modifier': return `Heal対象の${statNames[effect.stat]} +${percent}% / ${effect.durationMs / 1000}秒（再付与で更新）`;
       case 'heal-all-targets': return 'Heal AbilityがParty全体対象';

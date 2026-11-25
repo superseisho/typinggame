@@ -38,8 +38,8 @@ describe('Knight successful guard buffs', () => {
   it('defines exactly eight additions with the required rarity and stack caps', () => {
     const expected = [['shield-wall','common',1], ['guardians-grace','uncommon',3], ['shield-momentum','rare',3],
       ['retribution','epic',1], ['rallying-aegis','epic',1], ['relentless-advance','epic',1], ['twin-aegis','legendary',1], ['perfect-bastion','legendary',1]] as const;
-    expect(BUFF_DEFINITIONS).toHaveLength(54);
-    expect(new Set(BUFF_DEFINITIONS.map(b => b.id)).size).toBe(54);
+    expect(BUFF_DEFINITIONS).toHaveLength(59);
+    expect(new Set(BUFF_DEFINITIONS.map(b => b.id)).size).toBe(59);
     for (const [id, rarity, maxStacks] of expected) expect(BUFFS_BY_ID[id]).toMatchObject({ rarity, maxStacks, categories: expect.arrayContaining(['Knight']) });
   });
   it('GUARD readiness alone does not trigger successful-guard effects', () => {

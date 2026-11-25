@@ -7,8 +7,8 @@ export function syncGuardState(state: CombatState): CombatState {
     buffResources: ended ? { ...state.buffResources, timedPartyModifiers: {}, timedCharacterModifiers: [], attackThresholdReduction: 0, nextNormalAoe: {}, abilityAttackGrowth: {} } : state.buffResources,
     party: state.party.map(member => {
       const guardCharges = ended || member.currentHp <= 0 ? 0 : member.guardCharges;
-      const statuses = member.statuses.filter(status => status !== 'ability:guard');
-      return { ...member, guardCharges, statuses: guardCharges > 0 ? [...statuses, 'ability:guard'] : statuses };
+      const statuses = member.statuses.filter(status => status !== 'ability:guard' && !(ended && status === 'ability:flow-combo'));
+      return { ...member, comboCorrectCount: ended ? 0 : member.comboCorrectCount, guardCharges, statuses: guardCharges > 0 ? [...statuses, 'ability:guard'] : statuses };
     }),
   };
 }

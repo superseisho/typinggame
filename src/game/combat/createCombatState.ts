@@ -44,6 +44,7 @@ export function createCombatState(enemyIds: readonly string[] = GAME_CONFIG.firs
     buffResources: emptyBuffResources(),
     status: 'ready',
     party: CHARACTER_DEFINITIONS.map((character) => ({
+      comboCorrectCount: null,
       guardCharges: 0,
       definitionId: character.id,
       currentHp: character.stats.maxHp,

@@ -155,6 +155,8 @@ export interface EnemyDefinition {
 }
 
 export interface CharacterCombatState {
+  /** null follows the typing streak; a Resilience miss forks an independent FLOW count. */
+  readonly comboCorrectCount: number | null;
   readonly guardCharges: number;
   readonly definitionId: CharacterId;
   readonly currentHp: number;
@@ -219,6 +221,9 @@ export type CombatEventKind =
   | 'defeat';
 
 export interface CombatEvent {
+  readonly comboStageAfter?: number;
+  readonly hitIndex?: number;
+  readonly hitCount?: number;
   readonly healPulse?: number;
   readonly wasRevived?: boolean;
   readonly skillId?: string;

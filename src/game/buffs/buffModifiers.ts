@@ -3,6 +3,9 @@ import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
 import type { BuffEffect, BuffStat, RunBuff } from '../../types/buffs';
 import type { CharacterDefinition, CharacterId, CombatState } from '../../types/game';
 import { BUFF_CONFIG } from './buffConfig';
+import { getTargetedBuffValue } from './buffValues';
+import { getComboView, type ComboState } from '../combat/fighterCombo';
+export { getTargetedBuffValue } from './buffValues';
 
 export function getBuffModifier(buffs: readonly RunBuff[], stat: BuffStat, target: CharacterId): number {
   return buffs.reduce((total, buff) => total + (BUFFS_BY_ID[buff.buffId]?.effects ?? []).reduce((sum, effect) =>
@@ -23,7 +26,7 @@ export function getCorrectInputChargeMultiplier(buffs: readonly RunBuff[]): numb
 }
 
 /** Pure derived definition: base data, art and run buffs are never mutated. */
-export function getEffectiveCharacter(state: Pick<CombatState, 'runBuffs'> & Partial<Pick<CombatState, 'buffResources'>>, id: CharacterId): CharacterDefinition {
+export function getEffectiveCharacter(state: ComboState & Partial<Pick<CombatState, 'buffResources'>>, id: CharacterId): CharacterDefinition {
   const base = CHARACTERS_BY_ID[id];
   const modifier = (stat: BuffStat) => {
     const temporary = stat === 'attack' || stat === 'defense' ? state.buffResources?.timedPartyModifiers[stat] : undefined;
@@ -35,7 +38,8 @@ export function getEffectiveCharacter(state: Pick<CombatState, 'runBuffs'> & Par
   return { ...base,
     stats: { ...base.stats, attack: Math.round(base.stats.attack * modifier('attack')), maxHp: Math.round(base.stats.maxHp * modifier('maxHp')),
       defense: Math.round(base.stats.defense * modifier('defense')) },
-    attackThreshold: Math.max(BUFF_CONFIG.minAttackThreshold, Math.ceil(base.attackThreshold * modifier('attackThreshold')) - (state.buffResources?.attackThresholdReduction ?? 0)),
+    attackThreshold: Math.max(BUFF_CONFIG.minAttackThreshold, Math.ceil(base.attackThreshold * modifier('attackThreshold')) - (state.buffResources?.attackThresholdReduction ?? 0)
+      - getComboView(state, id).stage * getTargetedBuffValue(state.runBuffs, 'combo-stage-threshold-reduction', id)),
     ability: { ...base.ability,
       trigger: trigger.type === 'correct-characters' ? { ...trigger, threshold: Math.max(BUFF_CONFIG.minAbilityThreshold, Math.ceil(trigger.threshold * modifier('abilityThreshold'))) }
         : trigger.type === 'completed-prompts' ? { ...trigger, threshold: Math.max(1, trigger.threshold - getTargetedBuffValue(state.runBuffs, 'completed-prompt-threshold-reduction', id)) } : trigger,
@@ -45,18 +49,9 @@ export function getEffectiveCharacter(state: Pick<CombatState, 'runBuffs'> & Par
   };
 }
 
-export function getTargetedBuffValue(buffs: readonly RunBuff[], type: 'guard-extra-charge' | 'completed-prompt-threshold-reduction' | 'target-weight-modifier' | 'heal-all-targets' | 'heal-revive' | 'heal-repeat', id: CharacterId): number {
-  return buffs.reduce((sum, owned) => sum + (BUFFS_BY_ID[owned.buffId]?.effects ?? []).reduce((value, effect) =>
-    value + (effect.type === type && effect.target === id ? effect.value * owned.stacks : 0), 0), 0);
-}
-
 export function getComboMultiplier(state: CombatState, id: CharacterId): number {
-  const base = CHARACTERS_BY_ID[id];
-  const trigger = base.ability.trigger;
-  const effect = base.ability.effects.find(effect => effect.type === 'combo-attack-scaling');
-  if (trigger.type !== 'combo-milestones' || effect?.type !== 'combo-attack-scaling') return 1;
-  const tier = trigger.thresholds.filter(threshold => state.typing.currentCombo >= threshold).length;
-  if (!tier) return 1;
-  const bonus = (effect.multipliers[tier - 1] - 1) * (1 + getBuffModifier(state.runBuffs, 'comboBonus', id));
+  const combo = getComboView(state, id);
+  if (!combo.stage) return 1;
+  const bonus = (combo.multiplier - 1) * (1 + getBuffModifier(state.runBuffs, 'comboBonus', id));
   return (1 + bonus) * (1 + getBuffModifier(state.runBuffs, 'activeAttack', id));
 }

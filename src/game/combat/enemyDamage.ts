@@ -34,6 +34,9 @@ export interface AllyDamage {
   /** Explicitly opt in only for a character's own normal attack or damage ability, never Buff procs. */
   readonly directCharacterDamage?: boolean;
   readonly guaranteedAoe?: boolean;
+  readonly echoResolved?: boolean;
+  readonly hitIndex?: number;
+  readonly hitCount?: number;
   readonly damageType?: 'direct' | 'dot';
 }
 
@@ -42,15 +45,22 @@ export function resolveEnemyDamage(state: CombatState, attack: AllyDamage): Comb
 }
 
 /** Actual receivers, not UI events or intended targets, are the source for on-hit effects. */
-export function resolveEnemyDamageWithHits(state: CombatState, attack: AllyDamage): { state: CombatState; hitTargetIds: readonly string[] } {
+export function resolveNormalAttackMode(state: CombatState, guaranteedAoe: boolean) {
+  const chance = guaranteedAoe ? 0 : getBuffEffectValue(state.runBuffs, 'normal-aoe');
+  if (chance <= 0) return { state, aoe: guaranteedAoe };
+  const roll = randomStep(state.buffRngState);
+  return { state: { ...state, buffRngState: roll.seed }, aoe: roll.value < chance };
+}
+
+export function resolveEnemyDamageWithHits(state: CombatState, attack: AllyDamage): { state: CombatState; hitTargetIds: readonly string[]; hitReceiverIds: readonly string[] } {
   const hitTargetIds = new Set<string>();
+  const hitReceiverIds: string[] = [];
   let targetIds = attack.targetIds;
   const direct = attack.directCharacterDamage && attack.damageType !== 'dot';
-  const echoChance = direct && attack.kind === 'ally-attack' && !attack.guaranteedAoe ? getBuffEffectValue(state.runBuffs, 'normal-aoe') : 0;
-  if (echoChance > 0) {
-    const roll = randomStep(state.buffRngState);
-    state = { ...state, buffRngState: roll.seed };
-    if (roll.value < echoChance) targetIds = state.enemies.filter(e => e.currentHp > 0).map(e => e.instanceId);
+  if (direct && attack.kind === 'ally-attack' && !attack.echoResolved) {
+    const mode = resolveNormalAttackMode(state, attack.guaranteedAoe ?? false);
+    state = mode.state;
+    if (mode.aoe) targetIds = state.enemies.filter(e => e.currentHp > 0).map(e => e.instanceId);
   }
   const routes = attack.damageType === 'dot'
     ? targetIds.filter(id => state.enemies.some(e => e.instanceId === id && e.currentHp > 0)).map(id => ({ originalTargetId: id, receiverId: id, covered: false }))
@@ -75,12 +85,16 @@ export function resolveEnemyDamageWithHits(state: CombatState, attack: AllyDamag
       instantKill = roll.value < reaperChance;
     }
     const damage = instantKill ? receiver.currentHp : receiver.currentHp > 0 ? Math.max(1, Math.round(attack.power) - (attack.damageType === 'dot' ? 0 : Math.round(definition.defense * receiver.defenseMultiplier))) : 0;
-    if (receiver.currentHp > 0 && damage > 0) hitTargetIds.add(receiver.instanceId);
+    if (receiver.currentHp > 0 && damage > 0) {
+      hitTargetIds.add(receiver.instanceId);
+      hitReceiverIds.push(receiver.instanceId);
+    }
     const hp = Math.max(0, receiver.currentHp - damage);
     next = appendEvent({ ...next, enemies: next.enemies.map(e => e.instanceId === receiver.instanceId ? { ...e, currentHp: hp } : e) },
       attack.kind, `${attack.label} · ${instantKill ? "Reaper's Blessing · 即死" : `${definition.name}へ ${damage} ダメージ。`}`, {
         actorId: attack.actorId, targetId: receiver.instanceId, originalTargetId: route.originalTargetId,
         amount: damage, actualDamage: receiver.currentHp - hp, targetHpAfter: hp, abilityId: attack.abilityId, soundId: attack.soundId,
+        hitIndex: attack.hitIndex, hitCount: attack.hitCount,
       });
   }
   next = { ...next, enemies: next.enemies.map(e => e.cover ? { ...e, cover: {
@@ -91,5 +105,5 @@ export function resolveEnemyDamageWithHits(state: CombatState, attack: AllyDamag
       next = appendEvent(next, 'enemy-defeated', `${ENEMIES_BY_ID[enemy.definitionId].name}を撃破した。`, { targetId: enemy.instanceId });
     }
   }
-  return { state: ensureValidEnemyTarget(cleanupEnemyState(next)), hitTargetIds: [...hitTargetIds] };
+  return { state: ensureValidEnemyTarget(cleanupEnemyState(next)), hitTargetIds: [...hitTargetIds], hitReceiverIds };
 }

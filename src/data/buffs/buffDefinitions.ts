@@ -6,6 +6,11 @@ const define = (id: string, name: string, rarity: BuffRarity, categories: BuffCa
   ({ id, name, rarity, categories, description, effects, stackable: maxStacks > 1, maxStacks });
 
 export const BUFF_DEFINITIONS: readonly BuffDefinition[] = [
+  define('leg-sweep', 'Leg Sweep', 'rare', ['Fighter', 'Utility'], 'Fighterの通常Attackが命中するたび、実命中先の次ACTION +2秒 / Stack。', [{ type: 'normal-attack-action-delay', target: 'martial-artist', value: 2000 }]),
+  define('combo-acceleration', 'Combo Acceleration', 'epic', ['Fighter', 'Typing', 'Offensive'], 'Combo StageごとにFighterの通常Attack必要文字数−10 / Stack。最低5文字。', [{ type: 'combo-stage-threshold-reduction', target: 'martial-artist', value: 10 }], 2),
+  define('relentless-fists', 'Relentless Fists', 'legendary', ['Fighter', 'Offensive'], 'Combo Stage 3以上で通常Attackが2連撃、2Stackで3連撃。Gauge消費は1回分。', [{ type: 'combo-stage-multihit', target: 'martial-artist', activationStage: 3, value: 1 }], 2),
+  define('limit-break', 'Limit Break', 'legendary', ['Fighter', 'Typing', 'Offensive'], 'FLOW COMBO最大Stage +1 / Stack。Stage 4〜6を解放。', [{ type: 'max-combo-stage-increase', target: 'martial-artist', value: 1 }]),
+  define('combo-resilience', 'Combo Resilience', 'legendary', ['Fighter', 'Typing', 'Defensive'], '保護されていないMissでFLOWを1段階低下し、下位Stage開始文字数へ戻す。全体Streakは通常どおり途切れる。', [{ type: 'combo-miss-stage-loss', target: 'martial-artist', value: 1 }], 1),
   define('sacred-veil', 'Sacred Veil', 'common', ['Cleric', 'Defensive'], 'ランダム単体攻撃でClericが狙われる抽選重み−20% / Stack。', [{ type: 'target-weight-modifier', target: 'cleric', value: -.2 }]),
   define('divine-momentum', 'Divine Momentum', 'uncommon', ['Cleric', 'Utility'], 'ClericのHeal対象の通常Attack Gauge +10文字 / Stack。Full HPでも発動。', [{ type: 'heal-attack-charge', target: 'cleric', value: 10 }]),
   define('sacred-protection', 'Sacred Protection', 'rare', ['Cleric', 'Defensive'], `ClericのHeal対象のDefense +30% / Stackを${BUFF_CONFIG.healDefenseDurationMs / 1000}秒付与。再付与で時間更新。`, [{ type: 'heal-timed-modifier', target: 'cleric', stat: 'defense', value: .3, durationMs: BUFF_CONFIG.healDefenseDurationMs }]),

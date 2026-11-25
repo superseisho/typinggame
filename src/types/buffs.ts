@@ -18,6 +18,8 @@ export type BuffEffect =
   | { readonly type: 'ability-damage-over-time'; readonly target: CharacterId; readonly value: number; readonly durationMs: number; readonly intervalMs: number }
   | { readonly type: 'heal-attack-charge' | 'heal-all-targets' | 'heal-revive' | 'heal-repeat'; readonly target: CharacterId; readonly value: number }
   | { readonly type: 'heal-timed-modifier'; readonly target: CharacterId; readonly stat: 'attack' | 'defense'; readonly value: number; readonly durationMs: number }
+  | { readonly type: 'normal-attack-action-delay' | 'combo-stage-threshold-reduction' | 'max-combo-stage-increase' | 'combo-miss-stage-loss'; readonly target: CharacterId; readonly value: number }
+  | { readonly type: 'combo-stage-multihit'; readonly target: CharacterId; readonly activationStage: number; readonly value: number }
   | { readonly type: 'miss-protection' | 'instant-kill' | 'normal-aoe' | 'correct-input-charge-multiplier'; readonly value: number };
 export interface BuffDefinition {
   readonly id: string;
