@@ -34,7 +34,9 @@ export function shopItemUnavailable(run: DungeonRunState, item: ShopItem): strin
   if (item.purchased) return 'SOLD OUT';
   if (run.gold < item.price) return 'Not enough Gold';
   if (item.type === 'buff') return canAddBuff(run.activeBuffs, item.buffId) ? null : '最大Stack / 取得済み';
-  return recoveryTargets(run.combat).length ? null : '回復対象なし';
+  const product = RECOVERY_PRODUCTS.find(product => product.id === item.recoveryId);
+  if (!product) return '商品が見つかりません';
+  return recoveryTargets(run.combat, product.effect === 'revive').length ? null : product.effect === 'revive' ? '蘇生対象なし' : '回復対象なし';
 }
 
 export function purchaseShopItem(run: DungeonRunState, itemId: string, targetId?: CharacterId): DungeonRunState {
@@ -51,8 +53,9 @@ export function purchaseShopItem(run: DungeonRunState, itemId: string, targetId?
   } else {
     const product = RECOVERY_PRODUCTS.find(product => product.id === item.recoveryId);
     if (!product) return run;
-    if (product.target === 'single' && (!targetId || !recoveryTargets(combat).some(member => member.definitionId === targetId))) return run;
-    combat = recoverParty(combat, product.ratio, product.target === 'single' ? targetId : undefined);
+    const revive = product.effect === 'revive';
+    if (product.target === 'single' && (!targetId || !recoveryTargets(combat, revive).some(member => member.definitionId === targetId))) return run;
+    combat = recoverParty(combat, product.ratio, product.target === 'single' ? targetId : undefined, revive);
     name = product.name;
   }
   return { ...run, combat, activeBuffs, gold: run.gold - item.price,

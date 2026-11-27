@@ -260,9 +260,11 @@ Global / Legendary拡張は `globalLegendary.test.ts` で倍率・HP増加・100
 
 ### Shop：Goldで必要なものを選ぶ
 
-`shopConfig.ts` の設定から入室時に4商品（回復2＋Buff2）を抽選し、`run.shop` に固定します。回復プールはSmall Potion（60 Gold / 生存者1人30%）、Large Potion（100 Gold / 生存者1人60%）、Party Potion（120 Gold / 生存者全員20%）。単体商品は購入前に対象を選択し、Down・全快を対象から除外。全体回復もDownを蘇生しません。
+`shopConfig.ts` の設定から入室時に8商品（回復・蘇生2＋Buff6）を抽選し、`run.shop` に固定します。回復プールはSmall Potion（60 Gold / 生存者1人30%）、Large Potion（100 Gold / 生存者1人60%）、Party Potion（120 Gold / 生存者全員20%）、Revival Potion（180 Gold / Down1人をEffective Max HPの30%・切り上げで蘇生）。4商品から等確率・重複なしで2種類を抽選します。単体商品は購入前に対象を選択し、通常Potionは負傷した生存者のみ、Revival PotionはDownのみを対象にします。対象選択・蘇生は既存 `recoveryTargets` / `recoverParty` / `recoverPartyMember` を共用し、通常PotionはDownを蘇生しません。蘇生対象不在でも陳列されますが購入できません。
 
-Buff価格はCommon 100 / Uncommon 140 / Rare 200 / Epic 280 / Legendary 400 Gold。抽選比率は44 / 35 / 17 / 3 / 1でRerollも共通です。共通Buff生成器で同一商品内の重複・取得済みUnique・最大Stackを除外します。取得可能なBuffが不足したときは未陳列の回復商品で補完し、それも不足した場合は4個未満になります。
+Buff価格はCommon 100 / Uncommon 140 / Rare 200 / Epic 280 / Legendary 400 Gold。抽選比率は現行Configの40 / 30 / 19 / 8 / 3を維持し、Rerollも共通です。共通Buff生成器で6種類を抽選し、同一商品内の重複・取得済みUnique・最大Stackを除外します。取得可能なBuffが不足したときは未陳列の回復商品で補完し、それも不足した場合は8個未満になります。
+
+陳列は回復2商品を先頭にDesktopで2行4列、1000px以下で2列、600px以下で1列です。長い説明は折り返し、商品・対象選択・Reroll・退出が収まらない場合は中央領域をスクロールできます。Run途中の永続Saveは従来どおり行いません。Shop State形式・商品IDは維持しています。`shopTreasure.test.ts` に蘇生・8枠・候補不足・状態シリアライズの6テストを追加し、既存の購入・Rerollテストを更新しました。全730テストとビルド成功。`scripts/verify-shop-eight.mjs` で1920/1366/820/390px幅の列数、蘇生・キャンセル・SOLD OUT・Buff購入・Reroll・退出をChromium確認済みです。
 
 購入はGoldの支払い・効果適用・SOLD OUT化を1つの純粋な状態更新で処理します。売り切れは暗転、Gold不足は赤系価格と `Not enough Gold` 表示。購入してもShopには残り、複数商品を購入できます。Rerollは固定40 Goldで売り切れも含め全商品を再抽選。新しい陳列では再度同じ商品が出る可能性があります。Reroll時は商品IDの世代を更新し、旧商品の遅延クリックを拒否。350msのUI入力抑制も加えています。`LEAVE SHOP` は購入不要で直接次Floorへ進みます。
 

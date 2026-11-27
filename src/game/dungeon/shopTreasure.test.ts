@@ -10,7 +10,9 @@ import { getTypingDisplay } from '../typing/typingEngine';
 import { applyRunBuffs } from '../buffs/runBuffManager';
 import { generateBuffRewards } from '../buffs/buffRewards';
 import { createDungeonRun, reduceDungeon } from './dungeonEngine';
-import { generateShop } from './shopEngine';
+import { generateShop, shopItemUnavailable } from './shopEngine';
+import { getEffectiveCharacter } from '../buffs/buffModifiers';
+import { recoveryTargets } from './roomResolver';
 import { SHOP_CONFIG, RECOVERY_PRODUCTS } from './shopConfig';
 import { TREASURE_CONFIG } from './treasureConfig';
 import { drawTreasure } from './treasureEngine';
@@ -34,13 +36,17 @@ function withProduct(id: string) {
 }
 
 describe('Shop', () => {
-  it('generates four deterministic fixed items, two recovery and two distinct buffs', () => {
+  it('generates eight deterministic fixed items, two distinct recovery then six distinct buffs', () => {
     for (let seed = 0; seed < 100; seed++) {
       const run = room('shop', createDungeonRun(seed, 'test'));
-      expect(run.shop!.items).toHaveLength(4);
+      expect(run.shop!.items).toHaveLength(8);
       expect(run.shop!.items.filter(item => item.type === 'recovery')).toHaveLength(2);
+      expect(run.shop!.items.slice(0,2).every(item=>item.type==='recovery')).toBe(true);
+      expect(new Set(run.shop!.items.map(item=>item.id)).size).toBe(8);
+      expect(new Set(run.shop!.items.filter(item=>item.type==='recovery').map(item=>item.recoveryId)).size).toBe(2);
       const buffs = run.shop!.items.filter(item => item.type === 'buff');
-      expect(new Set(buffs.map(item => item.buffId)).size).toBe(2);
+      expect(buffs).toHaveLength(6);
+      expect(new Set(buffs.map(item => item.buffId)).size).toBe(6);
       for (const item of buffs) expect(item.price).toBe(SHOP_CONFIG.buffPrices[BUFFS_BY_ID[item.buffId].rarity]);
       expect(generateShop(run)).toEqual(generateShop(run));
       expect(reduceDungeon(run, { type: 'tick', deltaMs: 50, now: 10 })).toBe(run);
@@ -81,7 +87,7 @@ describe('Shop', () => {
     expect(bought.combat.events.filter(event => event.kind === 'ally-heal')).toHaveLength(3);
   });
   it('buys buffs through shared manager, enforces Gold and permits multiple purchases', () => {
-    const run = wounded(room('shop'));
+    const run = { ...wounded(room('shop')), gold: 3000 };
     const buffs = run.shop!.items.filter(item => item.type === 'buff');
     let bought = run;
     for (const item of buffs) {
@@ -91,7 +97,8 @@ describe('Shop', () => {
       expect(bought.activeBuffs.some(buff => buff.buffId === item.buffId)).toBe(true);
       expect(bought.combat.runBuffs).toEqual(bought.activeBuffs);
     }
-    expect(bought.gold).toBe(1000 - buffs.reduce((sum, item) => sum + item.price, 0));
+    expect(buffs).toHaveLength(6);
+    expect(bought.gold).toBe(3000 - buffs.reduce((sum, item) => sum + item.price, 0));
     expect(bought.currentFloor).toBe(1);
   });
   it('rerolls once per revision, charges Gold, rejects stale purchases and leaves freely', () => {
@@ -99,6 +106,10 @@ describe('Shop', () => {
     const action = { type: 'reroll-shop', revision: 0 } as const;
     const rerolled = reduceDungeon(run, action);
     expect(rerolled.gold).toBe(960); expect(rerolled.shop!.rerollCount).toBe(1);
+    expect(rerolled.shop!.items).toHaveLength(8);
+    expect(rerolled.shop!.items.filter(item=>item.type==='recovery')).toHaveLength(2);
+    expect(rerolled.shop!.items.filter(item=>item.type==='buff')).toHaveLength(6);
+    expect(rerolled.rngState).not.toBe(run.rngState);
     expect(rerolled.shop!.items.every(item => !item.purchased)).toBe(true);
     expect(reduceDungeon(rerolled, action)).toBe(rerolled);
     expect(reduceDungeon(rerolled, { type: 'purchase', productId: run.shop!.items[0].id, targetId: 'warrior' })).toBe(rerolled);
@@ -115,6 +126,79 @@ describe('Shop', () => {
     expect(html).toContain('SOLD OUT'); expect(html).toContain('Not enough Gold');
     expect(html).toContain('is-unaffordable'); expect(html).toContain('is-sold'); expect(html).toContain('LEAVE SHOP');
     expect(html.match(/disabled=""/g)).toHaveLength(3);
+  });
+  it('keeps current rarity weights, prices, reroll price and cooldown unchanged', () => {
+    expect(SHOP_CONFIG.buffWeights).toEqual({common:40,uncommon:30,rare:19,epic:8,legendary:3});
+    expect(SHOP_CONFIG.buffPrices).toEqual({common:100,uncommon:140,rare:200,epic:280,legendary:400});
+    expect(SHOP_CONFIG.rerollCost).toBe(40);
+    expect(SHOP_CONFIG.rerollUiCooldownMs).toBe(350);
+  });
+  it('uniformly draws two products without replacement from the four-product pool, including Revival on reroll', () => {
+    expect(RECOVERY_PRODUCTS).toHaveLength(4);
+    const seen=new Set<string>();
+    for(let seed=0;seed<40;seed++) {
+      const initial=room('shop',createDungeonRun(Math.imul(seed,2654435761),'test'));
+      for(const run of [initial,reduceDungeon({...initial,gold:1000},{type:'reroll-shop',revision:0})]) {
+        const stock=run.shop!.items.filter(item=>item.type==='recovery');
+        expect(stock).toHaveLength(2);
+        expect(stock[0].recoveryId).not.toBe(stock[1].recoveryId);
+        stock.forEach(item=>seen.add(item.recoveryId));
+      }
+    }
+    expect([...seen].sort()).toEqual(RECOVERY_PRODUCTS.map(p=>p.id).sort());
+    expect(RECOVERY_PRODUCTS.find(p=>p.effect==='revive')).toMatchObject({id:'revival-potion',price:180,ratio:.3,target:'single'});
+  });
+  it('Revival Potion accepts only a selected Down ally and uses boosted Max HP through shared revival', () => {
+    const base=withProduct('revival-potion');
+    const run={...base,combat:applyRunBuffs(base.combat,[{buffId:'vitality-rune',stacks:3}])};
+    expect(recoveryTargets(run.combat,true).map(p=>p.definitionId)).toEqual(['mage']);
+    expect(reduceDungeon(run,{type:'purchase',productId:'test-stock'})).toBe(run);
+    expect(reduceDungeon(run,{type:'purchase',productId:'test-stock',targetId:'warrior'})).toBe(run);
+    const bought=reduceDungeon(run,{type:'purchase',productId:'test-stock',targetId:'mage'});
+    expect(bought.combat.party[1].currentHp).toBe(Math.ceil(getEffectiveCharacter(run.combat,'mage').stats.maxHp*.3));
+    expect(bought.combat.party.filter(p=>p.definitionId!=='mage')).toEqual(run.combat.party.filter(p=>p.definitionId!=='mage'));
+    expect(bought.combat.party[1].attackCharge).toBe(run.combat.party[1].attackCharge);
+    expect(bought.combat.party[1].abilityCharge).toBe(run.combat.party[1].abilityCharge);
+    expect(bought.gold).toBe(820);
+    expect(bought.shop!.items[0].purchased).toBe(true);
+    expect(bought.combat.events).toContainEqual(expect.objectContaining({targetId:'mage',wasRevived:true,soundId:'ally_heal',amount:bought.combat.party[1].currentHp}));
+    expect(shopItemUnavailable(bought,bought.shop!.items[0])).toBe('SOLD OUT');
+    expect(reduceDungeon(bought,{type:'purchase',productId:'test-stock',targetId:'mage'})).toBe(bought);
+  });
+  it('rejects Revival without Gold or Down targets, with no purchase mutation', () => {
+    const run=withProduct('revival-potion');
+    const poor={...run,gold:179};
+    expect(reduceDungeon(poor,{type:'purchase',productId:'test-stock',targetId:'mage'})).toBe(poor);
+    const alive={...run,combat:{...run.combat,party:run.combat.party.map(p=>({...p,currentHp:1}))}};
+    expect(shopItemUnavailable(alive,alive.shop!.items[0])).toBe('蘇生対象なし');
+    expect(reduceDungeon(alive,{type:'purchase',productId:'test-stock',targetId:'mage'})).toBe(alive);
+    const html=renderToStaticMarkup(createElement(ShopRoom,{run:alive,onPurchase:()=>{},onLeave:()=>{},onReroll:()=>{}}));
+    expect(html).toContain('蘇生対象なし');
+    expect(html).toContain('最大HPの30%で復活');
+    expect(html).not.toContain('蘇生はRestで');
+  });
+  it('keeps unique recovery fallback when fewer than six Buffs remain and never invents capped Buffs', () => {
+    const base=createDungeonRun(42,'test');
+    for(const available of [0,1,5]) {
+      const activeBuffs=BUFF_DEFINITIONS.slice(available).map(b=>({buffId:b.id,stacks:b.maxStacks}));
+      const {shop}=generateShop({...base,activeBuffs});
+      const buffs=shop.items.filter(item=>item.type==='buff');
+      const recovery=shop.items.filter(item=>item.type==='recovery');
+      expect(buffs).toHaveLength(available);
+      expect(recovery).toHaveLength(Math.min(4,8-available));
+      expect(new Set(recovery.map(item=>item.recoveryId)).size).toBe(recovery.length);
+      expect(buffs.every(item=>BUFF_DEFINITIONS.slice(0,available).some(b=>b.id===item.buffId))).toBe(true);
+    }
+  });
+  it('preserves eight-item stock, purchases and RNG through a plain-state serialization round trip', () => {
+    const run={...room('shop'),gold:3000};
+    const item=run.shop!.items.find(item=>item.type==='buff')!;
+    const bought=reduceDungeon(run,{type:'purchase',productId:item.id});
+    const restored: DungeonRunState=JSON.parse(JSON.stringify(bought));
+    expect(restored.shop).toEqual(bought.shop);
+    expect(restored.gold).toBe(bought.gold);
+    expect(reduceDungeon(restored,{type:'purchase',productId:item.id})).toBe(restored);
+    expect(reduceDungeon(restored,{type:'reroll-shop',revision:0})).toEqual(reduceDungeon(bought,{type:'reroll-shop',revision:0}));
   });
 });
 

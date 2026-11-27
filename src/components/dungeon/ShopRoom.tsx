@@ -22,10 +22,12 @@ export function ShopRoom({ run, onPurchase, onLeave, onReroll }: {
   }, [rerollPending]);
   const shop = run.shop;
   if (!shop) return null;
+  const selectedItem = shop.items.find(item => item.id === selected);
+  const selectedProduct = selectedItem?.type === 'recovery' ? RECOVERY_PRODUCTS.find(product => product.id === selectedItem.recoveryId) : undefined;
   return <section className="dungeon-room shop-room" aria-label="Shop">
     <div className="dungeon-heading"><span className="eyebrow">CHOOSE WHAT YOU NEED</span><h1>Shop</h1>
-      <p>回復と祝福をGoldで購入。購入後も店に残れます。蘇生はRestで。 <strong>{run.gold} GOLD</strong></p></div>
-    {selected ? <RecoveryTargetPicker key={selected} combat={run.combat} targets={recoveryTargets(run.combat)}
+      <p>回復・蘇生と祝福をGoldで購入。購入後も店に残れます。 <strong>{run.gold} GOLD</strong></p></div>
+    {selected ? <RecoveryTargetPicker key={selected} combat={run.combat} targets={recoveryTargets(run.combat, selectedProduct?.effect === 'revive')}
       onCancel={() => setSelected(null)} onChoose={id => { onPurchase(selected, id); setSelected(null); }} /> : null}
     {!selected ? <div className="room-grid shop-stock">{shop.items.map(item => {
       const buff = item.type === 'buff' ? BUFFS_BY_ID[item.buffId] : null;
@@ -35,9 +37,9 @@ export function ShopRoom({ run, onPurchase, onLeave, onReroll }: {
       return <button type="button" key={item.id} data-shop-item={item.id}
         className={`room-card shop-product ${buff ? 'rarity-' + buff.rarity : ''} ${item.purchased ? 'is-sold' : run.gold < item.price ? 'is-unaffordable' : ''}`}
         disabled={!!reason || !!selected} onClick={() => product?.target === 'single' ? setSelected(item.id) : onPurchase(item.id)}>
-        <span className="buff-rarity">{buff ? 'Buff · ' + buff.rarity : 'Recovery Item'}</span>
-        <h2>{buff?.name ?? product?.name}</h2><span className="buff-categories">{buff?.categories.join(' · ') ?? (product?.target === 'party' ? 'PARTY · 生存者全員' : 'SINGLE · 生存者1人')}</span>
-        <p>{buff?.description ?? `最大HPの${product!.ratio * 100}%回復。Downは回復しません。`}</p>
+        <span className="buff-rarity">{buff ? 'Buff · ' + buff.rarity : product?.effect === 'revive' ? 'Revival Item' : 'Recovery Item'}</span>
+        <h2>{buff?.name ?? product?.name}</h2><span className="buff-categories">{buff?.categories.join(' · ') ?? (product?.effect === 'revive' ? 'SINGLE · DOWN 1人' : product?.target === 'party' ? 'PARTY · 生存者全員' : 'SINGLE · 生存者1人')}</span>
+        <p>{buff?.description ?? (product?.effect === 'revive' ? `Down状態の味方1人を最大HPの${product.ratio * 100}%で復活させる。` : `最大HPの${product!.ratio * 100}%回復。Downは回復しません。`)}</p>
         <span className="shop-product__purchase"><strong className="shop-price">{item.price} Gold</strong>{buff ? <small>Owned: {owned} / {buff.maxStacks}</small> : null}</span>
         <small>{reason ?? (product?.target === 'single' ? '対象を選んで購入' : '購入する')}</small>
       </button>;

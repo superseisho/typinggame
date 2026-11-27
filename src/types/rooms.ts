@@ -1,10 +1,12 @@
-export interface RecoveryProduct {
+export type RecoveryProduct = {
   readonly id: string;
   readonly name: string;
   readonly price: number;
   readonly ratio: number;
-  readonly target: 'single' | 'party';
-}
+} & (
+  | { readonly effect: 'heal'; readonly target: 'single' | 'party' }
+  | { readonly effect: 'revive'; readonly target: 'single' }
+);
 export type ShopItem = { readonly id: string; readonly price: number; readonly purchased: boolean } & (
   | { readonly type: 'recovery'; readonly recoveryId: string }
   | { readonly type: 'buff'; readonly buffId: string }

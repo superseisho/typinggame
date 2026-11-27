@@ -20,7 +20,7 @@
 .current-buffs small { color: #b6baa7; font-size: 11px; }
 @keyframes blessing-acquired { from { box-shadow: 0 0 0 #b8955000; } to { box-shadow: 0 0 22px #b8955038; } }
 .shop-stock { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.shop-product { border-color: var(--buff-color, #675435); }
+.shop-product { min-width: 0; overflow-wrap: anywhere; border-color: var(--buff-color, #675435); }
 .shop-product.is-unaffordable:disabled { opacity: .7; filter: none; }
 .shop-product.is-unaffordable .shop-price { color: #dc9284; }
 .shop-actions { display: flex; flex-wrap: wrap; align-items: baseline; gap: 15px; }

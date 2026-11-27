@@ -12,7 +12,7 @@ export function RecoveryTargetPicker({ combat, targets, onChoose, onCancel }: {
     <div className="recovery-targets">{targets.map((member) => {
       const character = getEffectiveCharacter(combat, member.definitionId);
       return <button type="button" key={member.definitionId} onClick={() => onChoose(member.definitionId)}>
-        {character.name}<small>HP {member.currentHp} / {character.stats.maxHp}</small>
+        {character.name}<small>{member.currentHp <= 0 ? 'DOWN · ' : ''}HP {member.currentHp} / {character.stats.maxHp}</small>
       </button>;
     })}</div>
     {targets.length === 0 ? <p>回復が必要な生存者はいません。</p> : null}
