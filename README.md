@@ -258,6 +258,18 @@ Global / Legendary拡張は `globalLegendary.test.ts` で倍率・HP増加・100
 
 ## Shop / Treasure
 
+### Second Chance：画面ごとの無料リロール
+
+共通Common `second-chance`（Global / Utility、最大5Stack）は、StackごとにBuff報酬・Shopそれぞれで無料リロールを1回付与します。全Buffは60種類です。効果は `free-reroll` の対象データと `freeRerolls()` から計算し、Buff自体は消費しません。
+
+報酬画面は `buffRewardReroll` に初回のRarity Weight・候補数・Revision・使用済み回数を保持します。通常/Elite/Boss・Treasure/Rare Treasure・Event/Altarで初回と同じGenerator/制限を使用し、再抽選だけではBuff取得・部屋完了・追加コスト支払いを行いません。無料0回ではボタン無効、取得後は非表示です。
+
+Shopの使用回数は `shop.freeRerollsUsed` に独立して保持します。無料残数ありならGold 0でも全商品を再抽選し、無料0回なら従来の40 Gold・350ms UI Cooldownを利用します。商品ID・RNG・Reroll Count・SOLD OUT更新は無料/有料で同じ処理です。Revisionで古い連打を拒否し、無料回数とGoldを同時には消費しません。
+
+新しい報酬・Shopで使用回数を0に初期化します。再描画や再マウントでは回復しません。Run途中の永続Saveは従来どおり対象外ですが、両カウンターと報酬Policyは通常のRun Stateに含まれ、JSON保存・復元で残数を維持します。旧Stateの使用回数は0として扱い、報酬Policyは部屋と選択済みEvent/Altar選択肢から復元します（復元不能な過去のランダム結果は推測して抽選しません）。
+
+`secondChance.test.ts` の23テストを含む全753テスト・TypeScript/Viteビルド成功。`scripts/verify-second-chance.mjs` のChromium確認では両画面のFREE 3→0、Gold 0の無料Shop Reroll、有料40 Goldへの切替、再マウント後の残数保持、8商品維持とブラウザエラーなしを確認しました。
+
 ### Shop：Goldで必要なものを選ぶ
 
 `shopConfig.ts` の設定から入室時に8商品（回復・蘇生2＋Buff6）を抽選し、`run.shop` に固定します。回復プールはSmall Potion（60 Gold / 生存者1人30%）、Large Potion（100 Gold / 生存者1人60%）、Party Potion（120 Gold / 生存者全員20%）、Revival Potion（180 Gold / Down1人をEffective Max HPの30%・切り上げで蘇生）。4商品から等確率・重複なしで2種類を抽選します。単体商品は購入前に対象を選択し、通常Potionは負傷した生存者のみ、Revival PotionはDownのみを対象にします。対象選択・蘇生は既存 `recoveryTargets` / `recoverParty` / `recoverPartyMember` を共用し、通常PotionはDownを蘇生しません。蘇生対象不在でも陳列されますが購入できません。

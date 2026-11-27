@@ -48,8 +48,8 @@ function burnFixture(stacks: number, bonus = 0): CombatState {
 
 describe('Mage definitions and Arcane Veil', () => {
   it('adds five definitions, honors caps, and leaves all three original Mage buffs unchanged', () => {
-    expect(BUFF_DEFINITIONS).toHaveLength(59);
-    expect(new Set(BUFF_DEFINITIONS.map(b => b.id)).size).toBe(59);
+    expect(BUFF_DEFINITIONS).toHaveLength(60);
+    expect(new Set(BUFF_DEFINITIONS.map(b => b.id)).size).toBe(60);
     for (const [id, rarity, maxStacks] of [['arcane-veil','common',3],['frostbind','rare',2],['arcane-burn','epic',2],['arcane-barrage','legendary',1],['infinite-arcana','legendary',3]] as const) {
       expect(BUFFS_BY_ID[id]).toMatchObject({ rarity, maxStacks, categories: expect.arrayContaining(['Mage']) });
       expect(canAddBuff([owned(id, maxStacks)], id)).toBe(false);

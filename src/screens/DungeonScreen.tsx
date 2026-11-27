@@ -53,7 +53,7 @@ export function DungeonScreen() {
       {!combatActive && !ended ? <CurrentBuffs key={run.id} buffs={run.activeBuffs} /> : null}
       <div ref={roomContentRef} className={showExplorationParty ? 'dungeon-room-content' : undefined} key={`${run.id}-${run.currentFloor}`}>
         {ended ? <DungeonResult run={run} onRestart={start} saveError={saveError} /> : <>
-          {run.runStatus === 'buff_reward' || run.runStatus === 'buff_acquired' ? <BuffReward run={run} onChoose={(buffId) => dispatch({ type: 'choose-buff', buffId })} /> : null}
+          {run.runStatus === 'buff_reward' || run.runStatus === 'buff_acquired' ? <BuffReward run={run} onChoose={(buffId) => dispatch({ type: 'choose-buff', buffId })} onReroll={revision => dispatch({ type: 'reroll-buff-reward', revision })} /> : null}
           {run.runStatus === 'choosing' ? <RoomSelection preBoss={isPreBossFloor(run.currentFloor)} options={run.roomOptions} onChoose={(optionId) => dispatch({ type: 'choose', optionId, now: Date.now() })} /> : null}
           {run.runStatus === 'room' && narrativeRoom ? <EncounterRoom run={run} onChoose={choiceId => dispatch({ type: 'encounter-choice', choiceId, now: Date.now() })} /> : null}
           {run.runStatus === 'room' && run.currentRoom === 'rest' ? <RestRoom combat={run.combat} onRest={(action, targetId) => dispatch({ type: 'rest', action, targetId })} /> : null}

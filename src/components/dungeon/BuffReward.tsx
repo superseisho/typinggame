@@ -1,7 +1,19 @@
 import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
 import type { DungeonRunState } from '../../types/dungeon';
+import { useEffect, useState } from 'react';
+import { freeRerolls } from '../../game/buffs/freeRerolls';
+import { rewardRerollState } from '../../game/dungeon/rewardReroll';
+import { BUFF_CONFIG } from '../../game/buffs/buffConfig';
 
-export function BuffReward({ run, onChoose }: { readonly run: DungeonRunState; readonly onChoose: (id: string) => void }) {
+export function BuffReward({ run, onChoose, onReroll }: { readonly run: DungeonRunState; readonly onChoose: (id: string) => void; readonly onReroll?: (revision: number) => void }) {
+  const [rerollPending, setRerollPending] = useState(false);
+  useEffect(() => {
+    if (!rerollPending) return;
+    const timer = window.setTimeout(() => setRerollPending(false), BUFF_CONFIG.rerollUiCooldownMs);
+    return () => window.clearTimeout(timer);
+  }, [rerollPending]);
+  const context = rewardRerollState(run);
+  const allowance = freeRerolls(run.activeBuffs, 'buff-reward', context?.freeRerollsUsed);
   const acquired = run.runStatus === 'buff_acquired';
   const rareTreasure = run.treasure?.outcome === 'rare_buff';
   const encounter = run.currentRoom === 'event' || run.currentRoom === 'altar';
@@ -20,5 +32,9 @@ export function BuffReward({ run, onChoose }: { readonly run: DungeonRunState; r
         <small>{acquired ? run.acquiredBuffId === id ? '✦ 次の戦闘へ引き継ぎます' : '—' : buff.stackable ? `取得後 ×${stacks + 1} · 効果はStack数に応じて加算` : 'この探索のビルドに追加'}</small>
       </button>;
     })}</div>
+    {!acquired && allowance.max > 0 ? <div className="reward-reroll">
+      <button type="button" className="dungeon-button secondary" disabled={!onReroll || !context || allowance.remaining <= 0 || rerollPending}
+        onClick={() => { if (!context || !onReroll) return; setRerollPending(true); onReroll(context.revision); }}>REROLL · FREE {allowance.remaining} / {allowance.max}</button>
+    </div> : null}
   </section>;
 }

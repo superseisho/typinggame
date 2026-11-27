@@ -11,7 +11,7 @@ export type ShopItem = { readonly id: string; readonly price: number; readonly p
   | { readonly type: 'recovery'; readonly recoveryId: string }
   | { readonly type: 'buff'; readonly buffId: string }
 );
-export interface ShopState { readonly items: readonly ShopItem[]; readonly rerollCount: number }
+export interface ShopState { readonly items: readonly ShopItem[]; readonly rerollCount: number; readonly freeRerollsUsed?: number }
 export type TreasureOutcome = 'buff' | 'gold' | 'party_heal' | 'rare_buff' | 'trap_battle';
 export interface TreasureState {
   readonly opened: boolean;

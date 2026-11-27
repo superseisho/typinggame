@@ -27,7 +27,7 @@ export function generateShop(run: DungeonRunState, revision = 0): { shop: ShopSt
     const product = pool.shift()!;
     items.push({ id: id(), type: 'recovery', recoveryId: product.id, price: product.price, purchased: false });
   }
-  return { shop: { items, rerollCount: revision }, seed };
+  return { shop: { items, rerollCount: revision, freeRerollsUsed: revision === 0 ? 0 : run.shop?.freeRerollsUsed ?? 0 }, seed };
 }
 
 export function shopItemUnavailable(run: DungeonRunState, item: ShopItem): string | null {

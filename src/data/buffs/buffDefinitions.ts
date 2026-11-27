@@ -6,6 +6,7 @@ const define = (id: string, name: string, rarity: BuffRarity, categories: BuffCa
   ({ id, name, rarity, categories, description, effects, stackable: maxStacks > 1, maxStacks });
 
 export const BUFF_DEFINITIONS: readonly BuffDefinition[] = [
+  define('second-chance', 'Second Chance', 'common', ['Global', 'Utility'], 'Buff報酬とShopで、Stack数だけ無料リロールできる。無料回数は新しい報酬画面・Shopごとに回復する。', [{ type: 'free-reroll', value: 1, targets: ['buff-reward', 'shop'] }], 5),
   define('leg-sweep', 'Leg Sweep', 'rare', ['Fighter', 'Utility'], 'Fighterの通常Attackが命中するたび、実命中先の次ACTION +2秒 / Stack。', [{ type: 'normal-attack-action-delay', target: 'martial-artist', value: 2000 }]),
   define('combo-acceleration', 'Combo Acceleration', 'epic', ['Fighter', 'Typing', 'Offensive'], 'Combo StageごとにFighterの通常Attack必要文字数−10 / Stack。最低5文字。', [{ type: 'combo-stage-threshold-reduction', target: 'martial-artist', value: 10 }], 2),
   define('relentless-fists', 'Relentless Fists', 'legendary', ['Fighter', 'Offensive'], 'Combo Stage 3以上で通常Attackが2連撃、2Stackで3連撃。Gauge消費は1回分。', [{ type: 'combo-stage-multihit', target: 'martial-artist', activationStage: 3, value: 1 }], 2),

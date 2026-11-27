@@ -46,8 +46,8 @@ const support = [owned('divine-momentum'),owned('sacred-protection'),owned('divi
 
 describe('Cleric definitions and Sacred Veil',()=>{
   it('adds seven definitions, ten Cleric buffs total, with original effects/caps unchanged',()=>{
-    expect(BUFF_DEFINITIONS).toHaveLength(59);
-    expect(new Set(BUFF_DEFINITIONS.map(b=>b.id)).size).toBe(59);
+    expect(BUFF_DEFINITIONS).toHaveLength(60);
+    expect(new Set(BUFF_DEFINITIONS.map(b=>b.id)).size).toBe(60);
     expect(BUFF_DEFINITIONS.filter(b=>b.categories.includes('Cleric'))).toHaveLength(10);
     for(const [id,rarity,maxStacks] of [['sacred-veil','common',3],['divine-momentum','uncommon',3],['sacred-protection','rare',3],['divine-inspiration','epic',3],['mass-healing','legendary',1],['resurrection','legendary',1],['twin-miracle','legendary',1]] as const) {
       expect(BUFFS_BY_ID[id]).toMatchObject({rarity,maxStacks,categories:expect.arrayContaining(['Cleric'])});

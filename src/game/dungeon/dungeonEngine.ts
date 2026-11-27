@@ -23,6 +23,8 @@ import { BUFF_CONFIG, emptyBuffResources } from '../buffs/buffConfig';
 import { BUFFS_BY_ID } from '../../data/buffs/buffDefinitions';
 import { appendEvent } from '../combat/combatEvents';
 import { createSentenceDeck } from '../typing/sentenceDeck';
+import { freeRerolls } from '../buffs/freeRerolls';
+import { createRewardReroll, rewardRerollState } from './rewardReroll';
 
 type BattleRoom = 'battle' | 'elite' | 'ambush' | 'boss';
 
@@ -61,7 +63,7 @@ export function createDungeonRun(seed: number, id: string): DungeonRunState {
   return enterFloor({
     encounter: null, lastEventId: null,
     shop: null, treasure: null, combatSource: 'room',
-    activeBuffs: [], buffOptions: [], acquiredBuffId: null,
+    activeBuffs: [], buffOptions: [], acquiredBuffId: null, buffRewardReroll: null,
     id, rngState: seed >>> 0, currentFloor: 1, maxFloor: DUNGEON_CONFIG.maxFloor, enemyTier: 1,
     selectedDifficulty: 'normal', gold: DUNGEON_CONFIG.startingGold, goldEarned: 0,
     currentRoom: null, runStatus: 'choosing', roomOptions: [], combat: createCombatState([], createSentenceDeck((seed ^ 0x73656e74) >>> 0)),
@@ -79,13 +81,13 @@ function completeRoom(run: DungeonRunState, reward: number, message: string, now
 }
 
 function clearRunBuffs(run: DungeonRunState): DungeonRunState {
-  return { ...run, activeBuffs: [], buffOptions: [], acquiredBuffId: null,
+  return { ...run, activeBuffs: [], buffOptions: [], acquiredBuffId: null, buffRewardReroll: null,
     combat: { ...applyRunBuffs(run.combat, []), buffResources: emptyBuffResources() } };
 }
 
 function advanceFloor(run: DungeonRunState): DungeonRunState {
   return enterFloor({ ...run, currentFloor: run.currentFloor + 1, currentRoom: null, roomMessage: '', shop: null, treasure: null, encounter: null, combatSource: 'room',
-    buffOptions: [], acquiredBuffId: null, combat: freshCombat(run.combat), currentCombatMs: 0 });
+    buffOptions: [], acquiredBuffId: null, buffRewardReroll: null, combat: freshCombat(run.combat), currentCombatMs: 0 });
 }
 
 function settleCombat(run: DungeonRunState, combat: CombatState, now: number): DungeonRunState {
@@ -114,7 +116,8 @@ function settleCombat(run: DungeonRunState, combat: CombatState, now: number): D
     clearedRooms: completed.clearedRooms.map((room, index) => index === completed.clearedRooms.length - 1
       ? { ...room, goldReward: room.goldReward + BUFF_CONFIG.fallbackGold } : room),
     roomMessage: `${completed.roomMessage} · 取得可能なBuffなし：追加Gold +${BUFF_CONFIG.fallbackGold}` };
-  return { ...completed, rngState: reward.seed, runStatus: 'buff_reward', buffOptions: reward.choices };
+  return { ...completed, rngState: reward.seed, runStatus: 'buff_reward', buffOptions: reward.choices,
+    buffRewardReroll: createRewardReroll(BUFF_CONFIG.rarityWeights[run.currentRoom === 'elite' || run.currentRoom === 'boss' ? 'elite' : 'battle']) };
 }
 
 /** Each command is valid in exactly one phase. Callers also supply a floor/run token. */
@@ -122,6 +125,15 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
   if (run.currentFloor !== expectedFloor || run.id !== expectedRunId) return run;
   if (run.runStatus === 'cleared' || run.runStatus === 'game_over') return run;
   switch (action.type) {
+    case 'reroll-buff-reward': {
+      if (run.runStatus !== 'buff_reward') return run;
+      const context = rewardRerollState(run);
+      if (!context || action.revision !== context.revision || freeRerolls(run.activeBuffs, 'buff-reward', context.freeRerollsUsed).remaining <= 0) return run;
+      const reward = generateBuffRewards(run.activeBuffs, run.currentRoom!, run.rngState, { weights: context.weights, count: context.count });
+      if (!reward.choices.length) return run;
+      return { ...run, rngState: reward.seed, buffOptions: reward.choices,
+        buffRewardReroll: { ...context, revision: context.revision + 1, freeRerollsUsed: context.freeRerollsUsed + 1 } };
+    }
     case 'choose-buff': {
       if (run.runStatus !== 'buff_reward' || !run.buffOptions.includes(action.buffId)) return run;
       const activeBuffs = addBuff(run.activeBuffs, action.buffId);
@@ -163,7 +175,7 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
         clearedRooms: [...next.clearedRooms, { floor: next.currentFloor, roomType: next.currentRoom!, result: 'failed', goldReward: 0 }] });
       if (result.buffWeights) {
         const reward = generateBuffRewards(next.activeBuffs, next.currentRoom!, next.rngState, { weights: result.buffWeights });
-        if (reward.choices.length) return { ...next, rngState: reward.seed, runStatus: 'buff_reward', buffOptions: reward.choices };
+        if (reward.choices.length) return { ...next, rngState: reward.seed, runStatus: 'buff_reward', buffOptions: reward.choices, buffRewardReroll: createRewardReroll(result.buffWeights) };
         return completeRoom({ ...next, rngState: reward.seed, encounter: { ...next.encounter!, resolved: true, pendingGold: 0 } }, result.goldReward + BUFF_CONFIG.fallbackGold,
           `${result.message} · 取得可能なBuffなし · Gold +${BUFF_CONFIG.fallbackGold}`);
       }
@@ -178,7 +190,8 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
         const reward = generateBuffRewards(run.activeBuffs, 'treasure', next.rngState,
           { weights: result.outcome === 'rare_buff' ? TREASURE_CONFIG.rareBuffWeights : TREASURE_CONFIG.buffWeights });
         const message = result.outcome === 'rare_buff' ? 'RARE TREASURE! · Rare以上確定' : 'TREASURE FOUND! · 無料の祝福';
-        if (reward.choices.length) return { ...next, rngState: reward.seed, runStatus: 'buff_reward', buffOptions: reward.choices, roomMessage: message };
+        if (reward.choices.length) return { ...next, rngState: reward.seed, runStatus: 'buff_reward', buffOptions: reward.choices, roomMessage: message,
+          buffRewardReroll: createRewardReroll(result.outcome === 'rare_buff' ? TREASURE_CONFIG.rareBuffWeights : TREASURE_CONFIG.buffWeights) };
         return completeRoom({ ...next, rngState: reward.seed, treasure: { ...next.treasure!, resolved: true } }, BUFF_CONFIG.fallbackGold, `${message} · 取得可能なBuffなし · Gold +${BUFF_CONFIG.fallbackGold}`);
       }
       const resolved = { ...next, treasure: { ...next.treasure!, resolved: true } };
@@ -217,9 +230,14 @@ export function reduceDungeon(run: DungeonRunState, action: DungeonAction, expec
       return purchaseShopItem(run, action.productId, action.targetId);
     }
     case 'reroll-shop': {
-      if (run.runStatus !== 'room' || run.currentRoom !== 'shop' || !run.shop || action.revision !== run.shop.rerollCount || run.gold < SHOP_CONFIG.rerollCost) return run;
+      if (run.runStatus !== 'room' || run.currentRoom !== 'shop' || !run.shop || action.revision !== run.shop.rerollCount) return run;
+      const used = run.shop.freeRerollsUsed ?? 0;
+      const free = freeRerolls(run.activeBuffs, 'shop', used).remaining > 0;
+      const cost = free ? 0 : SHOP_CONFIG.rerollCost;
+      if (run.gold < cost) return run;
       const generated = generateShop(run, run.shop.rerollCount + 1);
-      return { ...run, gold: run.gold - SHOP_CONFIG.rerollCost, rngState: generated.seed, shop: generated.shop, roomMessage: '商品を入れ替えました' };
+      return { ...run, gold: run.gold - cost, rngState: generated.seed,
+        shop: { ...generated.shop, freeRerollsUsed: used + (free ? 1 : 0) }, roomMessage: '商品を入れ替えました' };
     }
     case 'leave-shop':
       return run.runStatus === 'room' && run.currentRoom === 'shop' ? advanceFloor(completeRoom(run, 0, 'Shop · 買い物を終えた')) : run;

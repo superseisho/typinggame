@@ -3,6 +3,14 @@ import type { Difficulty } from './save';
 import type { RunBuff } from './buffs';
 import type { ShopState, TreasureState } from './rooms';
 import type { EncounterState } from './encounters';
+import type { RarityWeights } from './encounters';
+
+export interface BuffRewardRerollState {
+  readonly weights: RarityWeights;
+  readonly count: number;
+  readonly revision: number;
+  readonly freeRerollsUsed: number;
+}
 
 export type RoomType = 'battle' | 'elite' | 'rest' | 'shop' | 'treasure' | 'event' | 'altar';
 export type DungeonRoomType = RoomType | 'boss' | 'ambush';
@@ -33,6 +41,7 @@ export interface RunStatistics {
 }
 export type RunStatus = 'choosing' | 'announcement' | 'battle' | 'room' | 'reward' | 'buff_reward' | 'buff_acquired' | 'cleared' | 'game_over';
 export interface DungeonRunState {
+  readonly buffRewardReroll?: BuffRewardRerollState | null;
   readonly encounter: EncounterState | null;
   readonly lastEventId: string | null;
   readonly shop: ShopState | null;
@@ -62,6 +71,7 @@ export interface DungeonRunState {
 }
 export type RestAction = 'party' | 'focused' | 'revive';
 export type DungeonAction =
+  | { readonly type: 'reroll-buff-reward'; readonly revision: number }
   | { readonly type: 'move-enemy-target'; readonly direction: 'left' | 'right' }
   | { readonly type: 'select-enemy-target'; readonly enemyId: string }
   | { readonly type: 'encounter-choice'; readonly choiceId: string; readonly now: number }

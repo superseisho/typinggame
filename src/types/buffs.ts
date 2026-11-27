@@ -7,6 +7,7 @@ export type BuffCategory = 'Global' | 'Knight' | 'Mage' | 'Cleric' | 'Fighter' |
 export type BuffTarget = 'party' | CharacterId;
 export type BuffStat = 'attack' | 'defense' | 'maxHp' | 'attackThreshold' | 'abilityThreshold' | 'abilityDamage' | 'healPower' | 'comboBonus' | 'activeAttack' | 'missGauge';
 export type BuffEffect =
+  | { readonly type: 'free-reroll'; readonly value: number; readonly targets: readonly ('buff-reward' | 'shop')[] }
   | { readonly type: 'modifier'; readonly stat: BuffStat; readonly target: BuffTarget; readonly value: number }
   | { readonly type: 'guard-heal' | 'guard-counter' | 'guard-gauge-shield' | 'heal-extra' | 'heal-shield'; readonly target: CharacterId; readonly value: number }
   | { readonly type: 'streak-charge' | 'streak-damage' | 'streak-heal' | 'streak-seal'; readonly threshold: number; readonly value: number }

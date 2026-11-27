@@ -1,6 +1,7 @@
 import type { BuffCombatResources, BuffRarity } from '../../types/buffs';
 
 export const BUFF_CONFIG = {
+  rerollUiCooldownMs: 350,
   choices: 3, acquisitionMs: 500, fallbackGold: 60,
   minAttackThreshold: 5, minAbilityThreshold: 5, minMissGaugeMultiplier: 0.1,
   unbrokenFocusRechargeMs: 30000,

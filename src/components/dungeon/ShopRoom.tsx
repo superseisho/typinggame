@@ -6,6 +6,7 @@ import { recoveryTargets } from '../../game/dungeon/roomResolver';
 import type { CharacterId } from '../../types/game';
 import type { DungeonRunState } from '../../types/dungeon';
 import { RecoveryTargetPicker } from './RecoveryTargetPicker';
+import { freeRerolls } from '../../game/buffs/freeRerolls';
 
 export function ShopRoom({ run, onPurchase, onLeave, onReroll }: {
   readonly run: DungeonRunState;
@@ -22,6 +23,8 @@ export function ShopRoom({ run, onPurchase, onLeave, onReroll }: {
   }, [rerollPending]);
   const shop = run.shop;
   if (!shop) return null;
+  const allowance = freeRerolls(run.activeBuffs, 'shop', shop.freeRerollsUsed);
+  const rerollCost = allowance.remaining > 0 ? 0 : SHOP_CONFIG.rerollCost;
   const selectedItem = shop.items.find(item => item.id === selected);
   const selectedProduct = selectedItem?.type === 'recovery' ? RECOVERY_PRODUCTS.find(product => product.id === selectedItem.recoveryId) : undefined;
   return <section className="dungeon-room shop-room" aria-label="Shop">
@@ -45,10 +48,10 @@ export function ShopRoom({ run, onPurchase, onLeave, onReroll }: {
       </button>;
     })}</div> : null}
     <div className="shop-actions">
-      <button type="button" className="dungeon-button secondary" disabled={rerollPending || run.gold < SHOP_CONFIG.rerollCost}
-        onClick={() => { setSelected(null); setRerollPending(true); onReroll(shop.rerollCount); }}>REROLL · {SHOP_CONFIG.rerollCost} Gold</button>
+      <button type="button" className="dungeon-button secondary" disabled={rerollPending || run.gold < rerollCost}
+        onClick={() => { setSelected(null); setRerollPending(true); onReroll(shop.rerollCount); }}>REROLL · {allowance.remaining > 0 ? `FREE ${allowance.remaining} / ${allowance.max}` : `${SHOP_CONFIG.rerollCost} Gold`}</button>
       <button className="dungeon-button secondary" type="button" onClick={onLeave}>LEAVE SHOP →</button>
-      <small role="status">{run.roomMessage || (run.gold < SHOP_CONFIG.rerollCost ? 'Reroll: Not enough Gold' : '売り切れを含む全商品を再抽選します')} · Rerolls {shop.rerollCount}</small>
+      <small role="status">{run.roomMessage || (run.gold < rerollCost ? 'Reroll: Not enough Gold' : '売り切れを含む全商品を再抽選します')} · Rerolls {shop.rerollCount}</small>
     </div>
   </section>;
 }

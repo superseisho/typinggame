@@ -12,6 +12,7 @@ export function describeBuffTotals(buff: BuffDefinition, stacks: number): string
     const value = effect.value * stacks;
     const percent = Math.round(value * 100);
     switch (effect.type) {
+      case 'free-reroll': return `Buff報酬・Shopごとに無料リロール ${value}回`;
       case 'normal-attack-action-delay': return `通常Attackの各命中でACTION +${value / 1000}秒`;
       case 'combo-stage-threshold-reduction': return `Combo StageごとにAttack必要文字数 −${value}（最低5）`;
       case 'combo-stage-multihit': return `Stage ${effect.activationStage}以上で通常Attack ${1 + value} Hits`;

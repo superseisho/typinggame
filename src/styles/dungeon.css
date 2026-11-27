@@ -63,7 +63,7 @@
   /* Stock and actions need slightly more room now that flex margins do not collapse. */
   .dungeon-shell--exploration .dungeon-room-content > .shop-room { padding-block: 8px; }
   /* Eight cards may exceed the middle band: retain access to targets and actions. */
-  .dungeon-shell--exploration .dungeon-room-content:has(> .shop-room) {
+  .dungeon-shell--exploration .dungeon-room-content:has(> .shop-room, > .buff-reward) {
     overflow: auto; justify-content: flex-start; scrollbar-gutter: stable both-edges;
   }
   .dungeon-shell--exploration .dungeon-heading { margin-bottom: 8px; }
